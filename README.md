@@ -24,15 +24,18 @@ Box is not included in the GitHub repo. Code references Box paths via `config.py
 
 | Report | Covers | Regenerate with |
 |---|---|---|
-| [Main-study QC dashboard](analysis/biosignals2_qc.html) | Main-study participants | `analysis/generate_qc_report.R` |
-| [Pilot QC report](analysis/biosignals2_qc_pilot.html) | Pilot participants only | `analysis/generate_qc_report_pilot.R` |
+| [Main-study QC dashboard](https://cmdaoust.github.io/Biosignals-2/analysis/biosignals2_qc.html) | Main-study participants | `analysis/generate_qc_report.R` |
+| [Pilot QC report](https://cmdaoust.github.io/Biosignals-2/analysis/biosignals2_qc_pilot.html) | Pilot participants only | `analysis/generate_qc_report_pilot.R` |
 
 Each report checks PsychoPy self-report, Ledalab (EDA), Kubios (HRV), webcam biometrics, video,
 FaceReader and questionnaires. Sections for data that isn't available yet are left out rather than failing.
 The reports are snapshots: re-run the script and commit the new `.html` to update them.
 
-**Viewing:** GitHub shows `.html` files as source code, not as a web page. To view a report, open it
-from your local clone in a browser, or download it from GitHub (**Download raw file**) and open it.
+The links open the live pages on GitHub Pages, which show whatever was last pushed to `main`.
+After regenerating a report, push the new `.html` (Pages takes a minute or two to update).
+
+**Session protocol checklist:** [biosignals2-protocol-checklist.html](https://cmdaoust.github.io/Biosignals-2/protocol_instructions/biosignals2-protocol-checklist.html)
+(source: `protocol_instructions/biosignals2-protocol-checklist.html`).
 
 ---
 
