@@ -125,7 +125,39 @@ Biosignals-2/
 │   │   ├── 03_compare_ledalab_events.py         # Compare BIOPAC vs PsychoPy onset times to verify channel mapping
 │   │   ├── run_ledalab_batch.m  # Run Ledalab CDA analysis in MATLAB (batch)
 │   │   └── inspect_data.py      # Utility: inspect EDA data
-│   ├── video/                   # Scripts for extracting video event onsets
+│   ├── video/                   # Webcam video pipeline: PNG frames -> videos -> event onsets ->
+│   │                            #   webcam heart rate (rPPG) -> HRV vs ECG. Run in number order.
+│   │   ├── 000_convert_png_to_avi.py     # PNG webcam frames -> video. --method realtime: constant
+│   │   │                        #   30 fps on the real timeline, for FaceReader expressions.
+│   │   │                        #   --method 1to1: every PNG once, lossless FFV1 .avi, read by
+│   │   │                        #   BOTH WebcamBiometrics and FaceReader heart rate. Skips
+│   │   │                        #   participants that already have the output.
+│   │   ├── 001_generate_event_onsets.py  # PsychoPy data -> each event (baseline, each video,
+│   │   │                        #   inductions, recoveries) as video frame/time, for FaceReader
+│   │   │                        #   (video columns) and rPPG (onset_s/offset_s). Writes
+│   │   │                        #   {id}_video_events.csv + all_participants_video_events.csv.
+│   │   │                        #   Skips participants already done (--rerun ID / --rerun-all).
+│   │   ├── 002_create_webcam_events_biopac.py  # BIOPAC trigger channels -> the same events on
+│   │   │                        #   the ECG clock ({id}_events_biopac.csv), so 001 and 002 can be
+│   │   │                        #   matched to find each participant's ECG->video offset.
+│   │   │                        #   Skips participants already done (--rerun ID / --rerun-all).
+│   │   ├── 003_run_webcam_biometrics.py  # Runs WebcamBiometrics on the 1:1 video: extract skin
+│   │   │                        #   colour -> heart rate -> per-frame, per-event and per-beat
+│   │   │                        #   CSVs in 3_Data/webcam_biometrics/. Estimates the ECG->video
+│   │   │                        #   offset (from 001 + 002) into 3_Data/ecg_video_offsets.csv.
+│   │   │                        #   --optimize: improved beat detector (_optimize outputs).
+│   │   ├── 004_convert_mkv_to_avi.py     # ONE-OFF: old {id}_1to1.mkv (before 7 Oct 2026) ->
+│   │   │                        #   {id}_1to1_ffv1.avi, verified pixel-identical; FaceReader
+│   │   │                        #   processes .mkv badly. --delete-mkv removes the .mkv after.
+│   │   ├── 005_compare_hrv.R    # HRV per block from ECG (Kubios), webcam (current + optimised)
+│   │   │                        #   and FaceReader, with the same windows, clock and maths;
+│   │   │                        #   as-is and cleaned intervals, and why each source differs.
+│   │   ├── 006_compare_facereader_runs.R # Two FaceReader runs of the same participant frame by
+│   │   │                        #   frame (e.g. .mkv vs .avi), and which is closer to the ECG.
+│   │   ├── README_convert_png_to_video.md  # Plain-language explanation of the 1:1 video method
+│   │   ├── blendshapes_au_lookup.xlsx    # Lookup: each face blendshape -> probable FACS action
+│   │   │                        #   unit(s) and most likely emotion, with uncertainty notes
+│   │   └── archive/             # Superseded versions (older 004_convert_mkv_to_avi.py)
 │   ├── NOTES_TO_FOLLOW_UP.md    # Open methodological questions
 │   ├── generate_qc_report.R     # Builds biosignals2_qc.html (main-study QC dashboard)
 │   ├── generate_qc_report_pilot.R  # Builds biosignals2_qc_pilot.html (pilot participants)
@@ -143,7 +175,6 @@ Biosignals-2/
 │                                #   Pilot 002: full dataset (ECG/Kubios, FaceReader, webcam, PsychoPy, EDA).
 │                                #   Get the files from Box; the analysis normally reads Box directly.
 ├── experiment/                  # PsychoPy experiment files (.psyexp, .py) and stimulus lists
-└── manuscripts/                 # NOT IN GIT (gitignored). Preregistration and manuscript drafts
 ```
 
 ---
@@ -154,18 +185,16 @@ EDA is analysed using **Ledalab** (MATLAB toolbox, continuous decomposition anal
 
 **Pipeline:**
 1. `analysis/ledalab/01_create_ledalab_events_biopac.py` — reads BIOPAC .acq files directly and writes Ledalab event files (BIOPAC-derived timing). Channel names correctly reflect condition polarity (P=positive, N=negative); see script header for verified mapping.
-2. `analysis/ledalab/02_create_ledalab_events_psychopy.py` — reads PsychoPy CSVs + BIOPAC (for clock alignment) and writes Ledalab event files (PsychoPy-derived timing; preferred source).
+2. `analysis/ledalab/02_create_ledalab_events_psychopy.py` — reads PsychoPy CSVs + BIOPAC (for clock alignment) and writes Ledalab event files (PsychoPy-derived timing; just for reference, not to be used in futher analyses).
 3. `analysis/ledalab/03_compare_ledalab_events.py` — compares BIOPAC vs PsychoPy onset times; use to verify the BIOPAC channel mapping is correct before running Ledalab.
 4. `analysis/ledalab/run_ledalab_batch.m` — runs Ledalab CDA in MATLAB, exports results to Box/ledalab/
 5. `analysis/04_analyse_ledalab_scr.Rmd` — statistical analysis of Ledalab output in R
 
-Scripts 1–2 write to `event_onsets/blocks/` and are self-contained — no need to run the PsPM onset scripts first.
+Scripts 1–2 write to `event_onsets/blocks/`
 
-**Ledalab output files** (in Box `ledalab/`; participant 001 copies may also be in your local, untracked `pilot_data/`):
+**Ledalab output files** (in Box `ledalab/`):
 - `{pid}_eda_era.txt` — event-related EDA: one row per epoch, columns include nSCR, latency, amplitude sum, phasic max, tonic, ISCR (CDA and TTP decompositions)
 - `{pid}_eda_scrlist.txt` — list of individual SCR events: onset (s) and amplitude (µS)
-
-Both participants (001 and 002) have era and scrlist output in Box `ledalab/`.
 
 **Note on PsPM:** A PsPM spontaneous fluctuation (SF) pipeline was also developed and tested (scripts in `analysis/pspm/`, full documentation in `analysis/pspm/README.md`). It was ultimately not used — the SF model results were not satisfactory (see `analysis/archive/03_analyse_sf.Rmd` for the evaluation). The scripts and documentation are retained for reference.
 
@@ -173,7 +202,7 @@ Both participants (001 and 002) have era and scrlist output in Box `ledalab/`.
 
 ## `03_hr_comparison_pilot.Rmd` — Pilot HR/HRV comparison
 
-This script compares heart rate and HRV across three sources for participant 002:
+This script compares heart rate and HRV across three sources for pilot participant:
 
 | Source | Signal | Key data file |
 |---|---|---|
@@ -196,8 +225,8 @@ The PsychoPy experiment files are in `experiment/`.
 
 ```
 experiment/
-├── Biosignals2_internalcamera_Psychopy.psyexp   # PsychoPy Builder file (source of truth)
-├── Biosignals2_internalcamera_Psychopy_lastrun.py  # Auto-generated Python (last run)
+├── Biosignals2_Psychopy.psyexp   # PsychoPy Builder file (source of truth)
+├── Biosignals2_Psychopy_lastrun.py  # Auto-generated Python (last run)
 ├── biometrics_server.py      # Companion server for webcam rPPG biometrics plugin
 ├── negative_stim.csv         # Negative stimulus list
 ├── positive_stim.csv         # Positive stimulus list
@@ -205,7 +234,7 @@ experiment/
 ```
 
 **To run the experiment:**
-1. Open `Biosignals2_internalcamera_Psychopy.psyexp` in PsychoPy Builder.
+1. Open `Biosignals2_Psychopy.psyexp` in PsychoPy Builder.
 2. Set counterbalancing manually at the top of the "Begin Experiment" code block (`condition_order`, `rating_start`).
 3. Press Run (green play button) or export to Python and run directly.
 
