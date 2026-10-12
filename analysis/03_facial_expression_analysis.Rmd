@@ -1,0 +1,1400 @@
+---
+title: "Biosignals2 — Facial Expression Analysis (FaceReader + webcam biometrics)"
+author: ""
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: show
+params:
+  bin_s: 0.1              # common time grid (s) both sources are averaged onto
+  min_valid_prop: 0.5     # drop an epoch/source if < this share of bins has a tracked face
+  video_trim_s: 0         # ignore the first N s of each video (orienting / onset artefacts)
+  max_clock_resid_s: 0.05   # warn if the PsychoPy→recording clock fit is off by more than this for any row
+  wc_shift_s: 0           # added to webcam times to cancel a constant FaceReader–webcam lag (see §8.1)
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 9, fig.height = 5)
+```
+
+> **What this document does.** It reads, per participant,
+>
+> 1. the **FaceReader detailed log** (`.xlsx` or `.txt` export),
+> 2. the **webcam-biometrics log** (`*_biometrics.csv`, MediaPipe/ARKit blendshapes),
+> 3. the **PsychoPy data file** (`.csv`) — epoch timings *and* the video ratings,
+> 4. for older sessions, the webcam **frame timestamps** (`<id>_frame_timestamps.csv`),
+>
+> puts everything on one clock (seconds since webcam recording start), cuts it
+> into baseline / video / recovery epochs, and then tests
+> **(A)** positive vs negative condition effects,
+> **(B)** agreement between FaceReader and the webcam blendshapes, and
+> **(C)** whether per-video expression tracks the stimulus self-report ratings.
+>
+> Both recording formats are handled:
+>
+> * **current** (`png2avi`, e.g. i4155, r4755): FaceReader ran on `<id>_facereader.avi`,
+>   rebuilt so that video time = time since recording start;
+> * **older** (`legacy`, e.g. e5510, g2313, n2026, p7259, s0943): FaceReader ran on
+>   `<id>_recording.avi`, whose video time drifts from real time — each FaceReader
+>   frame is mapped back to its real capture time with the frame-timestamps file.
+>
+> Pilot-sized N: the inferential tests are a scaffold. Read them as descriptive
+> until the full sample is in.
+
+---
+
+## 0. Participants and settings
+
+**Edit this chunk to exclude participants.** Write each ID (as in the file
+names, any case) with the reason, separated by commas — no comma after the last
+one. Excluded participants are not loaded at all and are listed with their
+reason in the participant overview (§3.7).
+
+```{r settings}
+exclude_participants <- c(
+  # g2313 = "webcam ran below 20 fps",
+  # e5510 = "restarted session"
+)
+# Use this list only for exclusions specific to the facial analysis. Pilots, test sessions
+# and rejected participants come from analysis/participant_status.csv automatically.
+# Main-study participants only by default; set TRUE to also analyse the pilots.
+INCLUDE_PILOTS <- FALSE
+
+# Which recording formats to include: "png2avi" (current) and/or "legacy" (older)
+include_formats <- c("png2avi", "legacy")
+```
+
+---
+
+## 1. Packages & config
+
+```{r packages}
+library(tidyverse)   # dplyr >= 1.1 needed for join_by(between())
+library(jsonlite)
+library(knitr)
+library(patchwork)
+library(lme4)        # mixed models (optional; skipped if too few participants)
+library(readxl)      # blendshape → AU lookup table
+```
+
+Paths come from the repo's `config.R` (found by searching upward from this
+file, like the other analysis Rmds). Variables used:
+
+| variable | used for | if not defined in `config.R` |
+|---|---|---|
+| `PSYCHOPY_DATA_DIR` | PsychoPy `.csv`, `*_biometrics.csv`, `*_clocksync.json` | required |
+| `FACEREADER_RESULTS_DIR` | FaceReader detailed logs (`.xlsx`/`.txt`) | required |
+| `VIDEO_DIR` | older sessions: `<id>_frame_timestamps.csv` | older sessions are dropped |
+| `FACIAL_EXPRESSION_DIR` | outputs of this analysis | `SERVER_ROOT/facial_expression` |
+| `AU_LOOKUP_PATH` | `blendshapes_au_lookup.xlsx` | `analysis/video/`, then `analysis/` |
+
+```{r config}
+# Directory of this .Rmd: knitr's input dir when knitting, RStudio's editor path
+# when running chunks interactively, otherwise the working directory.
+rmd_dir <- function() {
+  d <- tryCatch(dirname(knitr::current_input(dir = TRUE)), error = function(e) NULL)
+  if (is.null(d) || !nzchar(d) || d == ".") {
+    d <- tryCatch(dirname(rstudioapi::getSourceEditorContext()$path),
+                  error = function(e) NULL)
+  }
+  if (is.null(d) || !nzchar(d)) d <- getwd()
+  normalizePath(d, winslash = "/", mustWork = TRUE)
+}
+
+find_upward <- function(start, filename) {
+  current <- start
+  repeat {
+    if (file.exists(file.path(current, filename))) return(current)
+    parent <- dirname(current)
+    if (parent == current) {
+      stop("Could not find ", filename, " in ", start, " or any parent directory.\n",
+           "Copy config_template.R -> config.R at the repo root and fill in SERVER_ROOT.")
+    }
+    current <- parent
+  }
+}
+
+analysis_dir <- rmd_dir()
+project_dir  <- find_upward(analysis_dir, "config.R")
+source(file.path(project_dir, "config.R"))
+
+need <- c("PSYCHOPY_DATA_DIR", "FACEREADER_RESULTS_DIR")
+missing_vars <- need[!vapply(need, exists, logical(1))]
+if (length(missing_vars)) stop("config.R does not define: ", paste(missing_vars, collapse = ", "))
+
+psychopy_dir   <- PSYCHOPY_DATA_DIR
+facereader_dir <- FACEREADER_RESULTS_DIR
+legacy_dir     <- if (exists("VIDEO_DIR")) VIDEO_DIR else NA_character_
+output_dir     <- if (exists("FACIAL_EXPRESSION_DIR")) FACIAL_EXPRESSION_DIR else
+                    file.path(SERVER_ROOT, "facial_expression")
+au_lookup_path <- if (exists("AU_LOOKUP_PATH")) AU_LOOKUP_PATH else {
+  cands <- file.path(analysis_dir, c("video", "."), "blendshapes_au_lookup.xlsx")
+  cands[file.exists(cands)][1]
+}
+
+tibble(setting = c("config.R", "psychopy_dir", "facereader_dir", "legacy frame timestamps (VIDEO_DIR)",
+                   "output_dir", "au_lookup"),
+       path    = c(file.path(project_dir, "config.R"), psychopy_dir, facereader_dir, legacy_dir,
+                   output_dir, au_lookup_path),
+       exists  = file.exists(path)) |>
+  kable()
+
+# Add participants left out by participant_status.csv (pilots unless INCLUDE_PILOTS,
+# test sessions, rejected participants). Entries above take precedence.
+PARTICIPANT_STATUS_PATH <- file.path(analysis_dir, "participant_status.csv")
+source(file.path(analysis_dir, "participant_status.R"), local = TRUE)
+from_status <- PARTICIPANT_STATUS[!participant_keep(PARTICIPANT_STATUS$participant_id, INCLUDE_PILOTS), ]
+from_status <- setNames(paste0(from_status$status,
+                               ifelse(nzchar(from_status$reason), paste0(": ", from_status$reason), ""),
+                               " (participant_status.csv)"),
+                        tolower(from_status$participant_id))
+exclude_participants <- c(exclude_participants,
+                          from_status[!names(from_status) %in% tolower(names(exclude_participants))])
+
+excluded_ids <- tolower(names(exclude_participants))
+if (length(exclude_participants) && any(!nzchar(excluded_ids))) {
+  stop("Every entry in exclude_participants needs an ID, e.g.  g2313 = \"reason\"")
+}
+
+if (is.na(au_lookup_path) || !file.exists(au_lookup_path)) {
+  stop("blendshapes_au_lookup.xlsx not found — put it in analysis/video/ or set AU_LOOKUP_PATH in config.R.")
+}
+```
+
+```{r theme}
+theme_set(
+  theme_bw(base_size = 12) +
+    theme(panel.grid.minor = element_blank(),
+          strip.background = element_rect(fill = "grey92"),
+          legend.position  = "bottom")
+)
+cond_colours   <- c(positive = "#E07B54", negative = "#5B8DB8")
+source_colours <- c(FaceReader = "#4C4C4C", Webcam = "#2A9D8F")
+```
+
+---
+
+## 2. Helper functions
+
+### 2.1 General
+
+```{r helpers-general}
+# Participant ID: text before the first "_" of the file name, lower case
+# (same rule as video/001_generate_event_onsets.py).
+pid_from_file <- function(path) tolower(sub("_.*$", "", basename(gsub("\\\\", "/", path))))
+
+# Return a column if it exists, otherwise NA (PsychoPy columns vary by version).
+col_or_na <- function(df, name) if (name %in% names(df)) df[[name]] else rep(NA, nrow(df))
+
+num <- function(x) suppressWarnings(as.numeric(str_replace(as.character(x), ",", ".")))
+
+# Mean of available columns, row-wise; NA if none present / all NA.
+row_mean <- function(df, cols) {
+  cols <- intersect(cols, names(df))
+  if (length(cols) == 0) return(rep(NA_real_, nrow(df)))
+  out <- rowMeans(as.matrix(df[cols]), na.rm = TRUE)
+  out[is.nan(out)] <- NA_real_
+  out
+}
+```
+
+### 2.2 FaceReader detailed log
+
+Layout (checked against participant r4755, FaceReader "General" face model,
+continuous calibration): a few metadata rows (`Filename`, `Frame rate`, …),
+blank rows, then a header row starting with `Video Time` (`hh:mm:ss.fff`).
+Columns used: the 7 emotions (no Contempt in this model), `Valence`, `Arousal`,
+`Quality`, and the action units — bilateral (`Action Unit 12 - Lip Corner Puller`)
+plus left/right versions for some. Failed frames are `FIND_FAILED` / `FIT_FAILED`
+in every column. Heart-rate/breathing columns are ignored.
+
+Both the Excel export and the tab-delimited `.txt` export are read. AU letter
+codes (`A`–`E`), if a different export setting produces them, are mapped to
+bin midpoints.
+
+**Participant ID** comes from the `Filename` row (`…\r4755_facereader.avi` → `r4755`),
+not the export's file name — FaceReader names sheets "Participant 2", which is
+its internal numbering and does not match yours.
+
+```{r helpers-facereader}
+au_letter_values <- c(NotActive = 0, A = 0.11, B = 0.35, C = 0.62, D = 0.85, E = 0.97)
+
+parse_au <- function(x) {
+  x   <- str_trim(as.character(x))
+  out <- num(x)
+  is_letter <- x %in% names(au_letter_values)
+  out[is_letter] <- au_letter_values[x[is_letter]]
+  out
+}
+
+# "hh:mm:ss.fff" -> s. If Excel turned the cell into a time, it arrives as a day fraction.
+fr_time_to_s <- function(x) {
+  x <- str_replace(as.character(x), ",", ".")
+  out <- rep(NA_real_, length(x))
+  hms <- str_detect(x, ":")
+  parts <- str_split_fixed(x[hms], ":", 3)
+  out[hms]  <- as.numeric(parts[, 1]) * 3600 + as.numeric(parts[, 2]) * 60 + as.numeric(parts[, 3])
+  out[!hms] <- num(x[!hms]) * 86400
+  out
+}
+
+clean_fr_names <- function(x) {
+  au <- str_match(x, "^Action Unit (\\d+)(?: - (Left|Right))? - ")
+  generic <- x |> tolower() |> str_replace_all("[^a-z0-9]+", "_") |> str_remove_all("^_|_$")
+  ifelse(!is.na(au[, 1]),
+         paste0("au", str_pad(au[, 2], 2, pad = "0"),
+                ifelse(is.na(au[, 3]), "", paste0("_", tolower(au[, 3])))),
+         generic)
+}
+
+# Returns a character matrix-like tibble of the whole sheet/file, no header.
+read_fr_grid <- function(path) {
+  if (str_detect(path, "\\.xlsx?$")) {
+    read_excel(path, sheet = 1, col_names = FALSE, col_types = "text",
+               .name_repair = "minimal", progress = FALSE)
+  } else {
+    lines <- sub("^\ufeff", "", readLines(path, warn = FALSE, encoding = "UTF-8"))
+    read_tsv(I(paste(lines, collapse = "\n")), col_names = FALSE,
+             col_types = cols(.default = col_character()), progress = FALSE)
+  }
+}
+
+read_facereader <- function(path) {
+  grid <- read_fr_grid(path)
+  hdr  <- which(grid[[1]] == "Video Time")[1]
+  if (is.na(hdr)) stop("No 'Video Time' header row in ", basename(path),
+                       " — is this a FaceReader *detailed* log?")
+
+  meta     <- grid[seq_len(hdr - 1), 1:2] |> setNames(c("key", "value")) |> drop_na(key)
+  get_meta <- function(k) meta$value[str_detect(meta$key, regex(k, ignore_case = TRUE))][1]
+  src_file <- get_meta("^file ?name")
+  pid      <- if (!is.na(src_file)) pid_from_file(str_trim(src_file)) else pid_from_file(path)
+
+  df <- grid[-seq_len(hdr), ]
+  names(df) <- clean_fr_names(as.character(unlist(grid[hdr, ])))
+  df <- df[, !is.na(names(df)) & nzchar(names(df))]
+  df <- df[!is.na(df$video_time), ]
+
+  emo_cols <- intersect(c("neutral", "happy", "sad", "angry", "surprised", "scared",
+                          "disgusted", "contempt", "valence", "arousal", "quality"), names(df))
+  au_cols  <- str_subset(names(df), "^au\\d{2}")
+
+  out <- tibble(
+    participant_id = pid,
+    rec_time       = fr_time_to_s(df$video_time),   # AVI time == time since recording start
+    fr_valid       = !is.na(num(df$neutral))        # FIND_FAILED / FIT_FAILED -> FALSE
+  ) |>
+    bind_cols(
+      df[emo_cols] |> mutate(across(everything(), num))     |> rename_with(~ paste0("fr_", .x)),
+      df[au_cols]  |> mutate(across(everything(), parse_au)) |> rename_with(~ paste0("fr_", .x))
+    )
+  attr(out, "meta") <- tibble(participant_id = pid, file = basename(path),
+                              source_video = src_file,
+                              frame_rate = num(get_meta("^frame rate")),
+                              face_model = get_meta("^face model"),
+                              calibration = get_meta("^calibration"))
+  out
+}
+```
+
+### 2.3 Webcam biometrics log
+
+One row per browser frame (~30 fps). `time` is the **capture** time already
+mapped onto PsychoPy's `globalClock`; `mono_time` is `core.getTime()` at
+*arrival* (~10 ms later — network latency). `face` is `True`/`False`;
+blendshapes are empty when no face was detected. Gaze/HR columns are not used here.
+
+```{r helpers-webcam}
+read_biometrics <- function(path) {
+  df <- read_csv(path, col_types = cols(.default = col_character()), progress = FALSE)
+  if (nrow(df) == 0) {
+    warning("Empty biometrics log (header only): ", basename(path))
+    return(NULL)
+  }
+  df |>
+    transmute(
+      time         = num(time),
+      mono_time    = num(mono_time),
+      wc_valid     = face %in% c("True", "TRUE", "true", "1"),
+      across(starts_with("bs_"), num)
+    )
+}
+```
+
+### 2.4 Mapping blendshapes onto FACS action units and emotions
+
+The mapping comes from `blendshapes_au_lookup.xlsx`. Per blendshape it gives
+the probable FACS AU (column B) and an emotion code (column D: 0 = neutral,
+1 = positive, 2 = anger, 3 = fear, 4 = surprise, 5 = sadness, 6 = disgust).
+
+Parsing rules:
+
+* The AU number is the first `AU<n>` in column B. Rows starting "Not", "No direct",
+  or with no AU number (eye movements, lateral jaw/mouth, `mouthClose`) get no AU.
+* Left/right blendshapes that map to the same AU are averaged.
+* An AU is flagged `approximate` if column B or C says approx./partial/not standard.
+* Webcam **emotion scores** = mean of the blendshapes coded with that emotion
+  (code 0 is not scored). These are single-blendshape assignments, not FACS
+  emotion prototypes, so treat them as rough.
+
+```{r au-map}
+emotion_codes <- c(`1` = "positive", `2` = "anger", `3` = "fear", `4` = "surprise",
+                   `5` = "sadness", `6` = "disgust")
+
+au_lookup_raw <- read_excel(au_lookup_path, .name_repair = "minimal")
+au_lookup_raw <- au_lookup_raw[, nzchar(names(au_lookup_raw))]
+
+bs_lookup <- au_lookup_raw |>
+  transmute(
+    blendshape     = str_trim(Blendshape),
+    au_text        = `Probable FACS Action Unit(s)`,
+    notes          = `Uncertainty / Notes`,
+    emotion_code   = as.integer(Emotions),
+    emotion_likely = as.integer(str_extract(`Most Likely Emotion`, "^\\d+")),
+    au_num         = if_else(str_detect(au_text, "^(Not|No direct)"), NA_character_,
+                             str_match(au_text, "AU(\\d+)")[, 2]),
+    au             = if_else(is.na(au_num), NA_character_,
+                             paste0("au", str_pad(au_num, 2, pad = "0"))),
+    label          = str_match(au_text, "\\(([^,)]+)")[, 2] |> str_trim(),
+    label          = if_else(is.na(label) | str_detect(label, "^approx"),
+                             str_match(au_text, "^AU\\d+/?\\s*([^(]+)")[, 2] |> str_trim(),
+                             label),
+    approximate    = str_detect(paste(au_text, notes),
+                                regex("approx|partial|not standard", ignore_case = TRUE)),
+    emotion        = unname(emotion_codes[as.character(emotion_code)])
+  ) |>
+  filter(!is.na(blendshape), blendshape != "")
+
+bs_to_au <- bs_lookup |>
+  filter(!is.na(au)) |>
+  group_by(au) |>
+  summarise(label       = first(label),
+            blendshapes = list(str_remove(blendshape, "^bs_")),
+            approximate = any(approximate), .groups = "drop") |>
+  arrange(au)
+
+bs_to_emotion <- bs_lookup |>
+  filter(!is.na(emotion)) |>
+  group_by(emotion) |>
+  summarise(blendshapes = list(str_remove(blendshape, "^bs_")), .groups = "drop")
+
+bs_to_au |>
+  mutate(blendshapes = map_chr(blendshapes, paste, collapse = ", ")) |>
+  kable(caption = "Blendshape → AU mapping used for the webcam")
+```
+
+Rows where the lookup's two emotion columns disagree (D = code used here,
+H = "Most Likely Emotion"). Worth resolving in the spreadsheet:
+
+```{r au-map-check}
+bs_lookup |>
+  filter(emotion_code != emotion_likely) |>
+  select(blendshape, au_text, emotion_code, emotion_likely) |>
+  kable()
+```
+
+```{r wc-derived}
+add_wc_aus <- function(df) {
+  for (i in seq_len(nrow(bs_to_au))) {
+    df[[paste0("wc_", bs_to_au$au[i])]] <- row_mean(df, paste0("bs_", bs_to_au$blendshapes[[i]]))
+  }
+  for (i in seq_len(nrow(bs_to_emotion))) {
+    df[[paste0("wc_emo_", bs_to_emotion$emotion[i])]] <-
+      row_mean(df, paste0("bs_", bs_to_emotion$blendshapes[[i]]))
+  }
+  df
+}
+
+# Composites computed identically for both sources, so they are comparable.
+#   smile = mean(AU6, AU12)          — Duchenne-type positive expression
+#   frown = mean(AU4, AU9, AU15)     — brow lowering / nose wrinkle / lip depressor
+#   au_valence = smile - frown       — crude, *heuristic* valence proxy
+add_composites <- function(df, prefix) {
+  au <- function(x) paste0(prefix, x)
+  df[[au("smile")]]      <- row_mean(df, au(c("au06", "au12")))
+  df[[au("frown")]]      <- row_mean(df, au(c("au04", "au09", "au15")))
+  df[[au("au_valence")]] <- df[[au("smile")]] - df[[au("frown")]]
+  df
+}
+```
+
+---
+
+## 3. Load data
+
+### 3.1 PsychoPy sessions
+
+A **session** = one PsychoPy data file. Its `_biometrics.csv` and
+`_clocksync.json` share the same file stem. The recording format is detected
+from the columns: `stim_onset_since_rec_start` → current (`png2avi`);
+only `time_since_recording_start` → older (`legacy`); neither → no webcam
+timing (e.g. a session without camera, or an aborted run).
+
+```{r load-psychopy}
+psy_files <- list.files(psychopy_dir, pattern = "\\.csv$", full.names = TRUE) |>
+  str_subset("_(biometrics|frame_timestamps|frame_map)\\.csv$", negate = TRUE)
+if (length(psy_files) == 0) stop("No PsychoPy .csv files in: ", psychopy_dir)
+
+read_psy <- function(path) {
+  raw <- tryCatch(read_csv(path, col_types = cols(.default = col_character()),
+                           name_repair = "minimal", progress = FALSE),
+                  error = function(e) tibble())
+  if (ncol(raw) == 0) return(raw)
+  names(raw)[1] <- sub("^﻿", "", names(raw)[1])
+  raw[, nzchar(names(raw))]
+}
+
+session_format <- function(raw) {
+  has_vals <- function(col) any(!is.na(num(col_or_na(raw, col))))
+  if (nrow(raw) == 0) NA_character_
+  else if (has_vals("stim_onset_since_rec_start")) "png2avi"
+  else if (has_vals("time_since_recording_start")) "legacy"
+  else NA_character_
+}
+
+find_frames <- function(pid) {
+  if (is.na(legacy_dir) || !dir.exists(legacy_dir)) return(NA_character_)
+  hits <- list.files(legacy_dir, pattern = "frame_timestamps\\.csv$", full.names = TRUE)
+  hits <- hits[pid_from_file(hits) == pid]
+  if (length(hits) == 1) hits else NA_character_
+}
+
+all_sessions <- tibble(psy_path = psy_files) |>
+  mutate(
+    session_stem   = sub("\\.csv$", "", basename(psy_path)),
+    participant_id = pid_from_file(psy_path)
+  ) |>
+  filter(!participant_id %in% excluded_ids) |>          # user exclusions: not even read
+  mutate(
+    raw    = map(psy_path, read_psy),
+    format = map_chr(raw, session_format)
+  )
+
+# One usable session per participant. Several (e.g. a restarted run) can't be told
+# apart automatically: the participant is dropped and listed so you can move the
+# wrong file out of the folder.
+usable <- all_sessions |> filter(!is.na(format))
+multi  <- usable |> count(participant_id) |> filter(n > 1) |> pull(participant_id)
+
+sessions <- usable |>
+  filter(!participant_id %in% multi, format %in% include_formats) |>
+  mutate(
+    bio_path    = file.path(psychopy_dir, paste0(session_stem, "_biometrics.csv")),
+    sync_path   = file.path(psychopy_dir, paste0(session_stem, "_clocksync.json")),
+    has_bio     = file.exists(bio_path) & file.size(bio_path) > 0,
+    has_sync    = file.exists(sync_path),
+    frames_path = if_else(format == "legacy", map_chr(participant_id, find_frames), NA_character_)
+  )
+
+# Status of every participant found, filled in as data is loaded (shown in §3.7)
+overview <- all_sessions |>
+  group_by(participant_id) |>
+  summarise(psychopy_files = n(),
+            format = paste(unique(na.omit(format)), collapse = "/"),
+            .groups = "drop") |>
+  mutate(status = case_when(
+    participant_id %in% multi ~ "dropped: several usable PsychoPy files - move the wrong one out",
+    format == ""              ~ "dropped: no webcam timing columns (no camera / aborted run)",
+    !str_detect(format, paste(include_formats, collapse = "|")) ~ "dropped: format not in include_formats",
+    TRUE ~ NA_character_))
+
+sessions |> select(participant_id, format, session_stem, has_bio, has_sync, frames_path) |>
+  mutate(frames_path = basename(frames_path)) |>
+  kable(caption = "Sessions to analyse")
+```
+
+### 3.2 Clock alignment
+
+Two clocks matter:
+
+* **globalClock** — PsychoPy's `*.started`/`*.stopped` columns and the webcam `time` column.
+* **recording clock** — seconds since webcam recording start.
+
+Each logged epoch row carries its routine's start on *both* clocks: the routine's
+`.started` (globalClock) and `stim_onset_since_rec_start` (current) or
+`time_since_recording_start` (older), both taken at routine start. A straight
+line `rec = a + b × global` is fitted through these 7 points per session. For
+current sessions both are PsychoPy clocks, so `b` = 1 exactly. Older sessions
+used the computer's wall clock for the recording, which can tick at a very
+slightly different rate — the slope absorbs that. The largest residual is the
+alignment error.
+
+```{r clock-offset}
+routine_start_global <- function(raw) {
+  coalesce(num(col_or_na(raw, "stimuli.started")),
+           num(col_or_na(raw, "stim_recovery.started")),
+           num(col_or_na(raw, "baseline.started")))
+}
+
+fit_clock <- function(raw, format) {
+  since <- num(col_or_na(raw, if (format == "png2avi") "stim_onset_since_rec_start"
+                              else "time_since_recording_start"))
+  glob  <- routine_start_global(raw)
+  ok    <- !is.na(since) & !is.na(glob)
+  since <- since[ok]; glob <- glob[ok]
+  if (length(since) == 0) return(tibble(n_rows = 0L, a = NA_real_, b = NA_real_,
+                                        max_resid_ms = NA_real_))
+  if (length(since) < 3) {
+    b <- 1; a <- median(since - glob)
+  } else {
+    co <- coef(lm(since ~ glob)); a <- co[[1]]; b <- co[[2]]
+  }
+  tibble(n_rows = length(since), a = a, b = b,
+         max_resid_ms = 1000 * max(abs(since - (a + b * glob))))
+}
+
+to_rec <- function(t_global, a, b) a + b * t_global
+
+clock <- sessions |>
+  mutate(fit = map2(raw, format, fit_clock)) |>
+  select(participant_id, session_stem, format, fit) |>
+  unnest(fit) |>
+  mutate(drift_ms_per_10min = 1000 * (b - 1) * 600)
+
+clock |>
+  select(participant_id, format, n_rows, a, drift_ms_per_10min, max_resid_ms) |>
+  kable(digits = 3, caption = "rec_time = a + b × globalClock (drift = (b − 1) × 10 min)")
+
+bad_clock <- clock |> filter(is.na(a))
+clock    <- clock    |> filter(!is.na(a))
+sessions <- sessions |> filter(session_stem %in% clock$session_stem)
+overview <- overview |>
+  mutate(status = if_else(is.na(status) & participant_id %in% bad_clock$participant_id,
+                          "dropped: no epoch rows with both clocks", status))
+if (nrow(sessions) == 0) stop("No sessions left to analyse.")
+if (any(clock$max_resid_ms / 1000 > params$max_clock_resid_s)) {
+  warning("Clock fit off by more than ", params$max_clock_resid_s * 1000,
+          " ms for some sessions — check timing before trusting alignment.")
+}
+```
+
+### 3.3 Epochs
+
+Epoch boundaries use the **component** times, converted to the recording clock:
+
+| epoch     | start                           | end                              |
+|-----------|---------------------------------|----------------------------------|
+| baseline  | `fixation_baseline.started`     | `fixation_baseline.stopped`      |
+| video     | `video.started`                 | `stimuli.stopped`                |
+| recovery  | `fixation_stim_recovery.started`| `fixation_stim_recovery.stopped` |
+
+Why not `stim_offset_since_rec_start` for the video end? In r4755 it is logged
+~3.1 s *after* `stimuli.stopped` on every video — the End Routine code runs
+after `video.stop()`, which takes ~3 s to unload the movie. And
+`video.stopped` is stamped with the *next* routine's start. `stimuli.stopped`
+matches the clip lengths.
+
+```{r epochs}
+mmss_to_s <- function(x) {
+  p <- str_split_fixed(x, ":", 2)
+  suppressWarnings(as.numeric(p[, 1]) * 60 + as.numeric(p[, 2]))
+}
+
+read_epochs <- function(raw, a, b) {
+  stim_path <- col_or_na(raw, "stim_path")
+  tibble(
+    video_id    = str_remove(basename(stim_path), "\\.[^.]+$"),
+    video_label = coalesce(col_or_na(raw, "pos_video_name"), col_or_na(raw, "neg_video_name")),
+    nominal_s   = mmss_to_s(coalesce(col_or_na(raw, "pos_duration"), col_or_na(raw, "neg_duration"))),
+    psy_cond    = col_or_na(raw, "condition"),
+    bl_on   = num(col_or_na(raw, "fixation_baseline.started")),
+    bl_off  = num(col_or_na(raw, "fixation_baseline.stopped")),
+    vid_on  = num(col_or_na(raw, "video.started")),
+    vid_off = num(col_or_na(raw, "stimuli.stopped")),
+    rc_on   = num(col_or_na(raw, "fixation_stim_recovery.started")),
+    rc_off  = num(col_or_na(raw, "fixation_stim_recovery.stopped")),
+    logged_on  = num(col_or_na(raw, "stim_onset_since_rec_start")),
+    logged_off = num(col_or_na(raw, "stim_offset_since_rec_start"))
+  ) |>
+    mutate(
+      epoch_type = case_when(!is.na(vid_on) & !is.na(video_id) & video_id != "" ~ "video",
+                             !is.na(bl_on) ~ "baseline",
+                             !is.na(rc_on) ~ "recovery",
+                             TRUE ~ "other"),
+      onset_rec  = to_rec(case_when(epoch_type == "video"    ~ vid_on,
+                                    epoch_type == "baseline" ~ bl_on,
+                                    epoch_type == "recovery" ~ rc_on), a, b),
+      offset_rec = to_rec(case_when(epoch_type == "video"    ~ vid_off,
+                                    epoch_type == "baseline" ~ bl_off,
+                                    epoch_type == "recovery" ~ rc_off), a, b),
+      # fall back to the logged recording-clock times if component columns are missing
+      onset_rec  = coalesce(onset_rec,  logged_on),
+      offset_rec = coalesce(offset_rec, logged_off),
+      condition  = case_when(
+        epoch_type == "video" & str_starts(video_id, "P") ~ "positive",
+        epoch_type == "video" & str_starts(video_id, "N") ~ "negative",
+        epoch_type == "recovery" ~ psy_cond,
+        TRUE ~ NA_character_),
+      video_id    = if_else(epoch_type == "video", video_id, NA_character_),
+      video_label = if_else(epoch_type == "video", video_label, NA_character_)
+    ) |>
+    filter(epoch_type != "other") |>
+    select(epoch_type, condition, video_id, video_label, onset_rec, offset_rec,
+           logged_on, logged_off, nominal_s)
+}
+
+epochs <- sessions |>
+  inner_join(clock |> select(session_stem, a, b), by = "session_stem") |>
+  mutate(ep = pmap(list(raw, a, b), read_epochs)) |>
+  select(participant_id, session_stem, format, ep) |>
+  unnest(ep) |>
+  mutate(epoch_id = case_when(
+    epoch_type == "video"    ~ paste0("video_", video_id),
+    epoch_type == "recovery" ~ paste0("recovery_", condition),
+    TRUE                     ~ epoch_type),
+    duration_s = offset_rec - onset_rec,
+    onset_analysis = if_else(epoch_type == "video",
+                             onset_rec + params$video_trim_s, onset_rec))
+
+epochs |>
+  select(participant_id, epoch_id, condition, onset_rec, offset_rec, duration_s,
+         nominal_s, logged_off) |>
+  mutate(logged_minus_used_end = logged_off - offset_rec) |>
+  kable(digits = 2, caption = "Epochs (recording clock, s). nominal_s = clip length from the conditions file")
+```
+
+Checks that should be empty — anything listed here needs fixing in the
+conditions file or the stimulus folder before the video can be trusted:
+
+```{r epoch-checks}
+epochs |>
+  filter(epoch_type == "video",
+         (!is.na(nominal_s) & abs(duration_s - nominal_s) > 2) |
+         (!is.na(video_label) & video_label != video_id)) |>
+  select(participant_id, video_id, video_label, duration_s, nominal_s) |>
+  kable(digits = 1, caption = "Videos whose file name ≠ conditions-file ID, or whose played length ≠ nominal length (> 2 s)")
+
+epochs |>
+  count(participant_id, epoch_type) |>
+  pivot_wider(names_from = epoch_type, values_from = n, values_fill = 0) |>
+  kable(caption = "Epochs per participant (expected: 1 baseline, 4 videos, 2 recovery)")
+```
+
+### 3.4 Video ratings (from the PsychoPy file)
+
+Rating rows identify the video by `origional_video_id`, which comes from the
+conditions file and can disagree with the file actually played. The
+**screenshot file name** (`stimuli/P02_screenshot.png`) is used instead so
+ratings join to the video that was shown.
+
+```{r ratings}
+read_ratings <- function(raw) {
+  first_num <- function(...) coalesce(!!!map(list(...), \(n) num(col_or_na(raw, n))))
+  tibble(
+    video_id     = str_remove(basename(col_or_na(raw, "screenshot_path")), "_screenshot\\.[^.]+$"),
+    rated_as     = col_or_na(raw, "origional_video_id"),
+    stim_valence = first_num("stim_valence_slider.response", "stim_valence_slider_A.response",
+                             "stim_valence_slider_B.response"),
+    stim_arousal = first_num("stim_arousal_slider.response"),
+    stim_approach = first_num("stim_approach_slider.response"),
+    stim_intensity = first_num("intensitySlider.response"),
+    stim_emotion = col_or_na(raw, "emotionText.text")
+  ) |>
+    filter(!is.na(rated_as) & rated_as != "")
+}
+
+ratings <- sessions |>
+  mutate(r = map(raw, read_ratings)) |>
+  select(participant_id, r) |>
+  unnest(r)
+
+ratings |> kable(caption = "Stimulus ratings")
+```
+
+### 3.5 FaceReader
+
+For **current** sessions FaceReader's `Video Time` already is time since
+recording start. For **older** sessions it is `frame / stored AVI frame rate`,
+which drifts from real time (the camera's real rate differs from the rate
+written into the AVI). Each FaceReader row is therefore mapped to its frame
+number and then to that frame's real capture time in `<id>_frame_timestamps.csv`.
+The stored frame rate is taken from the log itself (frames ÷ duration), so
+ffprobe is not needed.
+
+```{r load-facereader}
+# The FaceReader folder also holds other exports (e.g. heart beat logs), so each
+# candidate is peeked at: kept only if it has a `Video Time` header row, and
+# skipped without reading if its participant is excluded.
+peek_facereader <- function(path) {
+  first <- tryCatch({
+    if (str_detect(path, "\\.xlsx?$")) {
+      read_excel(path, sheet = 1, col_names = FALSE, col_types = "text",
+                 n_max = 30, .name_repair = "minimal")[, 1:2] |> setNames(c("k", "v"))
+    } else {
+      str_split_fixed(readLines(path, n = 30, warn = FALSE), "\t", 3)[, 1:2] |>
+        as_tibble(.name_repair = ~ c("k", "v"))
+    }
+  }, error = function(e) tibble(k = character(), v = character()))
+  src <- first$v[str_detect(coalesce(first$k, ""), regex("^file ?name", ignore_case = TRUE))][1]
+  tibble(path = path,
+         is_detailed = any(first$k == "Video Time", na.rm = TRUE),
+         participant_id = if (!is.na(src)) pid_from_file(str_trim(src)) else pid_from_file(path))
+}
+
+fr_candidates <- list.files(facereader_dir, pattern = "\\.(xlsx|txt)$", full.names = TRUE) |>
+  str_subset("/~\\$", negate = TRUE)                    # Excel lock files
+fr_index <- map(fr_candidates, peek_facereader) |> list_rbind() |> filter(is_detailed)
+cat(nrow(fr_index), "FaceReader detailed logs;",
+    length(fr_candidates) - nrow(fr_index), "other files in the folder ignored.\n")
+
+fr_dupes <- fr_index |> count(participant_id) |> filter(n > 1) |> pull(participant_id)
+fr_index <- fr_index |>
+  filter(participant_id %in% sessions$participant_id, !participant_id %in% fr_dupes)
+if (nrow(fr_index) == 0) stop("No FaceReader detailed logs match a usable session in: ", facereader_dir)
+
+# Older sessions: FaceReader video time -> real time since recording start
+legacy_to_rec <- function(fr_p, frames_path) {
+  ts  <- read_csv(frames_path, show_col_types = FALSE, progress = FALSE)
+  fps_video <- (nrow(fr_p) - 1) / max(fr_p$rec_time)
+  k   <- round(fr_p$rec_time * fps_video)                 # AVI frame number, from 0
+  fr_p$rec_time <- ts$time_since_recording_start[if_else(k + 1 <= nrow(ts), k + 1, NA_real_)]
+  attr(fr_p, "legacy") <- tibble(
+    avi_fps = fps_video,
+    camera_fps = (nrow(ts) - 1) / diff(range(ts$time_since_recording_start)),
+    max_drift_s = max(abs(k / fps_video - fr_p$rec_time), na.rm = TRUE),
+    frames_fr = nrow(fr_p), frames_ts = nrow(ts))
+  fr_p
+}
+
+fr_list <- pmap(fr_index |> select(path, participant_id), function(path, participant_id) {
+  d  <- read_facereader(path)
+  d$participant_id <- participant_id
+  s  <- sessions |> filter(participant_id == !!participant_id)
+  if (s$format == "legacy") {
+    if (is.na(s$frames_path)) return(NULL)
+    d <- legacy_to_rec(d, s$frames_path)
+  }
+  d
+})
+names(fr_list) <- fr_index$participant_id
+fr_list <- compact(fr_list)
+
+fr_meta <- imap(fr_list, \(d, pid) {
+  m <- attr(d, "meta") |> mutate(participant_id = pid, source_video = basename(gsub("\\\\", "/", source_video)))
+  if (!is.null(attr(d, "legacy"))) m <- bind_cols(m, attr(d, "legacy"))
+  m
+}) |>
+  list_rbind()
+fr_raw  <- list_rbind(unname(fr_list)) |>
+  filter(!is.na(rec_time)) |>
+  add_composites("fr_")
+
+fr_meta |>
+  left_join(fr_raw |> group_by(participant_id) |>
+              summarise(n_frames = n(), end_s = max(rec_time), prop_face_found = mean(fr_valid)),
+            by = "participant_id") |>
+  select(-any_of(c("face_model", "calibration"))) |>
+  kable(digits = 3, caption = "FaceReader logs (older sessions: avi_fps = rate stored in the AVI, camera_fps = real rate)")
+
+legacy_checks <- if ("frames_fr" %in% names(fr_meta)) fr_meta |> filter(!is.na(frames_fr)) else tibble()
+if (nrow(legacy_checks)) {
+  mism <- legacy_checks |> filter(frames_fr != frames_ts)
+  if (nrow(mism)) warning("FaceReader frame count ≠ timestamps rows for: ",
+                          paste(mism$participant_id, collapse = ", "),
+                          " — frame-to-time mapping may be off.")
+}
+```
+
+### 3.6 Webcam biometrics
+
+```{r load-webcam}
+read_sync <- function(sync_path) {
+  if (!file.exists(sync_path)) return(tibble(mono_to_global = 0))
+  sy <- jsonlite::read_json(sync_path)
+  tibble(mono_to_global = sy$mono_reset - sy$global_reset)   # globalClock = core.getTime + this
+}
+
+wc_raw <- sessions |>
+  filter(has_bio) |>
+  select(session_stem, participant_id, format, bio_path, sync_path) |>
+  mutate(d = map(bio_path, read_biometrics), sy = map(sync_path, read_sync)) |>
+  select(-bio_path, -sync_path) |>
+  unnest(c(sy)) |>
+  unnest(d) |>
+  inner_join(clock |> select(session_stem, a, b), by = "session_stem") |>
+  mutate(
+    time_source = if_else(is.na(time), "mono_time (arrival)", "time (capture)"),
+    rec_time    = to_rec(coalesce(time, mono_time + mono_to_global), a, b) + params$wc_shift_s
+  ) |>
+  select(-a, -b) |>
+  add_wc_aus() |>
+  add_composites("wc_")
+
+wc_raw |>
+  group_by(participant_id) |>
+  summarise(n_frames = n(), start_s = min(rec_time), end_s = max(rec_time),
+            fps = (n() - 1) / diff(range(rec_time)), prop_face_found = mean(wc_valid),
+            prop_capture_time = mean(time_source == "time (capture)")) |>
+  kable(digits = 3, caption = "Webcam biometrics logs (recording clock)")
+```
+
+### 3.7 Participant overview
+
+Everyone found in the PsychoPy folder, and what happened to them.
+
+```{r overview}
+fr_status <- tibble(participant_id = sessions$participant_id) |>
+  mutate(fr = case_when(
+    participant_id %in% fr_dupes ~ "dropped: several FaceReader detailed logs",
+    participant_id %in% names(fr_list) ~ "ok",
+    sessions$format == "legacy" & is.na(sessions$frames_path) ~
+      "dropped: older session without <id>_frame_timestamps.csv in VIDEO_DIR",
+    TRUE ~ "dropped: no FaceReader detailed log"))
+
+overview <- overview |>
+  bind_rows(tibble(participant_id = excluded_ids, psychopy_files = NA_integer_, format = NA_character_,
+                   status = paste("excluded:", unname(exclude_participants)))) |>
+  left_join(fr_status, by = "participant_id") |>
+  mutate(status = coalesce(status, if_else(fr == "ok", NA_character_, fr)),
+         webcam_biometrics = participant_id %in% unique(wc_raw$participant_id),
+         status = if_else(is.na(status),
+                          if_else(webcam_biometrics, "included", "included (FaceReader only, no biometrics)"),
+                          status)) |>
+  select(participant_id, format, psychopy_files, webcam_biometrics, status) |>
+  arrange(!str_starts(status, "included"), participant_id)
+
+overview |> kable(caption = "Participants")
+
+analysed_ids <- overview |> filter(str_starts(status, "included")) |> pull(participant_id)
+fr_raw   <- fr_raw   |> filter(participant_id %in% analysed_ids)
+wc_raw   <- wc_raw   |> filter(participant_id %in% analysed_ids)
+epochs   <- epochs   |> filter(participant_id %in% analysed_ids)
+ratings  <- ratings  |> filter(participant_id %in% analysed_ids)
+cat("Analysing", length(analysed_ids), "participant(s):", paste(analysed_ids, collapse = ", "), "\n")
+```
+
+---
+
+## 5. Common time grid and epoch assignment
+
+Both sources are averaged into `r params$bin_s`-s bins on the recording clock.
+A bin counts as valid for a source if at least one frame in it has a tracked face.
+
+```{r binning}
+bin_source <- function(df, valid_col, prefix) {
+  df |>
+    filter(.data[[valid_col]]) |>
+    mutate(bin = floor(rec_time / params$bin_s)) |>
+    group_by(participant_id, bin) |>
+    summarise(across(starts_with(prefix), \(x) mean(x, na.rm = TRUE)), .groups = "drop") |>
+    mutate(across(starts_with(prefix), \(x) if_else(is.nan(x), NA_real_, x)))
+}
+
+fr_bins <- bin_source(fr_raw, "fr_valid", "fr_") |> mutate(fr_ok = TRUE)
+wc_bins <- bin_source(select(wc_raw, -starts_with("bs_")), "wc_valid", "wc_") |> mutate(wc_ok = TRUE)
+
+ep_lookup <- epochs |>
+  select(participant_id, epoch_id, epoch_type, condition, video_id,
+         onset_analysis, offset_rec)
+
+# Every bin inside an epoch, whether or not either source has data there,
+# so that validity proportions have the right denominator.
+bins <- ep_lookup |>
+  mutate(bin = map2(onset_analysis, offset_rec,
+                    \(a, b) seq(ceiling(a / params$bin_s), floor(b / params$bin_s) - 1))) |>
+  unnest(bin) |>
+  left_join(fr_bins, by = c("participant_id", "bin")) |>
+  left_join(wc_bins, by = c("participant_id", "bin")) |>
+  mutate(fr_ok = coalesce(fr_ok, FALSE), wc_ok = coalesce(wc_ok, FALSE),
+         t_in_epoch = bin * params$bin_s - onset_analysis)
+```
+
+### 5.1 Data quality per epoch
+
+```{r qc}
+qc <- bins |>
+  group_by(participant_id, epoch_id, epoch_type, condition) |>
+  summarise(n_bins = n(), fr_valid = mean(fr_ok), wc_valid = mean(wc_ok), .groups = "drop") |>
+  mutate(fr_keep = fr_valid >= params$min_valid_prop,
+         wc_keep = wc_valid >= params$min_valid_prop)
+
+qc |>
+  pivot_longer(c(fr_valid, wc_valid), names_to = "source", values_to = "prop") |>
+  mutate(source = if_else(source == "fr_valid", "FaceReader", "Webcam")) |>
+  ggplot(aes(epoch_id, participant_id, fill = prop)) +
+  geom_tile(colour = "white") +
+  geom_text(aes(label = scales::percent(prop, 1)), size = 3) +
+  facet_wrap(~ source) +
+  scale_fill_gradient(low = "#F4D8CD", high = "#2A9D8F", limits = c(0, 1),
+                      labels = scales::percent) +
+  labs(x = NULL, y = NULL, fill = "Bins with face",
+       title = "Face tracking coverage per epoch",
+       subtitle = paste0("Epochs below ", scales::percent(params$min_valid_prop),
+                         " are excluded for that source")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+qc |> filter(!fr_keep | !wc_keep) |>
+  kable(digits = 2, caption = "Excluded epoch × source combinations")
+```
+
+---
+
+## 6. Epoch summaries and baseline correction
+
+For every measure: the epoch **mean** and the **95th percentile** (a robust
+"peak" — facial responses to video are brief, so a whole-video mean can dilute
+a clear response to near zero). Each is baseline-corrected by subtracting the
+same statistic from the participant's pre-experiment baseline fixation.
+
+```{r epoch-summary}
+measure_cols <- names(bins) |> str_subset("^(fr|wc)_") |> setdiff(c("fr_ok", "wc_ok"))
+
+epoch_long <- bins |>
+  select(participant_id, epoch_id, epoch_type, condition, video_id, all_of(measure_cols)) |>
+  pivot_longer(all_of(measure_cols), names_to = "measure", values_to = "value") |>
+  mutate(source = if_else(str_starts(measure, "fr_"), "FaceReader", "Webcam")) |>
+  group_by(participant_id, epoch_id, epoch_type, condition, video_id, source, measure) |>
+  summarise(mean = mean(value, na.rm = TRUE),
+            p95  = if (all(is.na(value))) NA_real_ else quantile(value, .95, na.rm = TRUE),
+            .groups = "drop") |>
+  mutate(mean = if_else(is.nan(mean), NA_real_, mean)) |>
+  # apply QC exclusions
+  left_join(qc |> select(participant_id, epoch_id, fr_keep, wc_keep),
+            by = c("participant_id", "epoch_id")) |>
+  mutate(keep = if_else(source == "FaceReader", fr_keep, wc_keep)) |>
+  filter(keep) |>
+  select(-fr_keep, -wc_keep, -keep)
+
+baseline <- epoch_long |>
+  filter(epoch_type == "baseline") |>
+  group_by(participant_id, measure) |>
+  summarise(bl_mean = mean(mean), bl_p95 = mean(p95), .groups = "drop")
+
+epoch_bc <- epoch_long |>
+  filter(epoch_type != "baseline") |>
+  left_join(baseline, by = c("participant_id", "measure")) |>
+  mutate(delta_mean = mean - bl_mean, delta_p95 = p95 - bl_p95)
+
+n_no_bl <- epoch_bc |> filter(is.na(bl_mean)) |> distinct(participant_id) |> nrow()
+if (n_no_bl > 0) warning(n_no_bl, " participant(s) have no usable baseline — their deltas are NA.")
+```
+
+Key measures used in the tests below (edit this list to change the focus):
+
+```{r key-measures}
+key_measures <- c("fr_happy", "fr_sad", "fr_disgusted", "fr_valence", "fr_arousal",
+                  "fr_au12", "fr_au04", "fr_smile", "fr_frown",
+                  "wc_au12", "wc_au04", "wc_smile", "wc_frown", "wc_au_valence",
+                  "wc_emo_positive", "wc_emo_sadness", "wc_emo_disgust") |>
+  intersect(unique(epoch_bc$measure))
+```
+
+---
+
+## 7. (A) Condition effects: positive vs negative videos
+
+### 7.1 Action-unit profile
+
+Mean baseline-corrected change per AU, by condition and source. The two
+sources are on different scales, so compare **patterns**, not magnitudes.
+
+```{r au-profile, fig.height=6}
+au_profile <- epoch_bc |>
+  filter(epoch_type == "video", str_detect(measure, "_au\\d{2}$")) |>
+  mutate(au = str_extract(measure, "au\\d{2}")) |>
+  filter(au %in% bs_to_au$au) |>
+  group_by(participant_id, condition, source, au) |>
+  summarise(delta = mean(delta_mean, na.rm = TRUE), .groups = "drop") |>
+  group_by(condition, source, au) |>
+  summarise(delta = mean(delta, na.rm = TRUE), .groups = "drop") |>
+  left_join(bs_to_au |> select(au, label), by = "au") |>
+  mutate(au_label = paste(toupper(au), label))
+
+au_profile |>
+  group_by(source) |>
+  mutate(delta_scaled = delta / max(abs(delta), na.rm = TRUE)) |>
+  ggplot(aes(condition, au_label, fill = delta_scaled)) +
+  geom_tile(colour = "white") +
+  facet_wrap(~ source) +
+  scale_fill_gradient2(low = "#5B8DB8", mid = "white", high = "#E07B54", limits = c(-1, 1)) +
+  labs(x = NULL, y = NULL, fill = "Δ vs baseline\n(scaled within source)",
+       title = "Facial action profile by condition")
+```
+
+### 7.2 Per-participant condition means
+
+```{r cond-means, fig.height=7}
+cond_means <- epoch_bc |>
+  filter(epoch_type == "video", measure %in% key_measures) |>
+  group_by(participant_id, condition, source, measure) |>
+  summarise(delta_mean = mean(delta_mean, na.rm = TRUE),
+            delta_p95  = mean(delta_p95,  na.rm = TRUE), .groups = "drop") |>
+  mutate(condition = factor(condition, levels = c("positive", "negative")))
+
+cond_means |>
+  ggplot(aes(condition, delta_mean)) +
+  geom_hline(yintercept = 0, linetype = "dashed", colour = "grey50") +
+  geom_line(aes(group = participant_id), colour = "grey70") +
+  geom_point(aes(colour = condition), size = 2) +
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 3.5, fill = "black") +
+  facet_wrap(~ measure, scales = "free_y", ncol = 5) +
+  scale_colour_manual(values = cond_colours, guide = "none") +
+  labs(x = NULL, y = "Δ mean vs baseline",
+       title = "Baseline-corrected expression by condition (lines = participants, ◆ = mean)")
+```
+
+### 7.3 Tests
+
+Paired t-test (positive − negative) per key measure on participant-level means,
+plus one-sample tests of each condition against baseline. Holm-corrected within
+each family. With small N, look at effect sizes (`dz`) and the plot, not p.
+
+```{r cond-tests}
+paired_test <- function(d) {
+  w <- d |> select(participant_id, condition, y) |>
+    pivot_wider(names_from = condition, values_from = y) |> drop_na()
+  if (nrow(w) < 3) return(tibble(n = nrow(w), diff = NA, dz = NA, t = NA, p = NA))
+  diff <- w$positive - w$negative
+  tt   <- t.test(diff)
+  tibble(n = nrow(w), diff = mean(diff), dz = mean(diff) / sd(diff),
+         t = unname(tt$statistic), p = tt$p.value)
+}
+
+cond_tests <- cond_means |>
+  pivot_longer(c(delta_mean, delta_p95), names_to = "stat", values_to = "y") |>
+  group_by(source, measure, stat) |>
+  group_modify(~ paired_test(.x)) |>
+  group_by(stat) |>
+  mutate(p_holm = p.adjust(p, "holm")) |>
+  ungroup()
+
+cond_tests |> arrange(stat, p) |>
+  kable(digits = 3, caption = "Positive − negative (paired, participant level)")
+
+vs_baseline <- cond_means |>
+  group_by(source, measure, condition) |>
+  summarise(n = sum(!is.na(delta_mean)),
+            mean_delta = mean(delta_mean, na.rm = TRUE),
+            p = if (n >= 3) t.test(delta_mean)$p.value else NA_real_, .groups = "drop") |>
+  mutate(p_holm = p.adjust(p, "holm"))
+
+vs_baseline |> kable(digits = 3, caption = "Each condition vs baseline (Δ mean ≠ 0)")
+```
+
+Mixed model on video-level data (uses all four videos per participant). Only
+run once there are enough participants for a random intercept to be estimable.
+
+```{r cond-lmm}
+n_pp <- n_distinct(epoch_bc$participant_id)
+
+if (n_pp >= 8) {
+  lmm_results <- epoch_bc |>
+    filter(epoch_type == "video", measure %in% key_measures) |>
+    mutate(condition = factor(condition, levels = c("negative", "positive"))) |>
+    group_by(source, measure) |>
+    group_modify(~ {
+      tryCatch({
+        m   <- lmer(delta_mean ~ condition + (1 | participant_id), data = .x)
+        est <- coef(summary(m))["conditionpositive", ]
+        tibble(estimate = est[["Estimate"]], se = est[["Std. Error"]],
+               t = est[["t value"]], singular = isSingular(m), note = "")
+      }, error = function(e) tibble(estimate = NA_real_, se = NA_real_, t = NA_real_,
+                                    singular = NA, note = conditionMessage(e)))
+    }) |> ungroup()
+  kable(lmm_results, digits = 3,
+        caption = "LMM: Δ mean ~ condition + (1 | participant); positive vs negative")
+} else {
+  cat("Only", n_pp, "participant(s) — mixed model skipped (needs >= 8).\n")
+}
+```
+
+### 7.4 Recovery
+
+Does expression return to baseline in the fixation after each block?
+
+```{r recovery}
+epoch_bc |>
+  filter(epoch_type %in% c("video", "recovery"), measure %in% c("fr_valence", "wc_au_valence",
+                                                               "fr_smile", "wc_smile")) |>
+  group_by(participant_id, condition, epoch_type, measure) |>
+  summarise(delta = mean(delta_mean, na.rm = TRUE), .groups = "drop") |>
+  mutate(epoch_type = factor(epoch_type, levels = c("video", "recovery"))) |>
+  ggplot(aes(epoch_type, delta, colour = condition)) +
+  geom_hline(yintercept = 0, linetype = "dashed", colour = "grey50") +
+  geom_line(aes(group = interaction(participant_id, condition)), alpha = .4) +
+  stat_summary(aes(group = condition), fun = mean, geom = "line", linewidth = 1.2) +
+  facet_wrap(~ measure, scales = "free_y", nrow = 1) +
+  scale_colour_manual(values = cond_colours) +
+  labs(x = NULL, y = "Δ mean vs baseline", colour = NULL)
+```
+
+---
+
+## 8. (B) Agreement between FaceReader and the webcam
+
+Three complementary checks:
+
+1. **Lag check** — cross-correlation of **blinks** (FaceReader AU43 vs webcam
+   `eyeBlink`) at full frame rate, in 2-minute windows. Blinks are brief and
+   frequent, so they pin down the lag to a frame or two; smiles are too slow to
+   do this reliably. A constant lag = fixed latency difference between the two
+   camera pipelines; a lag that *changes* over the session = drift (serious).
+2. **Moment-to-moment agreement** — within-participant correlation over bins
+   (all epochs), averaged across participants via Fisher z.
+3. **Epoch-level agreement** — correlation of baseline-corrected video means
+   (the level the condition tests use).
+
+```{r pairs}
+pairs <- bs_to_au |>
+  transmute(construct = paste0(toupper(au), " ", label, if_else(approximate, " (approx.)", "")),
+            fr = paste0("fr_", au), wc = paste0("wc_", au)) |>
+  bind_rows(tribble(
+    ~construct,                     ~fr,             ~wc,
+    "Smile composite (AU6+12)",     "fr_smile",      "wc_smile",
+    "Frown composite (AU4+9+15)",   "fr_frown",      "wc_frown",
+    "FR valence vs webcam proxy",   "fr_valence",    "wc_au_valence",
+    "Composite valence proxy",      "fr_au_valence", "wc_au_valence",
+    "Emotion: happy / positive",    "fr_happy",      "wc_emo_positive",
+    "Emotion: angry / anger",       "fr_angry",      "wc_emo_anger",
+    "Emotion: scared / fear",       "fr_scared",     "wc_emo_fear",
+    "Emotion: surprised",           "fr_surprised",  "wc_emo_surprise",
+    "Emotion: sad / sadness",       "fr_sad",        "wc_emo_sadness",
+    "Emotion: disgusted",           "fr_disgusted",  "wc_emo_disgust"
+  ))
+
+# Which lookup AUs have no FaceReader counterpart in this data (they can't be compared)
+tibble(au = bs_to_au$au, label = bs_to_au$label,
+       in_facereader = paste0("fr_", bs_to_au$au) %in% names(bins)) |>
+  filter(!in_facereader) |>
+  kable(caption = "Mapped AUs that FaceReader does not output (dropped from agreement)")
+
+pairs <- pairs |> filter(fr %in% names(bins), wc %in% names(bins))
+```
+
+### 8.1 Lag check
+
+```{r lag-check}
+lag_grid_s <- 1 / 30
+max_lag_s  <- 1
+win_s      <- 120
+
+wc_blink <- wc_raw |>
+  transmute(participant_id, rec_time,
+            blink = row_mean(pick(everything()), c("bs_eyeBlinkLeft", "bs_eyeBlinkRight")))
+
+# corr(fr[t + lag], wc[t]); positive lag = FaceReader registers the event later
+xcorr <- function(a, b, max_lag) {
+  ok <- !is.na(a) & !is.na(b)
+  a <- (a - mean(a[ok])) / sd(a[ok]); b <- (b - mean(b[ok])) / sd(b[ok])
+  n <- length(a)
+  map_dfr(-max_lag:max_lag, \(L) {
+    ia <- seq(max(1, 1 + L), min(n, n + L)); ib <- ia - L
+    tibble(lag = L, r = mean(a[ia] * b[ib], na.rm = TRUE))
+  })
+}
+
+lag_windows <- fr_raw |>
+  distinct(participant_id) |>
+  pmap(function(participant_id) {
+    pid <- participant_id
+    f <- fr_raw |> filter(participant_id == pid, fr_valid, !is.na(fr_au43))
+    w <- wc_blink |> filter(participant_id == pid, !is.na(blink))
+    if (nrow(f) < 100 || nrow(w) < 100) return(NULL)
+    grid <- seq(max(min(f$rec_time), min(w$rec_time)),
+                min(max(f$rec_time), max(w$rec_time)), by = lag_grid_s)
+    fa <- approx(f$rec_time, f$fr_au43, grid)$y
+    wb <- approx(w$rec_time, w$blink,   grid)$y
+    win <- floor((grid - grid[1]) / win_s)
+    map_dfr(unique(win), \(k) {
+      m  <- win == k
+      if (sum(m) < win_s / lag_grid_s / 2) return(NULL)
+      xc <- xcorr(fa[m], wb[m], round(max_lag_s / lag_grid_s))
+      best <- xc[which.max(xc$r), ]
+      tibble(participant_id = pid, window_start_s = grid[m][1],
+             lag_s = best$lag * lag_grid_s, r = best$r)
+    })
+  }) |>
+  compact() |>
+  list_rbind()
+
+lag_summary <- lag_windows |>
+  group_by(participant_id) |>
+  summarise(n_windows = n(), median_lag_s = median(lag_s),
+            lag_range_s = diff(range(lag_s)), median_r = median(r),
+            drift_s_per_10min = if (n() >= 3) 600 * coef(lm(lag_s ~ window_start_s))[[2]] else NA_real_,
+            .groups = "drop")
+
+lag_summary |>
+  kable(digits = 3, caption = "Blink lag, FaceReader vs webcam (positive = FaceReader later)")
+
+ggplot(lag_windows, aes(window_start_s / 60, lag_s, colour = participant_id)) +
+  geom_hline(yintercept = 0, linetype = "dashed", colour = "grey50") +
+  geom_line() + geom_point(aes(size = r)) +
+  scale_size_continuous(range = c(1, 3), limits = c(0, 1)) +
+  labs(x = "Session time (min)", y = "Lag (s)", size = "peak r",
+       title = "Blink lag over the session — should be flat")
+
+if (any(abs(lag_summary$median_lag_s) > 0.25 | lag_summary$lag_range_s > 0.2, na.rm = TRUE)) {
+  warning("Blink lag > 250 ms or unstable for some participants — check alignment.")
+}
+```
+
+If the lag is constant, you can remove it by setting `params$wc_shift_s` (added
+to every webcam timestamp) to the median lag. This matters for the bin-level
+agreement in §8.2 but not for the 60–110 s epoch means.
+
+
+### 8.2 Moment-to-moment agreement
+
+```{r agreement-bins}
+safe_cor <- function(x, y, min_n = 10, ...) {
+  ok <- !is.na(x) & !is.na(y)
+  if (sum(ok) < min_n || sd(x[ok]) == 0 || sd(y[ok]) == 0) return(NA_real_)
+  cor(x[ok], y[ok], ...)
+}
+
+valid_bins <- bins |> filter(fr_ok, wc_ok)
+
+within_r <- pmap(pairs, function(construct, fr, wc) {
+  valid_bins |>
+    group_by(participant_id) |>
+    group_modify(~ tibble(n = sum(!is.na(.x[[fr]]) & !is.na(.x[[wc]])),
+                          r = safe_cor(.x[[fr]], .x[[wc]]))) |>
+    ungroup() |>
+    mutate(construct = construct)
+}) |> list_rbind()
+
+agree_bins <- within_r |>
+  group_by(construct) |>
+  filter(!is.na(r)) |>
+  summarise(n_pp = n(),
+            r_mean = tanh(mean(atanh(pmin(r, .999)))),
+            r_min = min(r), r_max = max(r), .groups = "drop") |>
+  arrange(desc(r_mean))
+
+agree_bins |> kable(digits = 2, caption = "Within-participant bin-level correlation (Fisher-z averaged)")
+```
+
+### 8.3 Epoch-level agreement
+
+```{r agreement-epochs, fig.height=6}
+epoch_wide <- epoch_bc |>
+  filter(epoch_type == "video") |>
+  select(participant_id, epoch_id, condition, measure, delta_mean) |>
+  pivot_wider(names_from = measure, values_from = delta_mean)
+
+agree_epochs <- pairs |>
+  filter(fr %in% names(epoch_wide), wc %in% names(epoch_wide)) |>
+  pmap(function(construct, fr, wc) {
+    x <- epoch_wide[[fr]]; y <- epoch_wide[[wc]]
+    tibble(construct = construct, n_videos = sum(!is.na(x) & !is.na(y)),
+           spearman = safe_cor(x, y, min_n = 5, method = "spearman"))
+  }) |>
+  list_rbind() |>
+  arrange(desc(spearman))
+
+agree_epochs |>
+  kable(digits = 2, caption = "Video-level agreement (Δ mean; rows are not independent — participants contribute 4 videos)")
+
+agree_scatter <- function(x, y, xlab, ylab, title) {
+  if (!all(c(x, y) %in% names(epoch_wide))) return(NULL)
+  ggplot(epoch_wide, aes(.data[[x]], .data[[y]], colour = condition)) +
+    geom_point(size = 2) +
+    geom_smooth(aes(group = 1), method = "lm", se = FALSE, colour = "grey30") +
+    scale_colour_manual(values = cond_colours) +
+    labs(x = xlab, y = ylab, colour = NULL, title = title)
+}
+
+p_smile   <- agree_scatter("fr_smile", "wc_smile", "FaceReader smile Δ",
+                           "Webcam smile Δ", "Smile response per video")
+p_valence <- agree_scatter("fr_valence", "wc_au_valence", "FaceReader valence Δ",
+                           "Webcam valence proxy Δ", "Valence per video")
+wrap_plots(compact(list(p_smile, p_valence))) + plot_layout(guides = "collect")
+```
+
+---
+
+## 9. (C) Link to self-report ratings
+
+Uses the ratings read from the PsychoPy file in §3.4, joined by participant and
+the video file actually played.
+
+Expression scores are **person-mean centred** before modelling, so the question
+is "when *this* person reacts more to a video, do they also rate it as more
+pleasant/arousing?" rather than "do expressive people rate higher?".
+
+```{r self-report}
+sr <- epoch_bc |>
+  filter(epoch_type == "video", measure %in% key_measures) |>
+  select(participant_id, video_id, condition, measure, delta_mean) |>
+  inner_join(ratings |> select(participant_id, video_id, stim_valence, stim_arousal,
+                               stim_approach, stim_intensity),
+             by = c("participant_id", "video_id")) |>
+  group_by(participant_id, measure) |>
+  mutate(expr_within = delta_mean - mean(delta_mean, na.rm = TRUE)) |>
+  ungroup()
+
+cat("Videos matched to ratings:", n_distinct(paste(sr$participant_id, sr$video_id)), "\n")
+```
+
+```{r self-report-models}
+if (!is.null(sr) && nrow(sr) > 0) {
+  sr_long <- sr |>
+    pivot_longer(c(stim_valence, stim_arousal, stim_approach, stim_intensity),
+                 names_to = "rating", values_to = "rating_value")
+
+  fit_one <- function(d) {
+    d <- drop_na(d, expr_within, rating_value)
+    if (nrow(d) < 8) return(tibble(n = nrow(d), b = NA, r_within = NA, p = NA))
+    pp <- n_distinct(d$participant_id)
+    r_within <- cor(d$expr_within,
+                    d$rating_value - ave(d$rating_value, d$participant_id))
+    if (pp >= 8) {
+      tryCatch({
+        m  <- lmer(rating_value ~ expr_within + (1 | participant_id), data = d)
+        co <- coef(summary(m))["expr_within", ]
+        tibble(n = nrow(d), b = co[["Estimate"]], r_within = r_within,
+               p = 2 * pnorm(-abs(co[["t value"]])))     # Wald approx.
+      }, error = function(e) tibble(n = nrow(d), b = NA_real_, r_within = r_within, p = NA_real_))
+    } else {
+      tibble(n = nrow(d), b = NA, r_within = r_within, p = NA)
+    }
+  }
+
+  sr_results <- sr_long |>
+    group_by(measure, rating) |>
+    group_modify(~ fit_one(.x)) |>
+    ungroup() |>
+    mutate(p_holm = p.adjust(p, "holm"))
+
+  sr_results |> arrange(rating, desc(abs(r_within))) |>
+    kable(digits = 3, caption = "Within-person association: expression Δ vs stimulus rating")
+
+  sr_long |>
+    filter(measure %in% c("fr_valence", "wc_au_valence", "fr_smile", "wc_smile")) |>
+    group_by(participant_id, measure, rating) |>
+    mutate(rating_within = rating_value - mean(rating_value, na.rm = TRUE)) |>
+    ungroup() |>
+    ggplot(aes(expr_within, rating_within, colour = condition)) +
+    geom_point(alpha = .7) +
+    geom_smooth(aes(group = 1), method = "lm", se = FALSE, colour = "grey30") +
+    facet_grid(rating ~ measure, scales = "free") +
+    scale_colour_manual(values = cond_colours) +
+    labs(x = "Expression Δ (person-centred)", y = "Rating (person-centred)", colour = NULL)
+}
+```
+
+---
+
+## 10. Save outputs
+
+```{r save}
+dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
+
+write_csv(epoch_bc, file.path(output_dir, "facial_expression_epochs.csv"))
+write_csv(qc,       file.path(output_dir, "facial_expression_qc.csv"))
+write_csv(cond_tests, file.path(output_dir, "facial_expression_condition_tests.csv"))
+write_csv(agree_bins, file.path(output_dir, "facial_expression_agreement.csv"))
+saveRDS(bins, file.path(output_dir, "facial_expression_bins.rds"))   # aligned time series
+
+cat("Saved to", output_dir, "\n")
+```
+
+## Session info
+
+```{r session-info}
+sessionInfo()
+```

@@ -1,0 +1,10 @@
+# Biosignals2 — project path configuration
+# ─────────────────────────────────────────
+# config.yaml is gitignored and should never be committed.
+
+paths:
+  # Directory containing raw PsychoPy .csv files.
+  data_dir: C:/Users/carme/Box/Project_Biosignals_study_2/3_Data/raw_psychopy
+
+  # Root directory for PSPM event onset outputs.
+  event_onsets_dir: C:/Users/carme/Box/Project_Biosignals_study_2/3_Data/event_onsets

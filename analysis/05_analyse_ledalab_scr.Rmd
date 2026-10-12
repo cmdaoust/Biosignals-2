@@ -1,0 +1,572 @@
+---
+title: "Ledalab SCR Analysis - CDA Event-Related Activation"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: flatly
+    df_print: kable
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+## Overview
+
+Analyses Ledalab Continuous Decomposition Analysis (CDA) event-related activation (ERA) output by condition epoch. A linear mixed model is fit for each EDA measure:
+
+`value ~ condition + (1 | pid)`
+
+**Conditions:** baseline, pos_induction, neg_induction, pos_recovery, neg_recovery
+
+**Response window:** 0–180 s after event onset (\~3 min epochs)
+
+**Primary measure:** `CDA.SCR` - mean phasic driver across the response window. Preferred over `CDA.ISCR` for this design because block durations are not perfectly equal, making integrated (area-based) scores sensitive to duration differences.
+
+**Planned contrasts:**
+
+- pos_induction vs neg_induction (main emotion comparison)
+- pos_induction vs baseline (induction effect)
+- neg_induction vs baseline (induction effect)
+- pos_induction vs pos_recovery (recovery effect)
+- neg_induction vs neg_recovery (recovery effect)
+
+------------------------------------------------------------------------
+
+## Setup
+
+```{r libraries}
+library(here)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(stringr)
+library(readr)
+library(knitr)
+library(kableExtra)
+library(ggplot2)
+library(lme4)
+library(lmerTest)
+library(emmeans)
+```
+
+```{r config}
+config_path <- here::here("config.R")
+
+if (!file.exists(config_path)) {
+  stop("config.R not found at: ", config_path,
+       "\nCopy config_template.R to config.R and fill in your paths.")
+}
+source(config_path)
+
+results_dir <- LEDALAB_RESULTS_DIR
+events_dir  <- BLOCK_ONSETS_DIR
+clean_data_dir    <- COMBINED_DATA_DIR # output folder
+
+# ── Participant selection ── edit analysis/participant_status.csv, not this chunk.
+# Main-study participants only by default; set TRUE to also analyse the pilots.
+INCLUDE_PILOTS <- FALSE
+analysis_dir <- local({ d <- dirname(normalizePath(here::here("config.R"))); if (basename(d) == "analysis") d else file.path(d, "analysis") })
+PARTICIPANT_STATUS_PATH <- file.path(analysis_dir, "participant_status.csv")
+source(file.path(analysis_dir, "participant_status.R"), local = TRUE)
+```
+
+```{r theme}
+theme_set(
+  theme_bw(base_size = 12) +
+  theme(panel.grid.minor  = element_blank(),
+        strip.background  = element_rect(fill = "grey92"),
+        legend.position   = "bottom")
+)
+
+cond_colours <- c(
+  baseline      = "#888888",
+  neg_induction = "#E07B54",
+  neg_recovery  = "#F0B49A",
+  pos_induction = "#5B8DB8",
+  pos_recovery  = "#A8C4D8"
+)
+
+CONDITION_LEVELS <- c("baseline",
+                      "neg_induction", "neg_recovery",
+                      "pos_induction", "pos_recovery")
+```
+
+------------------------------------------------------------------------
+
+## Load data
+
+### NID map
+
+```{r load-nid-map}
+# The NID map is written by 02_create_ledalab_events_psychopy.py alongside the
+# events files. It maps numeric IDs (Event.nid in Ledalab output) → condition names.
+nid_map_path <- file.path(events_dir, "nid_map_psychopy_ledalab.txt")
+
+if (!file.exists(nid_map_path)) {
+  stop("NID map not found at: ", nid_map_path,
+       "\nRe-run analysis/ledalab/02_create_ledalab_events_psychopy.py first.")
+}
+
+nid_map <- read_tsv(nid_map_path, show_col_types = FALSE) |>
+  rename(Event.nid = nid, condition = condition)
+
+kable(nid_map, caption = "NID → condition mapping")
+```
+
+### ERA results
+
+Ledalab's ERA text export produces one file per participant (filetype = 2). Expected filename pattern: `{pid}_era.txt` (tab-separated, one row per event).
+
+Expected columns from Ledalab ERA text export: `Event.nr`, `Event.nid`, `CDA.nSCR`, `CDA.Latency`, `CDA.AmpSum`, `CDA.SCR`, `CDA.ISCR`, `CDA.PhasicMax`, `CDA.Tonic`, `TTP.nSCR`, `TTP.AmpSum`, `TTP.Latency`, `Global.Mean`, `Global.MaxDeflection`
+
+```{r load-era}
+era_files <- list.files(results_dir,
+                        pattern = "_era\\.txt$",
+                        full.names = TRUE)
+
+if (length(era_files) == 0) {
+  stop("No ERA text files found in: ", results_dir,
+       "\nRun Ledalab batch with export_era and filetype=2, then save outputs here.")
+}
+
+cat("Found", length(era_files), "ERA file(s).\n")
+
+era_raw <- map_dfr(era_files, function(f) {
+  pid <- str_extract(basename(f), "^[^_]+")
+  read_tsv(f, show_col_types = FALSE) |>
+    mutate(pid = pid)
+})
+
+cat("Columns in ERA files:", paste(names(era_raw), collapse = ", "), "\n")
+
+# Main-study participants only (plus pilots if INCLUDE_PILOTS) — see participant_status.csv
+dropped <- participants_dropped(era_raw$pid, INCLUDE_PILOTS)
+era_raw <- era_raw |> filter(participant_keep(pid, INCLUDE_PILOTS))
+cat("Participants analysed:", n_distinct(era_raw$pid), "\n")
+```
+
+```{r participants-left-out}
+# Who participant_status.csv left out of this analysis
+if (nrow(dropped)) knitr::kable(dropped, caption = paste0(
+  "Left out of this analysis (", nrow(dropped), "); edit participant_status.csv to change. ",
+  "Pilots ", if (INCLUDE_PILOTS) "included" else "excluded", " (INCLUDE_PILOTS = ", INCLUDE_PILOTS, ")"
+)) else cat("No participants left out.\n")
+```
+
+```{r join-conditions}
+# Ledalab column names vary by version - find the nid column robustly.
+nid_col <- intersect(c("Event.NID", "Event.nid", "event.nid", "nid", "Event_nid"), names(era_raw))[1]
+nr_col  <- intersect(c("Event.Nr",  "Event.nr",  "event.nr",  "nr",  "Event_nr"),  names(era_raw))[1]
+
+if (is.na(nid_col)) {
+  stop("Could not find an event NID column in the ERA data. ",
+       "Columns present: ", paste(names(era_raw), collapse = ", "))
+}
+
+cat("Using NID column:", nid_col, "\n")
+
+df <- era_raw |>
+  rename(Event.nid = all_of(nid_col)) |>
+  left_join(nid_map, by = "Event.nid") |>
+  mutate(
+    pid       = factor(pid),
+    condition = factor(condition, levels = CONDITION_LEVELS)
+  )
+
+# Flag any unmatched events
+unmatched <- df |> filter(is.na(condition))
+if (nrow(unmatched) > 0) {
+  warning(nrow(unmatched), " rows could not be matched to a condition via ", nid_col, ".")
+  print(unmatched |> select(pid, any_of(c("Event.nr", nr_col)), Event.nid))
+}
+```
+
+------------------------------------------------------------------------
+
+## Data quality check
+
+```{r data-summary-table}
+df |>
+  filter(!is.na(condition)) |>
+  group_by(condition) |>
+  summarise(
+    n_events     = n(),
+    n_pids       = n_distinct(pid),
+    mean_CDA.SCR = round(mean(CDA.SCR,  na.rm = TRUE), 6),
+    sd_CDA.SCR   = round(sd(CDA.SCR,    na.rm = TRUE), 6),
+    mean_CDA.Tonic = round(mean(CDA.Tonic, na.rm = TRUE), 4),
+    .groups = "drop"
+  ) |>
+  kable(caption = "Events per condition - data completeness check") |>
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+```{r nscr-check}
+# Conditions where CDA.nSCR == 0 throughout mean no SCRs were detected;
+# worth flagging as these contribute zeros to amplitude measures.
+df |>
+  filter(!is.na(condition)) |>
+  group_by(pid, condition) |>
+  summarise(mean_nSCR = mean(CDA.nSCR, na.rm = TRUE), .groups = "drop") |>
+  filter(mean_nSCR == 0) |>
+  kable(caption = "Participant × condition with zero SCRs detected (flag for review)") |>
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+------------------------------------------------------------------------
+
+## Descriptive statistics
+
+```{r descriptives}
+df |>
+  filter(!is.na(condition)) |>
+  group_by(condition) |>
+  summarise(
+    n           = n(),
+    CDA.SCR_M   = round(mean(CDA.SCR,       na.rm = TRUE), 6),
+    CDA.SCR_SD  = round(sd(CDA.SCR,         na.rm = TRUE), 6),
+    CDA.ISCR_M  = round(mean(CDA.ISCR,      na.rm = TRUE), 4),
+    CDA.Tonic_M = round(mean(CDA.Tonic,     na.rm = TRUE), 4),
+    TTP.AmpSum_M= round(mean(TTP.AmpSum,    na.rm = TRUE), 6),
+    .groups = "drop"
+  ) |>
+  kable(caption = "Mean EDA measures per condition") |>
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+```{r plot-cda-scr, fig.width = 9, fig.height = 4.5}
+df |>
+  filter(!is.na(condition)) |>
+  ggplot(aes(x = condition, y = CDA.SCR,
+             colour = condition, group = pid)) +
+  geom_line(colour = "grey70", aes(group = pid)) +
+  geom_point(size = 2.5) +
+  scale_colour_manual(values = cond_colours, guide = "none") +
+  theme(axis.text.x = element_text(angle = 25, hjust = 1)) +
+  labs(title = "CDA.SCR (mean phasic driver) per participant by condition",
+       x = NULL, y = "CDA.SCR (µS)")
+```
+
+```{r plot-tonic, fig.width = 9, fig.height = 4.5}
+df |>
+  filter(!is.na(condition)) |>
+  ggplot(aes(x = condition, y = CDA.Tonic,
+             colour = condition, group = pid)) +
+  geom_line(colour = "grey70", aes(group = pid)) +
+  geom_point(size = 2.5) +
+  scale_colour_manual(values = cond_colours, guide = "none") +
+  theme(axis.text.x = element_text(angle = 25, hjust = 1)) +
+  labs(title = "CDA.Tonic (mean tonic activity) per participant by condition",
+       x = NULL, y = "CDA.Tonic (µS)")
+```
+
+------------------------------------------------------------------------
+
+## Planned contrasts
+
+```{r contrasts-def}
+# Confirm condition levels - contrast vectors must match this order exactly.
+cat("Condition levels in data:\n")
+print(sort(unique(df$condition)))
+
+# Each vector must include ALL condition levels (alphabetical order); unused = 0.
+# Levels: baseline, neg_induction, neg_recovery, pos_induction, pos_recovery
+contrasts_of_interest <- list(
+  "pos_induction vs neg_induction" = c(baseline = 0, neg_induction = -1, neg_recovery = 0, pos_induction =  1, pos_recovery =  0),
+  "pos_induction vs baseline"      = c(baseline = -1, neg_induction =  0, neg_recovery = 0, pos_induction =  1, pos_recovery =  0),
+  "neg_induction vs baseline"      = c(baseline = -1, neg_induction =  1, neg_recovery = 0, pos_induction =  0, pos_recovery =  0),
+  "pos_induction vs pos_recovery"  = c(baseline = 0, neg_induction =  0, neg_recovery = 0, pos_induction =  1, pos_recovery = -1),
+  "neg_induction vs neg_recovery"  = c(baseline = 0, neg_induction =  1, neg_recovery = -1, pos_induction =  0, pos_recovery =  0)
+)
+```
+
+------------------------------------------------------------------------
+
+## Models
+
+```{r model-helper}
+run_model <- function(data, outcome, label) {
+  df_m <- data |>
+    filter(!is.na(condition), !is.na(.data[[outcome]])) |>
+    rename(y = all_of(outcome))
+
+  if (nrow(df_m) == 0) {
+    cat("*Skipped —", label, "has no data.*\n\n")
+    return(invisible(NULL))
+  }
+
+  fit <- tryCatch(
+    lmer(y ~ condition + (1 | pid), data = df_m, REML = TRUE),
+    error = function(e) { cat("*Model error (", label, "):", e$message, "*\n\n"); NULL }
+  )
+  if (is.null(fit)) return(invisible(NULL))
+
+  # Fixed effects
+  fe <- as.data.frame(summary(fit)$coefficients) |>
+    tibble::rownames_to_column("term") |>
+    mutate(across(where(is.numeric), \(x) round(x, 5)))
+
+  cat("**Fixed effects:**\n\n")
+  print(
+    kable(fe, caption = paste("Fixed effects —", label)) |>
+      kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+  )
+
+  # Estimated marginal means
+  emm    <- emmeans(fit, ~ condition)
+  emm_df <- as.data.frame(emm) |>
+    mutate(across(where(is.numeric), \(x) round(x, 6)))
+
+  cat("\n\n**Estimated marginal means:**\n\n")
+  print(
+    kable(emm_df, caption = paste("EMMs —", label)) |>
+      kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+  )
+
+  # Planned contrasts
+  con <- summary(
+    contrast(emm, method = contrasts_of_interest, adjust = "none"),
+    infer = TRUE
+  ) |>
+    as.data.frame() |>
+    mutate(across(where(is.numeric), \(x) round(x, 5)))
+
+  cat("\n\n**Planned contrasts:**\n\n")
+  print(
+    kable(con, caption = paste("Contrasts —", label)) |>
+      kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+  )
+
+  invisible(fit)
+}
+```
+
+### CDA.SCR - mean phasic driver (primary)
+
+```{r model-cda-scr, results='asis'}
+run_model(df, "CDA.SCR", "CDA.SCR")
+```
+
+------------------------------------------------------------------------
+
+### CDA.ISCR - integrated phasic driver
+
+Note: sensitive to response-window duration differences between conditions. Interpret alongside CDA.SCR.
+
+```{r model-cda-iscr, results='asis'}
+run_model(df, "CDA.ISCR", "CDA.ISCR")
+```
+
+------------------------------------------------------------------------
+
+### CDA.Tonic - mean tonic skin conductance level
+
+```{r model-cda-tonic, results='asis'}
+run_model(df, "CDA.Tonic", "CDA.Tonic")
+```
+
+------------------------------------------------------------------------
+
+### TTP.AmpSum - classic trough-to-peak amplitude (comparison)
+
+```{r model-ttp, results='asis'}
+run_model(df, "TTP.AmpSum", "TTP.AmpSum")
+```
+
+------------------------------------------------------------------------
+
+## SCR List Analysis
+
+The SCR-list export contains every individual SCR onset and amplitude detected across the whole recording (above the amplitude threshold set in Ledalab). SCRs are mapped to conditions by checking which epoch's onset–offset window each SCR falls within, using the epoch timing from the `_epochs_conditions_biopac_labels.csv` files in `BLOCK_ONSETS_DIR`.
+
+This allows inspection of SCR count and amplitude distributions that are not collapsed into a single per-epoch summary, complementing the ERA measures above.
+
+### Load SCR list files
+
+```{r load-scrlist}
+scrlist_files <- list.files(results_dir,
+                            pattern = "_scrlist\\.txt$",
+                            full.names = TRUE)
+
+if (length(scrlist_files) == 0) {
+  warning("No SCR-list text files found in: ", results_dir,
+          "\nRun Ledalab batch with export_scrlist and filetype=2.")
+  knitr::knit_exit()
+}
+
+cat("Found", length(scrlist_files), "SCR-list file(s).\n")
+
+# Ledalab scrlist text export: tab-separated, columns include onset and amplitude.
+# Column names may vary slightly by Ledalab version - inspect the first file if
+# the join below produces unexpected results.
+# Note: using read.table (base R) rather than read_tsv to avoid vroom memory-mapping
+# crashes on Box Drive / cloud-synced files.
+scrlist_raw <- map_dfr(scrlist_files, function(f) {
+  pid <- str_extract(basename(f), "^[^_]+")
+  read.table(f, header = TRUE, sep = "\t", stringsAsFactors = FALSE) |>
+    mutate(pid = pid)
+})
+
+scrlist_raw <- scrlist_raw |> filter(participant_keep(pid, INCLUDE_PILOTS))  # same selection as ERA
+cat("Total SCRs detected across all participants:", nrow(scrlist_raw), "\n")
+cat("Columns:", paste(names(scrlist_raw), collapse = ", "), "\n")
+```
+
+### Load epoch timing labels
+
+Epoch boundaries are derived from the ledalab biopac event files generated by `02_create_ledalab_events_biopac.py`. Each epoch runs from its onset to the next event's onset; the final epoch is padded by 300 s to cover remaining SCRs.
+
+```{r load-epoch-labels}
+ledalab_event_files <- list.files(BLOCK_ONSETS_DIR,
+                                  pattern = "_events_blocks_biopac_ledalab\\.txt$",
+                                  full.names = TRUE)
+
+if (length(ledalab_event_files) == 0) {
+  warning("No ledalab event files found in: ", BLOCK_ONSETS_DIR,
+          "\nRun analysis/ledalab/02_create_ledalab_events_biopac.py first.")
+  knitr::knit_exit()
+}
+
+nid_map_local <- read.table(file.path(BLOCK_ONSETS_DIR, "nid_map_biopac_ledalab.txt"),
+                            header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+
+epoch_labels <- map_dfr(ledalab_event_files, function(f) {
+  pid <- str_extract(basename(f), "^[^_]+")
+  read.table(f, header = TRUE, sep = "\t", stringsAsFactors = FALSE) |>
+    left_join(nid_map_local, by = "nid") |>
+    arrange(time) |>
+    mutate(
+      pid    = pid,
+      onset  = time,
+      offset = lead(time, default = max(time) + 300)
+    ) |>
+    select(pid, condition, onset, offset) |>
+    mutate(condition = factor(condition, levels = CONDITION_LEVELS))  # defined in setup chunk
+})
+
+cat("Epoch windows loaded for", n_distinct(epoch_labels$pid), "participant(s).\n")
+print(epoch_labels)
+```
+
+### Map SCRs to conditions
+
+Each SCR is assigned to the condition epoch whose onset–offset window contains the SCR onset time. SCRs that fall outside all epoch windows (e.g. between epochs) are dropped.
+
+```{r map-scrs-to-conditions}
+# The SCR onset column from Ledalab is typically named "onset" - rename if needed.
+# Common alternatives: "SCR.Onset", "onset_t", "t"
+onset_col <- intersect(c("CDA.SCR.Onset", "CDA.SCR-Onset", "onset", "SCR.Onset", "onset_t", "t"), names(scrlist_raw))[1]
+amp_col   <- intersect(c("CDA.SCR.Amplitude", "CDA.SCR-Amplitude", "amplitude", "SCR.Amplitude", "amp"), names(scrlist_raw))[1]
+
+if (is.na(onset_col) || is.na(amp_col)) {
+  stop("Could not identify onset/amplitude columns in scrlist. ",
+       "Columns found: ", paste(names(scrlist_raw), collapse = ", "))
+}
+
+scr_df <- scrlist_raw |>
+  rename(scr_onset = all_of(onset_col),
+         scr_amp   = all_of(amp_col))
+
+# Interval join: assign each SCR to its enclosing epoch
+scr_mapped <- scr_df |>
+  left_join(epoch_labels, by = "pid",
+            relationship = "many-to-many") |>
+  filter(scr_onset >= onset & scr_onset < offset) |>
+  select(pid, condition, scr_onset, scr_amp)
+
+n_unmatched <- nrow(scr_df) - nrow(scr_mapped)
+cat("SCRs matched to conditions:", nrow(scr_mapped),
+    "| unmatched (between epochs):", n_unmatched, "\n")
+```
+
+### Descriptives
+
+```{r scrlist-descriptives}
+scr_summary <- scr_mapped |>
+  group_by(pid, condition) |>
+  summarise(
+    n_scr      = n(),
+    mean_amp   = round(mean(scr_amp, na.rm = TRUE), 6),
+    median_amp = round(median(scr_amp, na.rm = TRUE), 6),
+    max_amp    = round(max(scr_amp, na.rm = TRUE), 6),
+    .groups = "drop"
+  ) |>
+  # Ensure zero-SCR conditions appear (no SCRs = no rows in scr_mapped)
+  complete(pid, condition, fill = list(n_scr = 0, mean_amp = NA,
+                                       median_amp = NA, max_amp = NA))
+
+scr_summary |>
+  group_by(condition) |>
+  summarise(
+    n_pids        = n(),
+    mean_n_scr    = round(mean(n_scr,    na.rm = TRUE), 2),
+    sd_n_scr      = round(sd(n_scr,      na.rm = TRUE), 2),
+    mean_amp_M    = round(mean(mean_amp,  na.rm = TRUE), 6),
+    mean_amp_SD   = round(sd(mean_amp,   na.rm = TRUE), 6),
+    .groups = "drop"
+  ) |>
+  kable(caption = "SCR count and mean amplitude per condition") |>
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+```{r plot-scr-count, fig.width = 9, fig.height = 4.5}
+scr_summary |>
+  ggplot(aes(x = condition, y = n_scr,
+             colour = condition, group = pid)) +
+  geom_line(colour = "grey70", aes(group = pid)) +
+  geom_point(size = 2.5) +
+  scale_colour_manual(values = cond_colours, guide = "none") +
+  theme(axis.text.x = element_text(angle = 25, hjust = 1)) +
+  labs(title = "SCR count per participant by condition",
+       x = NULL, y = "Number of SCRs")
+```
+
+```{r plot-scr-amp-dist, fig.width = 9, fig.height = 4.5}
+scr_mapped |>
+  ggplot(aes(x = condition, y = scr_amp, colour = condition)) +
+  geom_jitter(width = 0.15, alpha = 0.5, size = 1.5, seed = 42) +
+  stat_summary(fun = mean, geom = "crossbar",
+               width = 0.4, linewidth = 0.7, colour = "black") +
+  scale_colour_manual(values = cond_colours, guide = "none") +
+  theme(axis.text.x = element_text(angle = 25, hjust = 1)) +
+  labs(title = "SCR amplitude distribution by condition (individual SCRs)",
+       subtitle = "Crossbar = mean; points = individual SCRs",
+       x = NULL, y = "SCR amplitude (µS)")
+```
+
+### Models
+
+#### SCR count per epoch
+
+```{r model-scr-count, results='asis'}
+run_model(scr_summary |> mutate(n_scr = as.numeric(n_scr)), "n_scr", "SCR count")
+```
+
+#### Mean SCR amplitude per epoch
+
+Note: participants with zero SCRs in a condition have `NA` mean amplitude and are excluded from this model. Interpret alongside SCR count.
+
+```{r model-scr-amp, results='asis'}
+run_model(scr_summary, "mean_amp", "Mean SCR amplitude")
+```
+
+------------------------------------------------------------------------
+
+# Save
+
+```{r save}
+scr_combined <- df |>
+  filter(!is.na(condition)) |>
+  left_join(scr_summary, by = c("pid", "condition"))
+
+write_csv(scr_combined, file.path(clean_data_dir, "biosignals2_eda.csv"))
+```
+
+## Session info
+
+```{r session-info}
+sessionInfo()
+```

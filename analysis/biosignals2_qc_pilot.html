@@ -1,0 +1,1041 @@
+<meta charset="utf-8"><title>Biosignals2 Pilot QC</title>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:ital,wght@0,600;0,700;1,400&display=swap");
+
+:root{--bg:#F3F6FC;--surface:#FFFFFF;--surface-2:#EBF0F9;--text-1:#192040;
+  --text-2:#495A7A;--text-3:#8499C0;--accent:#1C5CA8;--border:#D0DAF0;
+  --pos:#C85F2A;--neg:#3B74B2;--pos-bg:#FBF0EA;--neg-bg:#EAF1FB;
+  --ok:#1A7A50;--ok-bg:#E5F5EE;--warn:#966B10;--warn-bg:#FBF3E0;
+  --tab-h:3rem}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0D1422;--surface:#15213A;--surface-2:#1A2B4A;--text-1:#D8E4F8;
+  --text-2:#7B90B8;--text-3:#435278;--accent:#4D8FDC;--border:#213060;
+  --pos:#E07B54;--neg:#5B8DB8;--pos-bg:#2A1508;--neg-bg:#081525;
+  --ok:#28A86E;--ok-bg:#0A2018;--warn:#D49020;--warn-bg:#201500}}
+:root[data-theme="dark"]{--bg:#0D1422;--surface:#15213A;--surface-2:#1A2B4A;
+  --text-1:#D8E4F8;--text-2:#7B90B8;--text-3:#435278;--accent:#4D8FDC;
+  --border:#213060;--pos:#E07B54;--neg:#5B8DB8;--pos-bg:#2A1508;--neg-bg:#081525;
+  --ok:#28A86E;--ok-bg:#0A2018;--warn:#D49020;--warn-bg:#201500}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:.9375rem;
+  line-height:1.65;color:var(--text-1);background:var(--bg);
+  padding-inline:max(1.25rem,4vw);padding-block:2.5rem 4rem}
+.page{max-width:920px;margin-inline:auto}
+
+/* Header */
+.page-header{display:flex;justify-content:space-between;align-items:flex-start;
+  padding-bottom:1.5rem;border-bottom:1.5px solid var(--border);
+  margin-bottom:2rem;flex-wrap:wrap;gap:1rem}
+.header-left{display:flex;flex-direction:column;gap:.4rem}
+.badge{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:.65rem;
+  font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);
+  border:1px solid var(--accent);padding:.2rem .45rem;width:fit-content}
+h1{font-family:"IBM Plex Serif",Georgia,serif;font-size:1.7rem;font-weight:700;
+  line-height:1.2}
+.header-meta{font-family:"IBM Plex Mono",monospace;font-size:.72rem;
+  color:var(--text-3);line-height:1.9}
+.header-meta strong{color:var(--text-2);font-weight:500}
+
+/* Tabs */
+.tab-bar{display:flex;gap:0;border-bottom:2px solid var(--border);
+  margin-bottom:2rem;overflow-x:auto}
+.tab-btn{font-family:"IBM Plex Mono",monospace;font-size:.72rem;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--text-3);background:none;border:none;
+  padding:.7rem 1.2rem;cursor:pointer;border-bottom:2px solid transparent;
+  margin-bottom:-2px;white-space:nowrap;transition:color .15s,border-color .15s}
+.tab-btn:hover{color:var(--text-2)}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:500}
+.tab-content{display:none}.tab-content.active{display:block}
+
+/* Status tiles */
+.status-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin-bottom:2.75rem}
+@media(max-width:640px){.status-row{grid-template-columns:repeat(2,1fr)}}
+.tile{background:var(--surface);border:1px solid var(--border);
+  border-left:3px solid var(--accent);padding:1rem 1.1rem .9rem}
+.tile.ok{border-left-color:var(--ok)}.tile.warn{border-left-color:var(--warn)}
+.tile-value{font-family:"IBM Plex Serif",serif;font-size:2rem;font-weight:700;
+  line-height:1;margin-bottom:.4rem;font-variant-numeric:tabular-nums}
+.tile.ok .tile-value{color:var(--ok)}.tile.warn .tile-value{color:var(--warn)}
+.tile.blue .tile-value{color:var(--accent)}
+.tile-label{font-family:"IBM Plex Mono",monospace;font-size:.68rem;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--text-3);line-height:1.4}
+
+/* Sections */
+section{margin-bottom:3rem}
+section+section{padding-top:2.25rem;border-top:1px solid var(--border)}
+.section-head{margin-bottom:1.25rem}
+.section-head h2{font-family:"IBM Plex Serif",serif;font-size:1.1rem;
+  font-weight:600;line-height:1.3}
+.section-head p{font-size:.86rem;color:var(--text-2);margin-top:.3rem;max-width:68ch}
+.section-label{font-family:"IBM Plex Mono",monospace;font-size:.65rem;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);margin-bottom:.3rem}
+
+/* Tables */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.875rem;font-variant-numeric:tabular-nums}
+thead th{font-family:"IBM Plex Mono",monospace;font-size:.67rem;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--text-3);text-align:left;padding:.35rem .8rem;
+  border-bottom:2px solid var(--border);white-space:nowrap;background:var(--surface)}
+tbody tr td{padding:.55rem .8rem;border-bottom:1px solid var(--border);
+  color:var(--text-2);background:var(--surface)}
+tbody tr:hover td{background:var(--surface-2)}
+tbody td:first-child{color:var(--text-1);font-weight:500}
+tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(--text-2)}
+.status-ok{color:var(--ok);font-family:"IBM Plex Mono",monospace;font-size:.82rem;font-weight:500}
+.status-warn{color:var(--warn);font-family:"IBM Plex Mono",monospace;font-size:.82rem;font-weight:500}
+.cond-pos{color:var(--pos);font-weight:600}.cond-neg{color:var(--neg);font-weight:600}
+
+/* Manipulation check cards */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+@media(max-width:560px){.grid-2{grid-template-columns:1fr}}
+.manip-card{background:var(--surface);border:1px solid var(--border);
+  padding:1.25rem 1.4rem;display:flex;flex-direction:column;gap:.9rem}
+.manip-card.pos-card{border-top:3px solid var(--pos)}
+.manip-card.neg-card{border-top:3px solid var(--neg)}
+.manip-cond{font-family:"IBM Plex Mono",monospace;font-size:.7rem;
+  letter-spacing:.1em;text-transform:uppercase;font-weight:500}
+.manip-cond.pos{color:var(--pos)}.manip-cond.neg{color:var(--neg)}
+.manip-deltas{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.manip-delta-item{display:flex;flex-direction:column;gap:.15rem}
+.delta-val{font-family:"IBM Plex Serif",serif;font-size:2.2rem;font-weight:700;
+  line-height:1;font-variant-numeric:tabular-nums}
+.delta-val.pos-val{color:var(--pos)}.delta-val.neg-val{color:var(--neg)}
+.delta-lbl{font-family:"IBM Plex Mono",monospace;font-size:.67rem;
+  color:var(--text-3);letter-spacing:.07em;text-transform:uppercase}
+.check-row{display:flex;align-items:center;gap:.5rem;font-size:.85rem;
+  color:var(--text-2);padding-top:.5rem;border-top:1px solid var(--border)}
+.check-row .check-icon{color:var(--ok);font-size:1rem}
+
+/* Charts */
+.chart-wrap{background:var(--surface);border:1px solid var(--border);
+  padding:1.25rem 1.25rem 1rem;margin-top:1rem}
+.chart-title{font-family:"IBM Plex Mono",monospace;font-size:.68rem;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--text-3);margin-bottom:.75rem}
+
+/* Notes */
+.note{padding:.85rem 1rem;font-size:.86rem;color:var(--text-2);
+  border-left:3px solid var(--warn);background:var(--warn-bg);
+  margin-top:1rem;line-height:1.55}
+.note strong{color:var(--text-1)}
+.note-ok{padding:.85rem 1rem;font-size:.86rem;color:var(--text-2);
+  border-left:3px solid var(--ok);background:var(--ok-bg);
+  margin-top:.75rem;line-height:1.55}
+
+/* RT tiles */
+.rt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+  gap:.5rem;margin-top:.75rem}
+.rt-tile{background:var(--surface);border:1px solid var(--border);
+  padding:.7rem .9rem;display:flex;justify-content:space-between;align-items:center}
+.rt-name{font-family:"IBM Plex Mono",monospace;font-size:.72rem;color:var(--text-3)}
+.rt-range{font-family:"IBM Plex Mono",monospace;font-size:.82rem;font-weight:500;
+  color:var(--ok);font-variant-numeric:tabular-nums}
+
+/* Placeholder */
+.placeholder-box{background:var(--surface);border:1px dashed var(--border);
+  padding:2.5rem 2rem;text-align:center;margin-bottom:2rem}
+.placeholder-title{font-family:"IBM Plex Mono",monospace;font-size:.72rem;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:.75rem}
+.placeholder-msg{font-size:.9rem;color:var(--text-2);line-height:1.7;max-width:50ch;
+  margin-inline:auto}
+.placeholder-msg code{font-family:"IBM Plex Mono",monospace;font-size:.83em;
+  color:var(--accent)}
+</style><div class="page">
+
+  <header class="page-header">
+    <div class="header-left">
+      <span class="badge">Biosignals2</span>
+      <h1>Pilot Data Quality</h1>
+    </div>
+    <div class="header-meta">
+      <strong>Generated</strong> <span id="gen-date"></span><br>
+      <strong>Participants</strong> Pilot
+    </div>
+  </header>
+
+  <nav class="tab-bar">
+    <button class="tab-btn active" data-tab="completeness">Completeness</button>
+    <button class="tab-btn" data-tab="psychopy">PsychoPy</button>
+    <button class="tab-btn" data-tab="ledalab">Ledalab (EDA)</button>
+    <button class="tab-btn" data-tab="kubios">Kubios (HRV)</button>
+    <button class="tab-btn" data-tab="biometrics">Webcam biometrics</button>
+    <button class="tab-btn" data-tab="video">Video</button>
+    <button class="tab-btn" data-tab="physiology">Raw physiology</button>
+    <button class="tab-btn" data-tab="facereader">FaceReader</button>
+    <button class="tab-btn" data-tab="questionnaires">Questionnaires</button>
+  </nav>
+
+  <div id="tab-completeness" class="tab-content active"><div class="note"><strong>Pilot report:</strong> only the pilot participants (<span class="mono">E5510, E9967, G2313, I4155, N2026, P7259, R2433, R4755, S0723, S0943</span>) are included; everyone else is in <code>biosignals2_qc.html</code>.<br>Left out of both reports: <span class='mono'>001</span> (test: Early pilot; pre-dates the emotion label question); <span class='mono'>002</span> (test: Early pilot; pre-dates the emotion label question); <span class='mono'>003</span> (test: Test session); <span class='mono'>CARMEN</span> (test: Carmen's own test sessions). <br>Edit <code>analysis/participant_status.csv</code> to change who is pilot, test or excluded. Files are untouched on disk.</div><div class="note"><strong>&#10227; Combined data out of date.</strong> These participants are in
+       the raw files but not in the combined CSV this report reads:<ul style="margin-top:.5rem;
+       margin-left:1.2rem;line-height:1.8;"><li>Questionnaires: <span class='mono'>S0723, R2433</span> &mdash; re-knit <code>04_questionnaire_analysis.Rmd</code></li></ul>Then re-run this report. If someone is still listed after re-knitting, the Rmd is
+       dropping their file (e.g. the filename filter in 01, or an incomplete Qualtrics response).</div><div class="status-row">
+    <div class="tile blue"><div class="tile-value">10</div>
+      <div class="tile-label">Unique participant<br>IDs observed</div></div>
+    <div class="tile warn">
+      <div class="tile-value">1/10</div>
+      <div class="tile-label">Participants with<br>complete dataset</div></div>
+    <div class="tile blue"><div class="tile-value">10/8/8/10</div>
+      <div class="tile-label">PsychoPy / Quest. /<br>Ledalab / Kubios IDs</div></div>
+    <div class="tile blue"><div class="tile-value">10/10/1</div>
+      <div class="tile-label">Video / Biometrics /<br>FaceReader IDs</div></div>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">Cross-Source Completeness</div>
+      <h2>Does every participant have a complete dataset?</h2>
+      <p>A participant is <strong>complete</strong> when their ID appears in all 8 sources:
+         PsychoPy self-report, Qualtrics questionnaires, Ledalab (EDA), Kubios (HRV),
+         video recordings (Box video folder), webcam biometrics (raw <code>_biometrics.csv</code>)
+         and FaceReader exports. IDs are compared case-insensitively and whitespace-trimmed
+         (Qualtrics exports upper-case IDs; the other sources use lower-case).</p>
+    </div>
+    <div class="note"><strong>9 participant(s) missing data from at least one source:</strong>
+           <ul style="margin-top:.5rem;margin-left:1.2rem;line-height:1.8;"><li><span class='mono'>E5510</span> &mdash; missing: FaceReader</li>
+<li><span class='mono'>E9967</span> &mdash; missing: FaceReader</li>
+<li><span class='mono'>G2313</span> &mdash; missing: FaceReader</li>
+<li><span class='mono'>I4155</span> &mdash; missing: FaceReader</li>
+<li><span class='mono'>N2026</span> &mdash; missing: FaceReader</li>
+<li><span class='mono'>P7259</span> &mdash; missing: FaceReader</li>
+<li><span class='mono'>R2433</span> &mdash; missing: Questionnaires (raw file present &mdash; re-knit 04_questionnaire_analysis.Rmd), Ledalab, FaceReader</li>
+<li><span class='mono'>R4755</span> &mdash; missing: FaceReader</li>
+<li><span class='mono'>S0723</span> &mdash; missing: Questionnaires (raw file present &mdash; re-knit 04_questionnaire_analysis.Rmd), Ledalab, FaceReader</li></ul></div>
+    <div class="table-wrap" style="margin-top:1rem;"><table>
+      <thead><tr><th>Participant</th><th>PsychoPy</th><th>Questionnaires</th><th>Physiology</th><th>Ledalab</th><th>Kubios</th><th>Video</th><th>Biometrics</th><th>FaceReader</th><th>Sources</th><th>Status</th></tr></thead>
+      <tbody><tr><td class='mono'>E5510</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>7/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>E9967</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>7/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>G2313</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>7/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>I4155</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>7/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>N2026</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>7/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>P7259</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>7/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>R2433</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center' title='In the raw files but not the combined CSV: re-knit'>&#10227; re-knit</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>5/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>R4755</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>7/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>S0723</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center' title='In the raw files but not the combined CSV: re-knit'>&#10227; re-knit</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>5/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>S0943</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>8/8</td><td class='status-ok'>&#10003; complete</td></tr></tbody>
+    </table></div>
+  </section></div>
+  <div id="tab-psychopy" class="tab-content"><div class="status-row">
+    <div class="tile blue"><div class="tile-value">10</div>
+      <div class="tile-label">Sessions<br>recorded</div></div>
+    <div class="tile blue"><div class="tile-value">40</div>
+      <div class="tile-label">Video rating<br>rows</div></div>
+    <div class="tile warn"><div class="tile-value">39/40</div>
+      <div class="tile-label">Trigger names<br>captured</div></div>
+    <div class="tile warn"><div class="tile-value">16/20</div>
+      <div class="tile-label">Manipulation<br>checks passed</div></div>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">Pipeline &amp; Completeness</div>
+      <h2>Data collection and trigger capture</h2>
+      <p>Long-format output from 01_data_cleaning.Rmd. One row per video per participant
+         for induction phases, plus one row per participant for baseline and recovery.</p>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Participant</th><th>Condition order</th>
+        <th>Positive videos</th><th>Negative videos</th><th>Total stim rows</th></tr></thead>
+      <tbody><tr><td class='mono'>e5510</td><td>neg_first</td><td>2 (P0141, P02)</td><td>2 (N007, N01)</td><td>4</td></tr>
+<tr><td class='mono'>e9967</td><td>neg_first</td><td>2 (P0141, P02)</td><td>2 (N007, N01)</td><td>4</td></tr>
+<tr><td class='mono'>g2313</td><td>neg_first</td><td>2 (P0141, P02)</td><td>2 (N007, N01)</td><td>4</td></tr>
+<tr><td class='mono'>i4155</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr>
+<tr><td class='mono'>n2026</td><td>neg_first</td><td>2 (P0141, P02)</td><td>2 (N007, N01)</td><td>4</td></tr>
+<tr><td class='mono'>p7259</td><td>neg_first</td><td>2 (P0141, P02)</td><td>2 (N007, N01)</td><td>4</td></tr>
+<tr><td class='mono'>r2433</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr>
+<tr><td class='mono'>r4755</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr>
+<tr><td class='mono'>s0723</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr>
+<tr><td class='mono'>s0943</td><td>neg_first</td><td>2 (P0141, P02)</td><td>2 (N007, N01)</td><td>4</td></tr></tbody>
+    </table></div>
+    <div style="margin-top:1.5rem;">
+      <div class="section-label" style="margin-bottom:.6rem;">
+        Trigger name lookup — all 40 stimulus rows</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Participant</th><th>Video ID</th><th>Condition</th>
+          <th>Trigger name</th><th>Status</th></tr></thead>
+        <tbody><tr><td class='mono'>e5510</td><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>e5510</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>e5510</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>e5510</td><td class='mono'>P02</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>e9967</td><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>e9967</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>e9967</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>e9967</td><td class='mono'>P02</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>g2313</td><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>g2313</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>g2313</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>g2313</td><td class='mono'>P02</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>i4155</td><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>i4155</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>i4155</td><td class='mono'>P01</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>i4155</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>n2026</td><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>n2026</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>n2026</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>n2026</td><td class='mono'>P02</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>p7259</td><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>p7259</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>p7259</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>p7259</td><td class='mono'>P02</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>r2433</td><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>r2433</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>r2433</td><td class='mono'>P01</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>r2433</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>r4755</td><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>r4755</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>r4755</td><td class='mono'>P01</td><td><span class='cond-pos'>positive</span></td><td class='mono'>NA</td><td class='status-warn'>✗ missing</td></tr>
+<tr><td class='mono'>r4755</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>s0723</td><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>s0723</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>s0723</td><td class='mono'>P01</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>s0723</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>s0943</td><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>s0943</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>s0943</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>s0943</td><td class='mono'>P02</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr></tbody>
+      </table></div>
+      <div class="note-ok">39/40 trigger–video pairings resolved successfully.</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">Rating Quality</div>
+      <h2>Scale range checks</h2>
+      <p>All slider responses should fall 1–7. Stimulus RTs below 0.5 s are flagged.</p>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Scale</th><th>N responses</th><th>Observed min</th>
+        <th>Observed max</th><th>Expected range</th><th>Out of range</th></tr></thead>
+      <tbody><tr><td class='mono'>stim_valence</td><td>40</td><td>1</td><td>7</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
+<tr><td class='mono'>stim_arousal</td><td>40</td><td>3</td><td>7</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
+<tr><td class='mono'>stim_approach</td><td>40</td><td>1</td><td>7</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
+<tr><td class='mono'>postind_valence (block_end)</td><td>40</td><td>1</td><td>6</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
+<tr><td class='mono'>postind_arousal (block_end)</td><td>40</td><td>3</td><td>7</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
+<tr><td class='mono'>postrec_valence (block_end)</td><td>20</td><td>3</td><td>5</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
+<tr><td class='mono'>postrec_arousal (block_end)</td><td>20</td><td>1</td><td>7</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
+<tr><td class='mono'>prebl_valence (block_start)</td><td>10</td><td>3</td><td>6</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
+<tr><td class='mono'>prebl_arousal (block_start)</td><td>10</td><td>2</td><td>6</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
+<tr><td class='mono'>postbl_valence (block_end)</td><td>10</td><td>4</td><td>6</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
+<tr><td class='mono'>postbl_arousal (block_end)</td><td>10</td><td>2</td><td>6</td><td>1–7</td><td class='status-ok'>✓ none</td></tr></tbody>
+    </table></div>
+    <div style="margin-top:1.5rem;">
+      <div class="section-label" style="margin-bottom:.5rem;">
+        Stimulus reaction time ranges (seconds) — no fast responses (&lt; 0.5 s) detected</div>
+      <div class="rt-grid"><div class='rt-tile'><span class='rt-name'>stim_valence_rt</span><span class='rt-range'>1.90–20.27</span></div>
+<div class='rt-tile'><span class='rt-name'>stim_arousal_rt</span><span class='rt-range'>2.35–18.05</span></div>
+<div class='rt-tile'><span class='rt-name'>stim_approach_rt</span><span class='rt-range'>1.32–15.66</span></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">Manipulation Check</div>
+      <h2>Did induction shift valence in the expected direction?</h2>
+      <p>&#916; valence = post-induction block_end_valence &#8722; post-baseline block_end_valence.</p>
+    </div>
+    <div class="grid-2">
+      <div class="manip-card pos-card">
+        <div class="manip-cond pos">Positive condition</div>
+        <div class="manip-deltas">
+          <div class="manip-delta-item">
+            <div class="delta-val pos-val">+0.9</div>
+            <div class="delta-lbl">&#916; valence</div></div>
+          <div class="manip-delta-item">
+            <div class="delta-val pos-val">+1.6</div>
+            <div class="delta-lbl">&#916; arousal</div></div></div>
+        <div class="check-row">
+          <span class="check-icon">&#10003;</span>
+          <span>⚠ Some sessions did not show expected direction — review table below</span></div></div>
+      <div class="manip-card neg-card">
+        <div class="manip-cond neg">Negative condition</div>
+        <div class="manip-deltas">
+          <div class="manip-delta-item">
+            <div class="delta-val neg-val">-1.9</div>
+            <div class="delta-lbl">&#916; valence</div></div>
+          <div class="manip-delta-item">
+            <div class="delta-val pos-val">+1.2</div>
+            <div class="delta-lbl">&#916; arousal</div></div></div>
+        <div class="check-row">
+          <span class="check-icon">&#10003;</span>
+          <span>Valence decreased after induction — direction correct for all sessions</span></div></div>
+    </div>
+    <div style="margin-top:1.5rem;" class="table-wrap"><table>
+      <thead><tr><th>Participant</th><th>Condition</th>
+        <th>Post-baseline valence</th><th>Post-induction valence</th>
+        <th>&#916; valence</th><th>Direction correct</th></tr></thead>
+      <tbody><tr><td class='mono'>e5510</td><td><span class='cond-neg'>negative</span></td><td>4</td><td>3</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-1</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>e5510</td><td><span class='cond-pos'>positive</span></td><td>4</td><td>4</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+0</td><td class='status-warn'>✗ FALSE</td></tr>
+<tr><td class='mono'>e9967</td><td><span class='cond-neg'>negative</span></td><td>6</td><td>4</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-2</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>e9967</td><td><span class='cond-pos'>positive</span></td><td>6</td><td>6</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+0</td><td class='status-warn'>✗ FALSE</td></tr>
+<tr><td class='mono'>g2313</td><td><span class='cond-neg'>negative</span></td><td>5</td><td>3</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-2</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>g2313</td><td><span class='cond-pos'>positive</span></td><td>5</td><td>6</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+1</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>i4155</td><td><span class='cond-neg'>negative</span></td><td>4</td><td>3</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-1</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>i4155</td><td><span class='cond-pos'>positive</span></td><td>4</td><td>6</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+2</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>n2026</td><td><span class='cond-neg'>negative</span></td><td>4</td><td>3</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-1</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>n2026</td><td><span class='cond-pos'>positive</span></td><td>4</td><td>4</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+0</td><td class='status-warn'>✗ FALSE</td></tr>
+<tr><td class='mono'>p7259</td><td><span class='cond-neg'>negative</span></td><td>4</td><td>2</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-2</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>p7259</td><td><span class='cond-pos'>positive</span></td><td>4</td><td>4</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+0</td><td class='status-warn'>✗ FALSE</td></tr>
+<tr><td class='mono'>r2433</td><td><span class='cond-neg'>negative</span></td><td>4</td><td>1</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-3</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>r2433</td><td><span class='cond-pos'>positive</span></td><td>4</td><td>6</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+2</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>r4755</td><td><span class='cond-neg'>negative</span></td><td>4</td><td>2</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-2</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>r4755</td><td><span class='cond-pos'>positive</span></td><td>4</td><td>5</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+1</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>s0723</td><td><span class='cond-neg'>negative</span></td><td>5</td><td>2</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-3</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>s0723</td><td><span class='cond-pos'>positive</span></td><td>5</td><td>6</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+1</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>s0943</td><td><span class='cond-neg'>negative</span></td><td>4</td><td>2</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-2</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>s0943</td><td><span class='cond-pos'>positive</span></td><td>4</td><td>6</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+2</td><td class='status-ok'>✓ TRUE</td></tr></tbody>
+    </table></div>
+    <div class="note-ok">16/20 manipulation checks in the expected direction.</div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">Stimulus Ratings</div>
+      <h2>Valence, arousal, and approach by condition</h2>
+      <p>Means per video, averaged across participants (1–7 scale).</p>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-title">Mean stimulus ratings by condition</div>
+      <canvas id="stimChart" height="220"></canvas>
+    </div>
+    <div style="margin-top:1.25rem;" class="table-wrap"><table>
+      <thead><tr><th>Video</th><th>Condition</th>
+        <th>Valence</th><th>Arousal</th><th>Approach</th></tr></thead>
+      <tbody><tr><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td>2.5</td><td>5.4</td><td>2.1</td></tr>
+<tr><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td>2.3</td><td>5.3</td><td>2.2</td></tr>
+<tr><td class='mono'>P01</td><td><span class='cond-pos'>positive</span></td><td>6</td><td>5.8</td><td>5.8</td></tr>
+<tr><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td>5.1</td><td>4.7</td><td>4.8</td></tr>
+<tr><td class='mono'>P02</td><td><span class='cond-pos'>positive</span></td><td>3.8</td><td>4.5</td><td>3.8</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">State Trajectories</div>
+      <h2>Momentary ratings across the session timeline</h2>
+      <p>Pre-baseline and post-baseline shared. Lines diverge at post-induction.</p>
+    </div>
+    <div class="grid-2">
+      <div class="chart-wrap" style="margin-top:0;">
+        <div class="chart-title">State valence</div>
+        <canvas id="valenceChart" height="220"></canvas></div>
+      <div class="chart-wrap" style="margin-top:0;">
+        <div class="chart-title">State arousal</div>
+        <canvas id="arousalChart" height="220"></canvas></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">Study Status</div>
+      <h2>Counterbalancing and collection progress</h2>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Condition order</th><th>Sessions recorded</th>
+        <th>% of pilot</th><th>Status</th></tr></thead>
+      <tbody><tr><td class='mono'>pos_first</td><td>0</td><td>0%</td><td class='status-warn'>⚠ not yet recorded</td></tr>
+<tr><td class='mono'>neg_first</td><td>10</td><td>100%</td><td class='status-warn'>⚠ only group seen</td></tr></tbody>
+    </table></div>
+    <div class="note">
+      <strong>Counterbalancing:</strong> Models include <code>conditionOrder</code> as a covariate.
+      Both order groups required before mixed models will run.</div>
+    <div class="note-ok" style="margin-top:.75rem;">
+      <strong>Pipeline:</strong> Raw CSVs &#8594; 01_data_cleaning.Rmd &#8594;
+      biosignals2_selfreport_ratings.csv &#8594; 02_ratings_analysis.Rmd</div>
+  </section>
+
+  <script>
+  (function() {
+    function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+    const POS=css("--pos"), NEG=css("--neg"), BORD=css("--border"), T2=css("--text-2");
+    const gridOpts = {color:BORD, lineWidth:1};
+    Chart.defaults.font.family = "'IBM Plex Sans',sans-serif";
+    Chart.defaults.font.size = 11;
+    Chart.defaults.color = css("--text-3");
+
+    new Chart(document.getElementById("stimChart").getContext("2d"), {
+      type: "bar",
+      data: {
+        labels: ["Valence","Arousal","Approach"],
+        datasets: [
+          {label:"Positive", data:[4.97, 5, 4.8], backgroundColor:POS+"33",
+           borderColor:POS, borderWidth:1.5, borderRadius:2},
+          {label:"Negative", data:[2.4, 5.35, 2.15], backgroundColor:NEG+"33",
+           borderColor:NEG, borderWidth:1.5, borderRadius:2}
+        ]
+      },
+      options:{responsive:true, maintainAspectRatio:true,
+        plugins:{legend:{position:"top",align:"end",
+          labels:{boxWidth:12,boxHeight:12,padding:14,color:T2}},
+          tooltip:{mode:"index",intersect:false}},
+        scales:{x:{grid:{display:false},ticks:{color:T2},border:{color:BORD}},
+          y:{min:0,max:7,ticks:{stepSize:1,color:T2},grid:gridOpts,border:{color:BORD}}}}
+    });
+
+    function makeTraj(id, posData, negData) {
+      new Chart(document.getElementById(id).getContext("2d"), {
+        type:"line",
+        data:{
+          labels:["Pre-baseline","Post-baseline","Post-induction","Post-recovery"],
+          datasets:[
+            {label:"Positive", data:posData, borderColor:POS, backgroundColor:POS+"22",
+             borderWidth:2, pointBackgroundColor:POS, pointRadius:4, tension:0.15},
+            {label:"Negative", data:negData, borderColor:NEG, backgroundColor:NEG+"22",
+             borderWidth:2, pointBackgroundColor:NEG, pointRadius:4, tension:0.15}
+          ]
+        },
+        options:{responsive:true, maintainAspectRatio:true,
+          plugins:{legend:{position:"top",align:"end",
+            labels:{boxWidth:10,boxHeight:10,padding:10,color:T2}},
+            tooltip:{mode:"index",intersect:false}},
+          scales:{x:{grid:{display:false},ticks:{color:T2,font:{size:9.5},maxRotation:30},
+            border:{color:BORD}},
+            y:{min:1,max:7,ticks:{stepSize:1,color:T2},grid:gridOpts,border:{color:BORD},
+              title:{display:true,text:"Rating (1–7)",color:T2,font:{size:10}}}}}
+      });
+    }
+    makeTraj("valenceChart", [4.4, 4.4, 5.3, 4.5],[4.4, 4.4, 2.5, 3.7]);
+    makeTraj("arousalChart", [4.4, 3.6, 5.2, 3.9],[4.4, 3.6, 4.8, 4]);
+  })();
+  </script></div>
+  <div id="tab-ledalab"  class="tab-content"><div class="status-row">
+    <div class="tile blue"><div class="tile-value">8</div>
+      <div class="tile-label">Participants<br>with ERA files</div></div>
+    <div class="tile warn">
+      <div class="tile-value">2/8</div>
+      <div class="tile-label">Low / non-<br>responders</div></div>
+    <div class="tile ok">
+      <div class="tile-value">0</div>
+      <div class="tile-label">Unmatched<br>NIDs</div></div>
+    <div class="tile ok">
+      <div class="tile-value">✓</div>
+      <div class="tile-label">CDA.SCR<br>anomalies</div></div>
+  </div>
+
+  <div class="note-ok">NID map found — conditions mapped from nid_map_psychopy_ledalab.txt</div>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">File Coverage</div>
+      <h2>ERA files per participant</h2>
+      <p>Expect one ERA file per participant with 5 condition epochs
+         (baseline, neg_induction, neg_recovery, pos_induction, pos_recovery).</p>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Participant</th><th>Conditions found</th><th>Status</th></tr></thead>
+      <tbody><tr><td class='mono'>e5510</td><td>5</td><td class='status-ok'>✓ complete</td></tr>
+<tr><td class='mono'>e9967</td><td>5</td><td class='status-ok'>✓ complete</td></tr>
+<tr><td class='mono'>g2313</td><td>5</td><td class='status-ok'>✓ complete</td></tr>
+<tr><td class='mono'>i4155</td><td>5</td><td class='status-ok'>✓ complete</td></tr>
+<tr><td class='mono'>n2026</td><td>5</td><td class='status-ok'>✓ complete</td></tr>
+<tr><td class='mono'>p7259</td><td>5</td><td class='status-ok'>✓ complete</td></tr>
+<tr><td class='mono'>r4755</td><td>5</td><td class='status-ok'>✓ complete</td></tr>
+<tr><td class='mono'>s0943</td><td>5</td><td class='status-ok'>✓ complete</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">CDA Metrics by Condition</div>
+      <h2>Mean CDA.SCR and nSCR across participants</h2>
+      <p>CDA.SCR = mean phasic driver (µS). CDA.nSCR = number of SCR peaks per epoch
+         (0 is valid; consistently 0 across all conditions warrants review).</p>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Condition</th><th>N participants</th>
+        <th>Mean CDA.SCR (µS)</th><th>Mean CDA.nSCR</th></tr></thead>
+      <tbody><tr><td class='mono'>baseline</td><td>8</td><td>0.0166</td><td>30.62</td></tr>
+<tr><td class='mono'>neg_induction</td><td>8</td><td>0.04799</td><td>53.75</td></tr>
+<tr><td class='mono'>neg_recovery</td><td>8</td><td>0.01875</td><td>34.62</td></tr>
+<tr><td class='mono'>pos_induction</td><td>8</td><td>0.04904</td><td>52.12</td></tr>
+<tr><td class='mono'>pos_recovery</td><td>8</td><td>0.0142</td><td>25.75</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">Responsiveness</div>
+      <h2>Participants with few skin conductance responses</h2>
+      <p>Number of SCRs detected by CDA (<code>CDA.nSCR</code>) in each condition epoch (~3 min).
+         <strong>Non-responder</strong>: no SCRs in any epoch.
+         <strong>Low responder</strong>: fewer than 5 SCRs per epoch on average.
+         <strong>Some low epochs</strong>: at least one epoch with fewer than 5.
+         Check the raw EDA of flagged participants (sensor contact, gel, cold hands) before
+         excluding anyone; counts also depend on the minimum SCR amplitude set in Ledalab.</p>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Participant</th><th>Epochs</th><th>Mean nSCR / epoch</th><th>Min nSCR</th>
+        <th>Epochs &lt; 5</th><th>Low epochs (nSCR)</th><th>Status</th></tr></thead>
+      <tbody><tr><td class='mono'>i4155</td><td>5</td><td>0</td><td>0</td><td>5</td><td class='mono' style='font-size:.78rem'>baseline (0), neg_induction (0), neg_recovery (0), pos_induction (0), pos_recovery (0)</td><td class='status-warn'>⚠ non-responder</td></tr>
+<tr><td class='mono'>r4755</td><td>5</td><td>2.2</td><td>0</td><td>4</td><td class='mono' style='font-size:.78rem'>baseline (1), neg_induction (0), neg_recovery (0), pos_induction (4)</td><td class='status-warn'>⚠ low responder</td></tr>
+<tr><td class='mono'>e5510</td><td>5</td><td>20</td><td>6</td><td>0</td><td class='mono' style='font-size:.78rem'>—</td><td class='status-ok'>✓ ok</td></tr>
+<tr><td class='mono'>e9967</td><td>5</td><td>58.8</td><td>44</td><td>0</td><td class='mono' style='font-size:.78rem'>—</td><td class='status-ok'>✓ ok</td></tr>
+<tr><td class='mono'>g2313</td><td>5</td><td>66.8</td><td>39</td><td>0</td><td class='mono' style='font-size:.78rem'>—</td><td class='status-ok'>✓ ok</td></tr>
+<tr><td class='mono'>n2026</td><td>5</td><td>43.8</td><td>9</td><td>0</td><td class='mono' style='font-size:.78rem'>—</td><td class='status-ok'>✓ ok</td></tr>
+<tr><td class='mono'>p7259</td><td>5</td><td>73.4</td><td>66</td><td>0</td><td class='mono' style='font-size:.78rem'>—</td><td class='status-ok'>✓ ok</td></tr>
+<tr><td class='mono'>s0943</td><td>5</td><td>50</td><td>19</td><td>0</td><td class='mono' style='font-size:.78rem'>—</td><td class='status-ok'>✓ ok</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">Signal Range Check</div>
+      <h2>CDA.SCR values</h2>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Metric</th><th>N values</th><th>Min</th><th>Max</th>
+        <th>Expected range</th><th>Anomalies</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="mono">CDA.SCR</td>
+          <td>40</td>
+          <td>0.0012</td>
+          <td>0.1004</td>
+          <td>0 – ~5 µS</td>
+          <td class='status-ok'>✓ none</td>
+        </tr>
+      </tbody>
+    </table></div>
+  </section></div>
+  <div id="tab-kubios"   class="tab-content"><div class="status-row">
+    <div class="tile blue"><div class="tile-value">10</div>
+      <div class="tile-label">Participants<br>with Kubios files</div></div>
+    <div class="tile ok">
+      <div class="tile-value">10/10</div>
+      <div class="tile-label">In batch summary<br>and _hrv files</div></div>
+    <div class="tile warn">
+      <div class="tile-value">9/10</div>
+      <div class="tile-label">Complete<br>block sets</div></div>
+    <div class="tile ok">
+      <div class="tile-value">✓</div>
+      <div class="tile-label">HR / RMSSD<br>out-of-range values</div></div>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">File Coverage</div>
+      <h2>Kubios files per participant</h2>
+      <p>Participant IDs are looked for in the batch summary (<code>KubiosHRVresults*.csv</code>,
+         column <code>FileName</code>) and in <code>{pid}_*_hrv.csv</code> files. Metrics come from
+         the <code>_hrv</code> file when there is one, otherwise from the batch summary (samples S1–S5
+         taken as baseline, negative_induction, negative_recovery, positive_induction,
+         positive_recovery). Expect both files and 5 blocks per participant.</p>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Participant</th><th>Batch summary</th><th>_hrv file</th>
+        <th>Files found</th><th>Metrics from</th><th>Blocks</th><th>Status</th></tr></thead>
+      <tbody><tr><td class='mono'>s0723</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>2</td><td class='status-warn'>⚠ 2/5 blocks</td></tr>
+<tr><td class='mono'>e5510</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>e9967</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>g2313</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>i4155</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>n2026</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>p7259</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>r2433</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>r4755</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>s0943</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">HRV Metrics by Block</div>
+      <h2>Mean HR and HRV across participants</h2>
+      <p>HR in bpm; RMSSD and SDNN in ms. Flag: HR outside 40–120 bpm, RMSSD outside 5–200 ms.</p>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Block</th><th>N participants</th><th>Mean HR (bpm)</th>
+        <th>Mean RMSSD (ms)</th><th>Mean SDNN (ms)</th></tr></thead>
+      <tbody><tr><td class='mono'>baseline</td><td>9</td><td>75.9</td><td>37.2</td><td>43.6</td></tr>
+<tr><td class='mono'>negative_induction</td><td>10</td><td>75</td><td>38.8</td><td>38.6</td></tr>
+<tr><td class='mono'>negative_recovery</td><td>9</td><td>76.8</td><td>31.9</td><td>37.5</td></tr>
+<tr><td class='mono'>positive_induction</td><td>10</td><td>77.6</td><td>34.3</td><td>38.6</td></tr>
+<tr><td class='mono'>positive_recovery</td><td>9</td><td>78.6</td><td>30.3</td><td>37.8</td></tr></tbody>
+    </table></div>
+    <div class="table-wrap" style="margin-top:1rem;"><table>
+      <thead><tr><th>Metric</th><th>N values</th><th>Min</th><th>Max</th>
+        <th>Expected range</th><th>Anomalies</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">mean_hr_bpm</td><td>47</td><td>59.1</td><td>90.1</td><td>40–120 bpm</td><td class='status-ok'>✓ none</td></tr>
+        <tr><td class="mono">rmssd_ms</td><td>47</td><td>12.7</td><td>75.3</td><td>5–200 ms</td><td class='status-ok'>✓ none</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+        <div class="section-head">
+          <div class="section-label">Beat Counts</div>
+          <h2>Beats per block (from _hrv files)</h2>
+          <p>Flag blocks with &lt; 100 beats (expect ~150–250 for a 3-minute block).</p>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Participant</th><th>Block</th>
+            <th>N beats</th><th>Status</th></tr></thead>
+          <tbody><tr><td class='mono'>e5510</td><td class='mono'>baseline</td><td>215</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>e5510</td><td class='mono'>negative_induction</td><td>213</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>e5510</td><td class='mono'>negative_recovery</td><td>227</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>e5510</td><td class='mono'>positive_induction</td><td>227</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>e5510</td><td class='mono'>positive_recovery</td><td>233</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>e9967</td><td class='mono'>baseline</td><td>232</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>e9967</td><td class='mono'>negative_induction</td><td>226</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>e9967</td><td class='mono'>negative_recovery</td><td>235</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>e9967</td><td class='mono'>positive_induction</td><td>232</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>e9967</td><td class='mono'>positive_recovery</td><td>236</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>g2313</td><td class='mono'>baseline</td><td>255</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>g2313</td><td class='mono'>negative_induction</td><td>253</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>g2313</td><td class='mono'>negative_recovery</td><td>257</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>g2313</td><td class='mono'>positive_induction</td><td>265</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>g2313</td><td class='mono'>positive_recovery</td><td>262</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>i4155</td><td class='mono'>baseline</td><td>210</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>i4155</td><td class='mono'>negative_induction</td><td>203</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>i4155</td><td class='mono'>negative_recovery</td><td>201</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>i4155</td><td class='mono'>positive_induction</td><td>224</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>i4155</td><td class='mono'>positive_recovery</td><td>219</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>n2026</td><td class='mono'>baseline</td><td>182</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>n2026</td><td class='mono'>negative_induction</td><td>175</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>n2026</td><td class='mono'>negative_recovery</td><td>191</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>n2026</td><td class='mono'>positive_induction</td><td>195</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>n2026</td><td class='mono'>positive_recovery</td><td>192</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>p7259</td><td class='mono'>baseline</td><td>250</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>p7259</td><td class='mono'>negative_induction</td><td>244</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>p7259</td><td class='mono'>negative_recovery</td><td>249</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>p7259</td><td class='mono'>positive_induction</td><td>252</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>p7259</td><td class='mono'>positive_recovery</td><td>247</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>r2433</td><td class='mono'>baseline</td><td>201</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>r2433</td><td class='mono'>negative_induction</td><td>185</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>r2433</td><td class='mono'>negative_recovery</td><td>198</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>r2433</td><td class='mono'>positive_induction</td><td>213</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>r2433</td><td class='mono'>positive_recovery</td><td>210</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>r4755</td><td class='mono'>baseline</td><td>262</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>r4755</td><td class='mono'>negative_induction</td><td>260</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>r4755</td><td class='mono'>negative_recovery</td><td>270</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>r4755</td><td class='mono'>positive_induction</td><td>279</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>r4755</td><td class='mono'>positive_recovery</td><td>264</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>s0723</td><td class='mono'>baseline</td><td>4</td><td class='status-warn'>⚠ low</td></tr>
+<tr><td class='mono'>s0723</td><td class='mono'>negative_induction</td><td>249</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>s0723</td><td class='mono'>negative_recovery</td><td>4</td><td class='status-warn'>⚠ low</td></tr>
+<tr><td class='mono'>s0723</td><td class='mono'>positive_induction</td><td>254</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>s0723</td><td class='mono'>positive_recovery</td><td>4</td><td class='status-warn'>⚠ low</td></tr>
+<tr><td class='mono'>s0943</td><td class='mono'>baseline</td><td>240</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>s0943</td><td class='mono'>negative_induction</td><td>218</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>s0943</td><td class='mono'>negative_recovery</td><td>245</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>s0943</td><td class='mono'>positive_induction</td><td>262</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>s0943</td><td class='mono'>positive_recovery</td><td>256</td><td class='status-ok'>✓</td></tr></tbody>
+        </table></div>
+      </section></div>
+  <div id="tab-biometrics" class="tab-content"><div class="status-row">
+    <div class="tile blue"><div class="tile-value">10</div>
+      <div class="tile-label">Sessions in<br>raw_psychopy</div></div>
+    <div class="tile ok">
+      <div class="tile-value">10/10</div>
+      <div class="tile-label">With<br>_biometrics.csv</div></div>
+    <div class="tile ok">
+      <div class="tile-value">10/10</div>
+      <div class="tile-label">With<br>_clocksync.json</div></div>
+    <div class="tile warn">
+      <div class="tile-value">5</div>
+      <div class="tile-label">Sessions<br>with issues</div></div>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">Raw Files</div>
+      <h2>Biometrics and clock-sync files per session</h2>
+      <p>From <code>PSYCHOPY_DATA_DIR</code>: <code>{pid}_*_biometrics.csv</code> (webcam frames
+         streamed during the experiment) and <code>{pid}_*_clocksync.json</code> (clock readings
+         needed to align them: t_main, t_wall, t_mono, mono_reset, global_reset). Sessions with a
+         PsychoPy data file but no biometrics are listed too. Files under 1 MB are flagged as almost empty. <em>In combined</em> = participant appears in
+         <code>biosignals2_webcambiometrics.csv</code>.</p>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Participant</th><th>_biometrics.csv</th><th>Size (MB)</th>
+        <th>_clocksync.json</th><th>In combined</th><th>Status</th></tr></thead>
+      <tbody><tr><td class='mono'>i4155</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>43.0</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ not in combined file</td></tr>
+<tr><td class='mono'>r2433</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>0.0</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ _biometrics.csv only 1 KB (almost no frames); not in combined file</td></tr>
+<tr><td class='mono'>r4755</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>46.0</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ not in combined file</td></tr>
+<tr><td class='mono'>s0723</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>0.0</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ _biometrics.csv only 1 KB (almost no frames); not in combined file</td></tr>
+<tr><td class='mono'>s0943</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>0.0</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ _biometrics.csv only 1 KB (almost no frames); not in combined file</td></tr>
+<tr><td class='mono'>e5510</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>45.6</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>e9967</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>51.6</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>g2313</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>43.3</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>n2026</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>49.2</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>p7259</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>43.7</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok'>✓ OK</td></tr></tbody>
+    </table></div>
+  </section><div class="status-row" style="margin-top:2.75rem">
+    <div class="tile blue"><div class="tile-value">5</div>
+      <div class="tile-label">Participants in<br>combined file</div></div>
+    <div class="tile blue"><div class="tile-value">133,788</div>
+      <div class="tile-label">Total<br>frames</div></div>
+    <div class="tile ok">
+      <div class="tile-value">✓</div>
+      <div class="tile-label">Participants<br>low peak rate</div></div>
+    <div class="tile warn">
+      <div class="tile-value">3821</div>
+      <div class="tile-label">BPM values<br>outside 40–120</div></div>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">Combined File — Frame Counts &amp; Signal Quality</div>
+      <h2>Frames per participant per condition</h2>
+      <p>From <code>biosignals2_webcambiometrics.csv</code>. Low frame count (&lt; 500) may indicate
+         recording gaps. Peak rate &lt; 1% suggests rPPG peak detection failed for that phase.</p>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th>Participant</th><th>Condition</th>
+        <th>Frames</th><th>Frame QC</th>
+        <th>Peak rate</th><th>Peak QC</th>
+        <th>BPM min</th><th>BPM max</th>
+      </tr></thead>
+      <tbody><tr><td class='mono'>e5510</td><td class='mono'>baseline</td><td>5400</td><td class='status-ok'>✓</td><td>4.6%</td><td class='status-ok'>✓</td><td>62.1</td><td>124.1</td></tr>
+<tr><td class='mono'>e5510</td><td class='mono'>negative_induction</td><td>5158</td><td class='status-ok'>✓</td><td>4.4%</td><td class='status-ok'>✓</td><td>65.5</td><td>124.1</td></tr>
+<tr><td class='mono'>e5510</td><td class='mono'>post_negative_induction_recovery</td><td>5399</td><td class='status-ok'>✓</td><td>4.3%</td><td class='status-ok'>✓</td><td>59</td><td>109.1</td></tr>
+<tr><td class='mono'>e5510</td><td class='mono'>positive_induction</td><td>5400</td><td class='status-ok'>✓</td><td>4.2%</td><td class='status-ok'>✓</td><td>64.3</td><td>112.5</td></tr>
+<tr><td class='mono'>e5510</td><td class='mono'>post_positive_induction_recovery</td><td>5399</td><td class='status-ok'>✓</td><td>4.5%</td><td class='status-ok'>✓</td><td>64.3</td><td>144</td></tr>
+<tr><td class='mono'>e9967</td><td class='mono'>baseline</td><td>5399</td><td class='status-ok'>✓</td><td>4.9%</td><td class='status-ok'>✓</td><td>64.3</td><td>150</td></tr>
+<tr><td class='mono'>e9967</td><td class='mono'>negative_induction</td><td>5160</td><td class='status-ok'>✓</td><td>4.8%</td><td class='status-ok'>✓</td><td>63.2</td><td>156.5</td></tr>
+<tr><td class='mono'>e9967</td><td class='mono'>post_negative_induction_recovery</td><td>5399</td><td class='status-ok'>✓</td><td>4.7%</td><td class='status-ok'>✓</td><td>69.2</td><td>138.5</td></tr>
+<tr><td class='mono'>e9967</td><td class='mono'>positive_induction</td><td>5398</td><td class='status-ok'>✓</td><td>4.1%</td><td class='status-ok'>✓</td><td>57.1</td><td>116.1</td></tr>
+<tr><td class='mono'>e9967</td><td class='mono'>post_positive_induction_recovery</td><td>5400</td><td class='status-ok'>✓</td><td>4.2%</td><td class='status-ok'>✓</td><td>58.1</td><td>120</td></tr>
+<tr><td class='mono'>g2313</td><td class='mono'>baseline</td><td>5401</td><td class='status-ok'>✓</td><td>4.6%</td><td class='status-ok'>✓</td><td>64.3</td><td>144</td></tr>
+<tr><td class='mono'>g2313</td><td class='mono'>negative_induction</td><td>5161</td><td class='status-ok'>✓</td><td>4.7%</td><td class='status-ok'>✓</td><td>60</td><td>128.6</td></tr>
+<tr><td class='mono'>g2313</td><td class='mono'>post_negative_induction_recovery</td><td>5400</td><td class='status-ok'>✓</td><td>4.6%</td><td class='status-ok'>✓</td><td>60</td><td>124.1</td></tr>
+<tr><td class='mono'>g2313</td><td class='mono'>positive_induction</td><td>5400</td><td class='status-ok'>✓</td><td>4.6%</td><td class='status-ok'>✓</td><td>55.4</td><td>144</td></tr>
+<tr><td class='mono'>g2313</td><td class='mono'>post_positive_induction_recovery</td><td>5398</td><td class='status-ok'>✓</td><td>4.5%</td><td class='status-ok'>✓</td><td>63.2</td><td>128.6</td></tr>
+<tr><td class='mono'>n2026</td><td class='mono'>baseline</td><td>5400</td><td class='status-ok'>✓</td><td>4.8%</td><td class='status-ok'>✓</td><td>65.5</td><td>128.6</td></tr>
+<tr><td class='mono'>n2026</td><td class='mono'>negative_induction</td><td>5159</td><td class='status-ok'>✓</td><td>5.1%</td><td class='status-ok'>✓</td><td>65.5</td><td>133.3</td></tr>
+<tr><td class='mono'>n2026</td><td class='mono'>post_negative_induction_recovery</td><td>5400</td><td class='status-ok'>✓</td><td>4.6%</td><td class='status-ok'>✓</td><td>59</td><td>144</td></tr>
+<tr><td class='mono'>n2026</td><td class='mono'>positive_induction</td><td>5399</td><td class='status-ok'>✓</td><td>4.5%</td><td class='status-ok'>✓</td><td>52.9</td><td>124.1</td></tr>
+<tr><td class='mono'>n2026</td><td class='mono'>post_positive_induction_recovery</td><td>5400</td><td class='status-ok'>✓</td><td>4.2%</td><td class='status-ok'>✓</td><td>57.1</td><td>138.5</td></tr>
+<tr><td class='mono'>p7259</td><td class='mono'>baseline</td><td>5399</td><td class='status-ok'>✓</td><td>4.8%</td><td class='status-ok'>✓</td><td>67.9</td><td>128.6</td></tr>
+<tr><td class='mono'>p7259</td><td class='mono'>negative_induction</td><td>5160</td><td class='status-ok'>✓</td><td>4.8%</td><td class='status-ok'>✓</td><td>66.7</td><td>133.3</td></tr>
+<tr><td class='mono'>p7259</td><td class='mono'>post_negative_induction_recovery</td><td>5400</td><td class='status-ok'>✓</td><td>4.6%</td><td class='status-ok'>✓</td><td>60</td><td>133.3</td></tr>
+<tr><td class='mono'>p7259</td><td class='mono'>positive_induction</td><td>5399</td><td class='status-ok'>✓</td><td>4.8%</td><td class='status-ok'>✓</td><td>62.1</td><td>133.3</td></tr>
+<tr><td class='mono'>p7259</td><td class='mono'>post_positive_induction_recovery</td><td>5400</td><td class='status-ok'>✓</td><td>4.9%</td><td class='status-ok'>✓</td><td>64.3</td><td>133.3</td></tr></tbody>
+    </table></div>
+  </section></div>
+  <div id="tab-video"    class="tab-content"><div class="status-row">
+    <div class="tile blue"><div class="tile-value">10</div>
+      <div class="tile-label">Participants<br>in video folder</div></div>
+    <div class="tile warn">
+      <div class="tile-value">2/4</div>
+      <div class="tile-label">PNG participants with<br>zip + 1:1 AVI + timestamps</div></div>
+    <div class="tile blue"><div class="tile-value">6</div>
+      <div class="tile-label">Old AVI<br>sessions</div></div>
+    <div class="tile warn">
+      <div class="tile-value">1</div>
+      <div class="tile-label">Camera below<br>20 fps</div></div>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">Video Recordings</div>
+      <h2>Video files per participant (Box video folder)</h2>
+      <p>Every PNG participant should have three files directly in <code>VIDEO_DIR</code>:
+         <code>{pid}_frames.zip</code> (zipped PNG frames), <code>{pid}_1to1_ffv1.avi</code>
+         (1:1 FFV1 video from 000_convert_png_to_avi.py) and <code>{pid}_frame_timestamps.csv</code>.
+         Old sessions recorded straight to AVI need <code>{pid}_recording.avi</code> and
+         <code>{pid}_frame_timestamps.csv</code>. Subfolders (e.g. <code>png_data</code>,
+         <code>pilot_archive</code>) are not searched. Camera fps is worked out from the frame
+         timestamps; below 20 fps the video is probably not usable for FaceReader.</p>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Participant</th><th>Type</th><th>Frames zip</th><th>1:1 FFV1 AVI</th>
+        <th>Timestamps</th><th>Zip (GB)</th><th>AVI (GB)</th><th>Frames</th><th>Duration (min)</th>
+        <th>Camera fps</th><th>Status</th></tr></thead>
+      <tbody><tr><td class='mono'>e9967</td><td>Old AVI</td><td style='text-align:center;color:var(--text-3)'>n/a</td><td style='text-align:center;color:var(--text-3)'>n/a</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>—</td><td>0.02</td><td> 1,413</td><td>23.6</td><td>1.00</td><td class='status-warn'>⚠ camera only 1.0 fps</td></tr>
+<tr><td class='mono'>i4155</td><td>PNG</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>8.31</td><td>—</td><td>35,496</td><td>19.7</td><td>30.03</td><td class='status-warn'>⚠ no 1to1_ffv1.avi</td></tr>
+<tr><td class='mono'>r4755</td><td>PNG</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>10.04</td><td>—</td><td>37,583</td><td>20.9</td><td>30.02</td><td class='status-warn'>⚠ no 1to1_ffv1.avi</td></tr>
+<tr><td class='mono'>e5510</td><td>Old AVI</td><td style='text-align:center;color:var(--text-3)'>n/a</td><td style='text-align:center;color:var(--text-3)'>n/a</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>—</td><td>0.91</td><td>37,065</td><td>20.6</td><td>30.05</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>g2313</td><td>Old AVI</td><td style='text-align:center;color:var(--text-3)'>n/a</td><td style='text-align:center;color:var(--text-3)'>n/a</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>—</td><td>0.84</td><td>35,247</td><td>19.6</td><td>30.05</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>n2026</td><td>Old AVI</td><td style='text-align:center;color:var(--text-3)'>n/a</td><td style='text-align:center;color:var(--text-3)'>n/a</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>—</td><td>1.25</td><td>40,346</td><td>22.4</td><td>30.05</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>p7259</td><td>Old AVI</td><td style='text-align:center;color:var(--text-3)'>n/a</td><td style='text-align:center;color:var(--text-3)'>n/a</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>—</td><td>0.95</td><td>35,778</td><td>19.8</td><td>30.05</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>s0943</td><td>Old AVI</td><td style='text-align:center;color:var(--text-3)'>n/a</td><td style='text-align:center;color:var(--text-3)'>n/a</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>—</td><td>0.86</td><td>39,055</td><td>21.7</td><td>30.05</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>r2433</td><td>PNG</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>0.80</td><td>0.00</td><td>33,666</td><td>18.7</td><td>30.04</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>s0723</td><td>PNG</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>5.12</td><td>0.15</td><td>17,938</td><td>10.0</td><td>30.03</td><td class='status-ok'>✓ OK</td></tr></tbody>
+    </table></div>
+  </section></div>
+  <div id="tab-physiology" class="tab-content"><div class="status-row">
+    <div class="tile blue"><div class="tile-value">10</div>
+      <div class="tile-label">Participants with<br>physiology files</div></div>
+    <div class="tile ok">
+      <div class="tile-value">10/10</div>
+      <div class="tile-label">Session<br>recording</div></div>
+    <div class="tile ok">
+      <div class="tile-value">10/10</div>
+      <div class="tile-label">Trimmed to<br>protocol</div></div>
+    <div class="tile warn">
+      <div class="tile-value">0/10</div>
+      <div class="tile-label">Exported<br>to .mat</div></div>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">Raw Physiology</div>
+      <h2>BIOPAC files per participant</h2>
+      <p>From <code>PHYSIOLOGY_ROOT</code>, following the recording through the pipeline:
+         <code>entire_session_duration/{pid}_physiology.acq</code> as recorded, then
+         <code>experimental_protocol_duration/{pid}_physiology_trimmed.acq</code> and
+         <code>{pid}_eda_trimmed.acq</code> cut to the protocol, then
+         <code>exports/{pid}_physiology.mat</code> and <code>{pid}_eda.mat</code> for
+         Ledalab / PsPM. Session size flags a recording under 10 MB.</p>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Participant</th><th>Session .acq</th><th>Size (MB)</th>
+        <th>Trimmed physiology</th><th>Trimmed EDA</th>
+        <th>.mat physiology</th><th>.mat EDA</th><th>Status</th></tr></thead>
+      <tbody><tr><td class='mono'>e5510</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>55.8</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ no .mat export</td></tr>
+<tr><td class='mono'>e9967</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>73.7</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ no .mat export</td></tr>
+<tr><td class='mono'>g2313</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>56.3</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ no .mat export</td></tr>
+<tr><td class='mono'>i4155</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>60.6</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ no .mat export</td></tr>
+<tr><td class='mono'>n2026</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>78.6</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ no .mat export</td></tr>
+<tr><td class='mono'>p7259</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>42.7</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ no .mat export</td></tr>
+<tr><td class='mono'>r2433</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>56.0</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ no .mat export</td></tr>
+<tr><td class='mono'>r4755</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>63.9</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ no .mat export</td></tr>
+<tr><td class='mono'>s0723</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>58.7</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ no .mat export</td></tr>
+<tr><td class='mono'>s0943</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>70.8</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ no .mat export</td></tr></tbody>
+    </table></div>
+  </section></div>
+  <div id="tab-facereader" class="tab-content"><div class="status-row">
+    <div class="tile blue"><div class="tile-value">1</div>
+      <div class="tile-label">Participants with<br>FaceReader files</div></div>
+    <div class="tile warn">
+      <div class="tile-value">0/1</div>
+      <div class="tile-label">All four<br>files present</div></div>
+    <div class="tile warn">
+      <div class="tile-value">0/1</div>
+      <div class="tile-label">HRV for<br>all 5 blocks</div></div>
+    <div class="tile warn">
+      <div class="tile-value">1</div>
+      <div class="tile-label">Participants<br>with issues</div></div>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">FaceReader Exports</div>
+      <h2>FaceReader files per participant</h2>
+      <p>From <code>FACEREADER_RESULTS_DIR</code>: <code>{pid}_detailed.txt</code>,
+         <code>{pid}_heart beat log.txt</code>, <code>{pid}_state.txt</code> and
+         <code>{pid}_hrv_per_block.csv</code> (from 03_compute_hrv_per_block_facereader.py).
+         Beats = heartbeats in the heart beat log (flag below 100).
+         Video and fps are read from the heart beat log header.</p>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Participant</th><th>Detailed</th><th>Heart beat log</th><th>State</th>
+        <th>HRV per block</th><th>Beats</th><th>HRV blocks</th><th>Analysed video</th>
+        <th>Video fps</th><th>Status</th></tr></thead>
+      <tbody><tr><td class='mono'>s0943</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>1702</td><td>—</td><td class='mono' style='font-size:.78rem'>s0943_recording.avi</td><td>30.006</td><td class='status-warn'>⚠ no hrv_per_block.csv</td></tr></tbody>
+    </table></div>
+  </section></div>
+  <div id="tab-questionnaires" class="tab-content"><div class="status-row">
+    <div class="tile blue"><div class="tile-value">8</div>
+      <div class="tile-label">Participants<br>scored</div></div>
+    <div class="tile warn">
+      <div class="tile-value">8/10</div>
+      <div class="tile-label">IDs matched<br>to PsychoPy</div></div>
+    <div class="tile warn">
+      <div class="tile-value">4/6</div>
+      <div class="tile-label">Scales fully<br>scored</div></div>
+    <div class="tile ok">
+      <div class="tile-value">✓</div>
+      <div class="tile-label">PHQ-9 item 9<br>flags</div></div>
+  </div>
+
+  <div class="note"><strong>DAS-SF1/SF2 are empty</strong> for every participant — check that
+       the block is displayed in the Qualtrics survey flow.</div>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">Scale Completeness</div>
+      <h2>Scored totals and range checks</h2>
+      <p>Totals are only computed when every item is answered. Partial = some items missing;
+         blank = all items missing.</p>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Scale</th><th>Items</th><th>Scored</th><th>Partial</th><th>Blank</th>
+        <th>Min</th><th>Max</th><th>Valid range</th><th>Status</th></tr></thead>
+      <tbody><tr><td class='mono'>GAD-7</td><td>7</td><td>8/8</td><td>0</td><td>0</td><td>0</td><td>7</td><td>0–21</td><td class='status-ok'>✓ complete</td></tr>
+<tr><td class='mono'>PHQ-9</td><td>9</td><td>8/8</td><td>0</td><td>0</td><td>0</td><td>8</td><td>0–27</td><td class='status-ok'>✓ complete</td></tr>
+<tr><td class='mono'>AQ-10</td><td>10</td><td>8/8</td><td>0</td><td>0</td><td>1</td><td>8</td><td>0–10</td><td class='status-ok'>✓ complete</td></tr>
+<tr><td class='mono'>PAQ-24</td><td>24</td><td>8/8</td><td>0</td><td>0</td><td>53</td><td>149</td><td>24–168</td><td class='status-ok'>✓ complete</td></tr>
+<tr><td class='mono'>DAS-SF1</td><td>9</td><td>0/8</td><td>0</td><td>8</td><td>—</td><td>—</td><td>9–63</td><td class='status-warn'>⚠ no scores</td></tr>
+<tr><td class='mono'>DAS-SF2</td><td>9</td><td>0/8</td><td>0</td><td>8</td><td>—</td><td>—</td><td>9–63</td><td class='status-warn'>⚠ no scores</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">Participant Cross-check</div>
+      <h2>Questionnaire IDs vs PsychoPy sessions</h2>
+      <p>IDs compared case-insensitively. Mismatches usually mean a typo in the Qualtrics
+         participant ID field or a session not yet run.</p>
+    </div>
+    
+    <div class="table-wrap"><table>
+      <thead><tr><th>Participant</th><th>Questionnaire</th><th>PsychoPy</th>
+        <th>Status</th></tr></thead>
+      <tbody><tr><td class='mono'>E5510</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr>
+<tr><td class='mono'>E9967</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr>
+<tr><td class='mono'>G2313</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr>
+<tr><td class='mono'>I4155</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr>
+<tr><td class='mono'>N2026</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr>
+<tr><td class='mono'>P7259</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr>
+<tr><td class='mono'>R2433</td><td>—</td><td>✓</td><td class='status-warn'>⚠ no questionnaire</td></tr>
+<tr><td class='mono'>R4755</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr>
+<tr><td class='mono'>S0723</td><td>—</td><td>✓</td><td class='status-warn'>⚠ no questionnaire</td></tr>
+<tr><td class='mono'>S0943</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">Clinical Screening</div>
+      <h2>Participants above screening cut-offs</h2>
+      <p>Screening flags only, not diagnoses.</p>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Flag</th><th>N</th><th>Participants</th><th>Status</th></tr></thead>
+      <tbody><tr><td>GAD-7 ≥ 10 (possible GAD)</td><td>0</td><td class='mono'>—</td><td class='status-ok'>✓ none</td></tr>
+<tr><td>PHQ-9 ≥ 10 (possible depression)</td><td>0</td><td class='mono'>—</td><td class='status-ok'>✓ none</td></tr>
+<tr><td>PHQ-9 item 9 ≥ 1 (suicidal ideation)</td><td>0</td><td class='mono'>—</td><td class='status-ok'>✓ none</td></tr>
+<tr><td>AQ-10 ≥ 6 (possible autism)</td><td>2</td><td class='mono'>N2026, R4755</td><td class='status-warn'>⚠ flagged</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">Demographics</div>
+      <h2>Sample characteristics</h2>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Variable</th><th>Summary</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">age</td><td>29.0 (SD 4.4), range 26–39 · n = 8</td></tr>
+        <tr><td class="mono">sex_at_birth</td><td>Female (7) · Male (1)</td></tr>
+        <tr><td class="mono">gender_id</td><td>Yes (8)</td></tr>
+        <tr><td class="mono">ethnicity</td><td>Asian (any background) (1) · Black (any background) (1) · White (any background) (6)</td></tr>
+      </tbody>
+    </table></div>
+    <div class="note-ok" style="margin-top:.75rem;">
+      <strong>Pipeline:</strong> Qualtrics export &#8594; 04_questionnaire_analysis.Rmd &#8594;
+      biosignals2_questionnaires_scored.csv</div>
+  </section></div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+document.getElementById("gen-date").textContent =
+  new Date().toLocaleDateString("en-GB", {day:"numeric",month:"long",year:"numeric"});
+
+// Tabs
+document.querySelectorAll(".tab-btn").forEach(function(btn) {
+  btn.addEventListener("click", function() {
+    document.querySelectorAll(".tab-btn").forEach(function(b) { b.classList.remove("active"); });
+    document.querySelectorAll(".tab-content").forEach(function(c) { c.classList.remove("active"); });
+    btn.classList.add("active");
+    document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+  });
+});
+</script>

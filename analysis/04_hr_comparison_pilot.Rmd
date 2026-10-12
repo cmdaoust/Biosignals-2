@@ -1,0 +1,581 @@
+---
+title: "Heart Rate Comparison: FaceReader vs. Webcam Biometrics"
+subtitle: "Participant 002 – Carmen Pilot"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: flatly
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE,
+                      fig.width = 10, fig.height = 5)
+```
+
+## Overview
+
+This document compares heart rate (HR) and heart rate variability (HRV) estimates from three sources recorded simultaneously during the Biosignals2 pilot session:
+
+- **ECG (Kubios)** – R-peak IBIs from a BIOPAC contact ECG, analysed in Kubios HRV Scientific 4.3 with automatic beat correction. Treated as the reference/gold standard.
+- **FaceReader** – beat-by-beat IBIs extracted from facial video via Noldus FaceReader.
+- **Webcam Biometrics** – frame-level rPPG signal with peak detection, collected via the PsychoPy plugin.
+
+All sources are segmented into the five experimental blocks. Agreement is evaluated against ECG.
+
+------------------------------------------------------------------------
+
+## Setup
+
+```{r libraries}
+library(tidyverse)
+library(lubridate)
+library(jsonlite)
+library(here)
+library(knitr)
+library(patchwork)
+```
+
+```{r config}
+# Load project paths from config.R at the repo root.
+# Copy config_template.R to config.R and fill in SERVER_ROOT for your machine.
+config_path <- here::here("config.R")
+if (!file.exists(config_path)) {
+  stop("config.R not found at: ", config_path,
+       "\nCopy config_template.R to config.R and fill in your paths.")
+}
+source(config_path)
+```
+
+------------------------------------------------------------------------
+
+## 1. Load data
+
+### 1.1 Block boundaries
+
+```{r load-blocks}
+blocks <- read_csv(
+  file.path(BLOCK_ONSETS_DIR, "002_events_blocks_psychopy_r.csv")
+) %>%
+  rename(
+    block        = block,
+    start_s      = nearest_frame_start_t,
+    end_s        = nearest_frame_end_t
+  ) %>%
+  mutate(block = factor(block,
+                        levels = c("Baseline", "Negative Induction",
+                                   "Negative Recovery", "Positive Induction",
+                                   "Positive Recovery")))
+
+```
+
+### 1.2 FaceReader IBI log
+
+```{r load-facereader}
+# Header occupies lines 1–11; data starts at line 12.
+# Columns: Time (HH:MM:SS.mmm) and Interbeat Interval (s)
+fr_raw <- read_table(
+  file.path(FACEREADER_DIR,
+            "002_carmen_pilot_video_20260612_113452_heart beat log.txt"),
+  skip      = 11,
+  col_names = c("time_str", "ibi_s"),
+  col_types = "cd"
+)
+
+# Convert HH:MM:SS.mmm → decimal seconds
+fr <- fr_raw %>%
+  mutate(
+    t_s = period_to_seconds(hms(time_str)),
+    hr  = 60 / ibi_s
+  ) %>%
+  filter(!is.na(ibi_s))
+
+cat(sprintf("FaceReader: %d IBI observations, %.1f – %.1f s\n",
+            nrow(fr), min(fr$t_s), max(fr$t_s)))
+```
+
+### 1.3 ECG – Kubios HRV output
+
+```{r load-kubios}
+# Kubios summary: one row per block, pre-computed HRV metrics (automatic beat correction applied)
+ecg_summary <- read_csv(
+  file.path(KUBIOS_DIR, "002_carmen_pilot_kubios_summary.csv")
+)
+
+# Per-beat RR intervals extracted from the Kubios wide CSV
+ecg_rr_raw <- read_csv(
+  file.path(KUBIOS_DIR, "002_carmen_pilot_kubios_rr.csv")
+)
+
+# Map Kubios snake_case block names to the factor levels used throughout
+block_map <- c(
+  "baseline"            = "Baseline",
+  "negative_induction"  = "Negative Induction",
+  "negative_recovery"   = "Negative Recovery",
+  "positive_induction"  = "Positive Induction",
+  "positive_recovery"   = "Positive Recovery"
+)
+
+ecg_metrics <- ecg_summary %>%
+  mutate(
+    block   = factor(block_map[block], levels = levels(blocks$block)),
+    mean_hr = mean_hr_bpm,
+    sd_hr   = NA_real_,   # not exported in this summary
+    source  = "ECG (Kubios)"
+  ) %>%
+  select(source, block, mean_hr, sd_hr, sdnn_ms, rmssd_ms,
+         lf_ms2_fft, hf_ms2_fft, lf_hf_ratio)
+
+ecg_rr <- ecg_rr_raw %>%
+  mutate(
+    block  = factor(block_map[block], levels = levels(blocks$block)),
+    ibi_ms = rr_s * 1000,
+    hr     = 60 / rr_s,
+    source = "ECG (Kubios)"
+  )
+
+cat("ECG (Kubios): beats per block\n")
+print(table(ecg_rr$block))
+```
+
+### 1.4 Webcam biometrics
+
+```{r load-biometrics}
+# Clock sync gives the monotonic time offset at recording start.
+clk <- fromJSON(
+  file.path(PSYCHOPY_DATA_DIR,
+            "002_carmen_pilot_Biosignals2_internalcamera_Psychopy_2026-06-12_10h55.04.705_clocksync.json")
+)
+mono_reset_s <- clk$mono_reset  # system monotonic seconds at recording start
+
+bm_raw <- read_csv(
+  file.path(PSYCHOPY_DATA_DIR,
+            "002_carmen_pilot_Biosignals2_internalcamera_Psychopy_2026-06-12_10h55.04.705_biometrics.csv")
+)
+
+# video_time is in milliseconds on the same monotonic clock.
+# Subtracting mono_reset (converted to ms) gives seconds since recording start.
+bm <- bm_raw %>%
+  mutate(
+    t_s      = video_time / 1000 - mono_reset_s,
+    is_peak  = hr_peak == "True" | hr_peak == TRUE,
+    # Force numeric — some rows have "None" strings which read_csv types as character
+    bpm_peak = suppressWarnings(as.numeric(bpm_peak)),
+    bpm_fft  = suppressWarnings(as.numeric(bpm_fft))
+  ) %>%
+  select(t_s, hr_raw, hr_filtered, is_peak, bpm_peak, bpm_fft)
+
+cat(sprintf("Biometrics: %d frames, %.1f – %.1f s\n",
+            nrow(bm), min(bm$t_s), max(bm$t_s)))
+```
+
+------------------------------------------------------------------------
+
+## 2. Assign observations to blocks
+
+```{r assign-blocks}
+assign_block <- function(t_s, blocks) {
+  block_name <- NA_character_
+  for (i in seq_len(nrow(blocks))) {
+    if (t_s >= blocks$start_s[i] & t_s <= blocks$end_s[i]) {
+      block_name <- as.character(blocks$block[i])
+      break
+    }
+  }
+  block_name
+}
+
+fr <- fr %>%
+  rowwise() %>%
+  mutate(block = assign_block(t_s, blocks)) %>%
+  ungroup() %>%
+  filter(!is.na(block)) %>%
+  mutate(block = factor(block, levels = levels(blocks$block)))
+
+# Use bpm_fft (FFT-based estimate) — more stable than bpm_peak which reflects
+# instantaneous inter-peak intervals and is noisy, especially during warm-up.
+# bpm_peak = 60 / (time since last detected peak): inflated when peaks are sparse.
+# bpm_fft  = HR estimated from the dominant frequency in the rPPG signal window.
+bm_clean <- bm %>%
+  filter(!is.na(bpm_fft), bpm_fft > 0) %>%
+  rowwise() %>%
+  mutate(block = assign_block(t_s, blocks)) %>%
+  ungroup() %>%
+  filter(!is.na(block)) %>%
+  mutate(block = factor(block, levels = levels(blocks$block)))
+
+# Extract detected peaks for IBI calculation
+bm_peaks <- bm %>%
+  filter(is_peak == TRUE) %>%
+  rowwise() %>%
+  mutate(block = assign_block(t_s, blocks)) %>%
+  ungroup() %>%
+  filter(!is.na(block)) %>%
+  mutate(block = factor(block, levels = levels(blocks$block))) %>%
+  arrange(t_s)
+```
+
+------------------------------------------------------------------------
+
+## 3. Compute HR and HRV per block
+
+HRV is quantified by:
+
+- **RMSSD** – root mean square of successive IBI differences (reflects short-term / parasympathetic activity)
+- **SDNN** – standard deviation of IBIs (overall HRV)
+
+### 3.1 ECG (Kubios) metrics
+
+```{r ecg-metrics}
+kable(ecg_metrics %>%
+        select(block, mean_hr, sdnn_ms, rmssd_ms, lf_ms2_fft, hf_ms2_fft, lf_hf_ratio),
+      digits = 2,
+      caption = "ECG (Kubios): HR and HRV per block (automatic beat correction, FFT spectrum)")
+```
+
+### 3.2 FaceReader metrics
+
+```{r fr-metrics}
+# FaceReader is used exactly as output — no filtering applied.
+fr_filt <- fr
+
+fr_metrics <- fr_filt %>%
+  group_by(block) %>%
+  summarise(
+    n_beats   = n(),
+    mean_hr   = mean(hr, na.rm = TRUE),
+    sd_hr     = sd(hr,  na.rm = TRUE),
+    sdnn_ms   = sd(ibi_s * 1000, na.rm = TRUE),
+    rmssd_ms  = sqrt(mean(diff(ibi_s * 1000)^2, na.rm = TRUE)),
+    .groups   = "drop"
+  ) %>%
+  mutate(source = "FaceReader")
+
+kable(fr_metrics %>% select(block, n_beats, mean_hr, sd_hr, sdnn_ms, rmssd_ms),
+      digits = 2, caption = "FaceReader: HR and HRV per block")
+```
+
+### 3.3 Webcam biometrics metrics
+
+```{r bm-metrics}
+# Expected IBI per block from bpm_fft (FFT-based HR, reliable)
+# This gives a clean reference unaffected by the excess false peaks.
+bpm_fft_ref <- bm_clean %>%
+  group_by(block) %>%
+  summarise(ref_ibi_s = 60 / mean(bpm_fft, na.rm = TRUE), .groups = "drop")
+
+# IBI from consecutive peaks
+bm_ibi <- bm_peaks %>%
+  arrange(t_s) %>%
+  group_by(block) %>%
+  mutate(ibi_s = c(NA, diff(t_s))) 
+
+
+# Mean HR from bpm_fft across all frames per block (FFT-based, more stable)
+bm_hr <- bm_clean %>%
+  group_by(block) %>%
+  summarise(
+    mean_hr = mean(bpm_fft, na.rm = TRUE),
+    sd_hr   = sd(bpm_fft,   na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# HRV from inter-peak intervals
+bm_hrv <- bm_ibi %>%
+  group_by(block) %>%
+  summarise(
+    n_beats  = n(),
+    sdnn_ms  = sd(ibi_s * 1000, na.rm = TRUE),
+    rmssd_ms = sqrt(mean(diff(ibi_s * 1000)^2, na.rm = TRUE)),
+    .groups  = "drop"
+  )
+
+bm_metrics <- left_join(bm_hr, bm_hrv, by = "block") %>%
+  mutate(source = "Webcam Biometrics")
+
+kable(bm_metrics %>% select(block, n_beats, mean_hr, sd_hr, sdnn_ms, rmssd_ms),
+      digits = 2, caption = "Webcam Biometrics: HR and HRV per block")
+```
+
+------------------------------------------------------------------------
+
+## 4. Summary comparison table
+
+```{r summary-table}
+# Combine all three sources; keep only the columns that are common
+all_metrics <- bind_rows(
+  ecg_metrics %>% select(source, block, mean_hr, sdnn_ms, rmssd_ms),
+  fr_metrics  %>% select(source, block, mean_hr, sdnn_ms, rmssd_ms),
+  bm_metrics  %>% select(source, block, mean_hr, sdnn_ms, rmssd_ms)
+)
+
+combined_metrics <- all_metrics %>%
+  pivot_longer(c(mean_hr, sdnn_ms, rmssd_ms),
+               names_to = "metric", values_to = "value") %>%
+  pivot_wider(names_from = source, values_from = value) %>%
+  mutate(
+    `FR vs ECG` = FaceReader      - `ECG (Kubios)`,
+    `BM vs ECG` = `Webcam Biometrics` - `ECG (Kubios)`,
+    metric = recode(metric,
+                    mean_hr  = "Mean HR (bpm)",
+                    sdnn_ms  = "SDNN (ms)",
+                    rmssd_ms = "RMSSD (ms)")
+  ) %>%
+  select(metric, block, `ECG (Kubios)`, FaceReader, `Webcam Biometrics`,
+         `FR vs ECG`, `BM vs ECG`)
+
+kable(combined_metrics, digits = 2,
+      caption = "HR and HRV comparison (ECG = reference; FR vs ECG = FaceReader − ECG; BM vs ECG = Webcam Biometrics − ECG)")
+
+
+# Combine all three sources; keep only the columns that are common
+all_metrics <- bind_rows(
+  ecg_metrics %>% select(source, block, mean_hr, sdnn_ms, rmssd_ms),
+  fr_metrics  %>% select(source, block, mean_hr, sdnn_ms, rmssd_ms, n_beats),
+  bm_metrics  %>% select(source, block, mean_hr, sdnn_ms, rmssd_ms, n_beats)
+)
+
+#----
+# Compare just Webcam Biometrics and Facereader number of meaks detected
+#----
+block_durations <- blocks %>%
+  mutate(duration_s = end_s - start_s) %>%
+  select(block, duration_s)
+
+fr_web_metrics <- bind_rows(
+  fr_metrics %>% select(source, block, mean_hr, sdnn_ms, rmssd_ms, n_beats),
+  bm_metrics %>% select(source, block, mean_hr, sdnn_ms, rmssd_ms, n_beats)
+) %>%
+  left_join(block_durations, by = "block") %>%
+  mutate(mean_hr_calculated = (n_beats / duration_s) * 60) %>%
+  select(-mean_hr, -duration_s)
+
+combined_metrics_fr_web <- fr_web_metrics %>%
+  pivot_longer(c(mean_hr_calculated, sdnn_ms, rmssd_ms, n_beats),
+               names_to = "metric", values_to = "value") %>%
+  pivot_wider(names_from = source, values_from = value) %>%
+  mutate(
+    `FR vs BM` = FaceReader - `Webcam Biometrics`,
+    metric = recode(metric,
+                    mean_hr_calculated = "Mean HR (bpm)",
+                    n_beats            = "Number of Beats",
+                    sdnn_ms            = "SDNN (ms)",
+                    rmssd_ms           = "RMSSD (ms)")
+  ) %>%
+  select(metric, block, FaceReader, `Webcam Biometrics`, `FR vs BM`)
+
+kable(combined_metrics_fr_web, digits = 2,
+      caption = "Beats and HRV comparison")
+```
+
+------------------------------------------------------------------------
+
+## 5. Visualisations
+
+### 5.1 HR time series
+
+```{r hr-timeseries, fig.height=8}
+# Simple rolling mean using base R (no extra packages needed)
+roll_mean <- function(x, k) {
+  stats::filter(x, rep(1 / k, k), sides = 2) %>% as.numeric()
+}
+
+# ECG: instantaneous HR from Kubios RR intervals, smoothed across 5 beats
+ecg_ts <- ecg_rr %>%
+  arrange(time_s) %>%
+  mutate(hr_display = roll_mean(hr, 5))
+
+# Smooth FaceReader HR with a rolling window for display
+fr_ts <- fr_filt %>%
+  mutate(source      = "FaceReader",
+         hr_display  = roll_mean(hr, 9))
+
+# Use bpm_fft as frame-level HR estimate (FFT-based, more stable than bpm_peak)
+bm_ts <- bm_clean %>%
+  mutate(source      = "Webcam Biometrics",
+         hr_display  = roll_mean(bpm_fft, 21))
+
+block_rects <- blocks %>%
+  mutate(ymin = 40, ymax = 120)
+
+src_colours <- c("ECG (Kubios)"      = "#2CA02C",
+                 "FaceReader"        = "#E05C5C",
+                 "Webcam Biometrics" = "#3A86FF")
+
+ggplot() +
+  geom_rect(data = block_rects,
+            aes(xmin = start_s, xmax = end_s, ymin = ymin, ymax = ymax,
+                fill = block),
+            alpha = 0.12, inherit.aes = FALSE) +
+  geom_line(data = ecg_ts,
+            aes(x = time_s, y = hr_display, colour = "ECG (Kubios)"),
+            linewidth = 0.7, alpha = 0.85) +
+  geom_line(data = fr_ts,
+            aes(x = t_s, y = hr_display, colour = "FaceReader"),
+            linewidth = 0.6, alpha = 0.9) +
+  geom_line(data = bm_ts,
+            aes(x = t_s, y = hr_display, colour = "Webcam Biometrics"),
+            linewidth = 0.6, alpha = 0.9) +
+  geom_text(data = blocks,
+            aes(x = (start_s + end_s) / 2, y = 118, label = block),
+            size = 3, vjust = 1, fontface = "bold") +
+  scale_colour_manual(values = src_colours) +
+  scale_fill_brewer(palette = "Set3", guide = "none") +
+  labs(title = "Heart Rate over Time: ECG vs. FaceReader vs. Webcam Biometrics",
+       subtitle = "ECG smoothed ±2 beats; FaceReader ±4 beats; Biometrics ±10 frames (bpm_fft)",
+       x = "Video time (s)", y = "HR (bpm)", colour = "Source") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom")
+```
+
+### 5.2 Mean HR per block
+
+```{r hr-barplot}
+hr_long <- bind_rows(
+  ecg_metrics %>% select(source, block, mean_hr, sd_hr),
+  fr_metrics  %>% select(source, block, mean_hr, sd_hr),
+  bm_metrics  %>% select(source, block, mean_hr, sd_hr)
+) %>%
+  mutate(source = factor(source,
+                         levels = c("ECG (Kubios)", "FaceReader", "Webcam Biometrics")))
+
+ggplot(hr_long, aes(x = block, y = mean_hr, fill = source)) +
+  geom_col(position = position_dodge(width = 0.75), width = 0.65) +
+  geom_errorbar(aes(ymin = mean_hr - sd_hr, ymax = mean_hr + sd_hr),
+                position = position_dodge(width = 0.75), width = 0.2,
+                na.rm = TRUE) +
+  scale_fill_manual(values = c("ECG (Kubios)"      = "#2CA02C",
+                               "FaceReader"        = "#E05C5C",
+                               "Webcam Biometrics" = "#3A86FF")) +
+  labs(title = "Mean HR per Block (± SD)",
+       x = NULL, y = "HR (bpm)", fill = "Source") +
+  theme_minimal(base_size = 12) +
+  theme(axis.text.x = element_text(angle = 20, hjust = 1),
+        legend.position = "bottom")
+```
+
+### 5.3 HRV per block
+
+```{r hrv-barplot, fig.height=8}
+hrv_long <- bind_rows(
+  ecg_metrics %>% select(source, block, rmssd_ms, sdnn_ms),
+  fr_metrics  %>% select(source, block, rmssd_ms, sdnn_ms),
+  bm_metrics  %>% select(source, block, rmssd_ms, sdnn_ms)
+) %>%
+  pivot_longer(c(rmssd_ms, sdnn_ms), names_to = "metric", values_to = "value") %>%
+  mutate(
+    metric = recode(metric, rmssd_ms = "RMSSD (ms)", sdnn_ms = "SDNN (ms)"),
+    source = factor(source,
+                    levels = c("ECG (Kubios)", "FaceReader", "Webcam Biometrics"))
+  )
+
+ggplot(hrv_long, aes(x = block, y = value, fill = source)) +
+  geom_col(position = position_dodge(width = 0.75), width = 0.65) +
+  facet_wrap(~metric, ncol = 1, scales = "free_y") +
+  scale_fill_manual(values = c("ECG (Kubios)"      = "#2CA02C",
+                               "FaceReader"        = "#E05C5C",
+                               "Webcam Biometrics" = "#3A86FF")) +
+  labs(title = "HRV per Block by Source",
+       x = NULL, y = "Value", fill = "Source") +
+  theme_minimal(base_size = 12) +
+  theme(axis.text.x = element_text(angle = 20, hjust = 1),
+        legend.position = "bottom",
+        strip.text = element_text(face = "bold"))
+```
+
+### 5.4 Scatter plot: source agreement on mean HR
+
+```{r scatter-hr, fig.height=5}
+hr_wide <- bind_rows(
+  ecg_metrics %>% select(source, block, mean_hr),
+  fr_metrics  %>% select(source, block, mean_hr),
+  bm_metrics  %>% select(source, block, mean_hr)
+) %>%
+  pivot_wider(names_from = source, values_from = mean_hr)
+
+p_fr <- ggplot(hr_wide, aes(x = `ECG (Kubios)`, y = FaceReader, label = block)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", colour = "grey50") +
+  geom_point(aes(colour = block), size = 4) +
+  geom_text(nudge_y = 0.4, size = 3) +
+  scale_colour_brewer(palette = "Set2", guide = "none") +
+  labs(title = "FaceReader vs. ECG",
+       x = "ECG HR (bpm)", y = "FaceReader HR (bpm)") +
+  theme_minimal(base_size = 11)
+
+p_bm <- ggplot(hr_wide, aes(x = `ECG (Kubios)`, y = `Webcam Biometrics`, label = block)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", colour = "grey50") +
+  geom_point(aes(colour = block), size = 4) +
+  geom_text(nudge_y = 0.4, size = 3) +
+  scale_colour_brewer(palette = "Set2", guide = "none") +
+  labs(title = "Webcam Biometrics vs. ECG",
+       x = "ECG HR (bpm)", y = "Webcam Biometrics HR (bpm)") +
+  theme_minimal(base_size = 11)
+
+p_fr + p_bm +
+  plot_annotation(
+    title    = "Source Agreement: Mean HR per Block (ECG = reference)",
+    subtitle = "Dashed line = perfect agreement"
+  )
+```
+
+### 5.5 IBI distributions per block
+
+```{r ibi-violin, fig.height=7}
+ibi_combined <- bind_rows(
+  ecg_rr %>%
+    select(block, source, ibi_ms),
+  fr_filt %>%
+    mutate(source = "FaceReader", ibi_ms = ibi_s * 1000) %>%
+    select(block, source, ibi_ms),
+  bm_ibi %>%
+    mutate(source = "Webcam Biometrics", ibi_ms = ibi_s * 1000) %>%
+    select(block, source, ibi_ms)
+) %>%
+  mutate(source = factor(source,
+                         levels = c("ECG (Kubios)", "FaceReader", "Webcam Biometrics")))
+
+ggplot(ibi_combined, aes(x = source, y = ibi_ms, fill = source)) +
+  geom_violin(trim = TRUE, alpha = 0.7) +
+  geom_boxplot(width = 0.15, outlier.size = 0.8, fill = "white") +
+  facet_wrap(~block, nrow = 1) +
+  scale_fill_manual(values = c("ECG (Kubios)"      = "#2CA02C",
+                               "FaceReader"        = "#E05C5C",
+                               "Webcam Biometrics" = "#3A86FF")) +
+  labs(title = "IBI Distributions per Block",
+       x = NULL, y = "IBI (ms)", fill = "Source") +
+  theme_minimal(base_size = 11) +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        legend.position = "bottom",
+        strip.text = element_text(size = 9, face = "bold"))
+```
+
+------------------------------------------------------------------------
+
+## 6. Notes on data quality and interpretation
+
+**ECG as reference.** The BIOPAC ECG was sampled at 2000 Hz and processed in Kubios HRV Scientific 4.3 with automatic beat correction (0 beats corrected in any block). Its RMSSD and SDNN are used as the reference against which FaceReader and Webcam Biometrics are evaluated.
+
+**Alignment.** FaceReader timestamps are in video time (HH:MM:SS). Biometrics `video_time` (ms) is aligned to the same reference using `mono_reset` from the clock sync file: `t_video_s = video_time / 1000 − mono_reset`. Kubios block limits are defined in the Kubios UI by the ECG recording's own timeline, which may differ slightly from the video-based block boundaries used for the other two sources.
+
+**IBI artifact rejection.** FaceReader is used exactly as output -no filtering is applied. For webcam biometrics, IBIs are filtered to within ±20% of the block-level expected IBI, where the expected IBI is derived from `bpm_fft` (i.e. `60 / mean(bpm_fft)`). Using the median of the detected peaks as the reference is inappropriate here because the rPPG peak detector fires \~30% too often, shifting the median down to \~0.69 s instead of \~0.87 s; anchoring instead to `bpm_fft` keeps the acceptance window centred on the true heartbeat interval and rejects the spurious short IBIs. The ±20% criterion follows Berntson et al. (1990); Task Force of the ESC and NASPE (1996).
+
+**Asymmetry between sources.** FaceReader outputs only *validated* IBIs - its internal peak detector applies proprietary quality control before writing to the heart beat log. This is why its peak count (\~200 beats/180 s) closely matches `bpm_fft` (\~67 BPM × 3 min). The webcam biometrics plugin exposes every candidate peak without post-processing (\~260 peaks/180 s, \~30% excess).
+
+**HR from biometrics.** Mean HR uses `bpm_fft` - the FFT-based estimate computed over a sliding window of the rPPG signal. This is more stable than `bpm_peak`, which equals 60 / (time since last detected peak) and can be inflated when peaks are sparse or during algorithm warm-up.
+
+**Gaps.** Both signals contain gaps where no face was detected or the signal was lost. These are dropped rather than interpolated.
+
+**This is pilot data** from a single participant. Results should be interpreted descriptively, not inferentially.
+
+------------------------------------------------------------------------
+
+## References
+
+Berntson, G. G., Quigley, K. S., Jang, J. F., & Boysen, S. T. (1990). An approach to artifact identification: Application to heart period data. *Psychophysiology*, *27*(5), 586–598. <https://doi.org/10.1111/j.1469-8986.1990.tb01982.x>
+
+Berntson, G. G., & Stowell, J. R. (1998). ECG artifacts and heart period variability: Don't miss a beat! *Psychophysiology*, *35*(1), 127–132. <https://doi.org/10.1111/1469-8986.3510127>
+
+Task Force of the European Society of Cardiology and the North American Society of Pacing and Electrophysiology. (1996). Heart rate variability: Standards of measurement, physiological interpretation, and clinical use. *Circulation*, *93*(5), 1043–1065. <https://doi.org/10.1161/01.CIR.93.5.1043>

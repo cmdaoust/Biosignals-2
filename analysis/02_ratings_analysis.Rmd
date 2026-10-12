@@ -1,0 +1,459 @@
+---
+title: "Biosignals2 — Descriptive Analysis & Condition Effects"
+author: ""
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: show
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 8, fig.height = 4.5)
+```
+
+> **Note:** This is pilot data. Any statistical tests are included as a structural scaffold for when the full sample is collected — interpret results cautiously with small N.
+
+------------------------------------------------------------------------
+
+## 1. Packages & data
+
+```{r packages}
+library(tidyverse)
+library(here)
+library(knitr)
+library(lmerTest)    # mixed models with Satterthwaite p-values
+library(emmeans)     # post-hoc pairwise comparisons
+library(patchwork)   # combine ggplots
+```
+
+```{r config}
+find_project_root <- function() {
+  start <- dirname(rstudioapi::getSourceEditorContext()$path)
+  current <- normalizePath(start, winslash = "/", mustWork = TRUE)
+  
+  repeat {
+    config_path <- file.path(current, "config.R")
+    
+    if (file.exists(config_path)) {
+      return(current)
+    }
+    
+    parent <- dirname(current)
+    
+    if (parent == current) {
+      stop("Could not find config.R in this directory or any parent directory.")
+    }
+    
+    current <- parent
+  }
+}
+
+project_dir <- find_project_root()
+config_path <- file.path(project_dir, "config.R")
+
+source(config_path)
+clean_data_dir <- COMBINED_PSYCHO_DIR
+
+# ── Participant selection ── edit analysis/participant_status.csv, not this chunk.
+# Main-study participants only by default; set TRUE to also analyse the pilots.
+INCLUDE_PILOTS <- FALSE
+analysis_dir <- if (basename(project_dir) == "analysis") project_dir else file.path(project_dir, "analysis")
+PARTICIPANT_STATUS_PATH <- file.path(analysis_dir, "participant_status.csv")
+source(file.path(analysis_dir, "participant_status.R"), local = TRUE)
+```
+
+```{r load}
+cond_levels <- c("baseline", "negative_induction", "post_negative_induction_recovery",
+                 "positive_induction", "post_positive_induction_recovery")
+
+d <- read_csv(file.path(clean_data_dir, "biosignals2_selfreport_ratings.csv"),
+              show_col_types = FALSE) |>
+  mutate(condition = factor(condition, levels = cond_levels))
+
+# Main-study participants only (plus pilots if INCLUDE_PILOTS) — see participant_status.csv
+dropped <- participants_dropped(d$participant_id, INCLUDE_PILOTS)
+d <- d |> filter(participant_keep(participant_id, INCLUDE_PILOTS))
+
+n_participants <- n_distinct(d$participant_id)
+cat("Participants:", n_participants, "\n")
+cat("Rows        :", nrow(d), "\n")
+```
+
+```{r participants-left-out}
+# Who participant_status.csv left out of this analysis
+if (nrow(dropped)) knitr::kable(dropped, caption = paste0(
+  "Left out of this analysis (", nrow(dropped), "); edit participant_status.csv to change. ",
+  "Pilots ", if (INCLUDE_PILOTS) "included" else "excluded", " (INCLUDE_PILOTS = ", INCLUDE_PILOTS, ")"
+)) else cat("No participants left out.\n")
+```
+
+```{r theme}
+theme_set(
+  theme_bw(base_size = 12) +
+  theme(panel.grid.minor = element_blank(),
+        strip.background  = element_rect(fill = "grey92"),
+        legend.position   = "bottom")
+)
+
+# Condition colours (five-level palette)
+cond_colours <- c(
+  baseline                          = "#5B8DB8",
+  negative_induction                = "#E07B54",
+  post_negative_induction_recovery  = "#F2C4B0",
+  positive_induction                = "#5FAF68",
+  post_positive_induction_recovery  = "#B0D9B4"
+)
+
+```
+
+------------------------------------------------------------------------
+
+## 2. Data quality checks
+
+### 2.1 Observations per participant and condition
+
+```{r obs-count}
+d |>
+  count(participant_id, condition) |>
+  pivot_wider(names_from = condition, values_from = n) |>
+  kable(caption = "Number of rows per participant × condition")
+```
+
+### 2.2 Missing values in key columns
+
+```{r missing}
+d |>
+  summarise(across(everything(), ~ sum(is.na(.)))) |>
+  pivot_longer(everything(), names_to = "column", values_to = "n_missing") |>
+  filter(n_missing > 0) |>
+  arrange(desc(n_missing)) |>
+  kable(caption = "Columns with missing values")
+```
+
+### 2.3 Rating range check
+
+All slider responses should be integers between 1 and 7.
+
+```{r range-check}
+response_cols <- names(d)[str_detect(names(d), "_valence$|_arousal$|_approach$|_intensity$") &
+                          !str_detect(names(d), "_rt$|_order$")]
+
+d |>
+  select(all_of(response_cols)) |>
+  pivot_longer(everything(), names_to = "scale", values_to = "value") |>
+  drop_na(value) |>
+  group_by(scale) |>
+  summarise(
+    n    = n(),
+    min  = min(value),
+    max  = max(value),
+    any_out_of_range = any(value < 1 | value > 7),
+    .groups = "drop"
+  ) |>
+  kable(caption = "Rating range check (expected: 1–7)")
+```
+
+### 2.4 Reaction time distributions
+
+RTs below \~0.5 s on a deliberate slider task are suspicious (likely accidental clicks). Flag and inspect any such responses.
+
+```{r rt-check}
+rt_cols <- names(d)[str_detect(names(d), "_rt$")]
+
+rt_long <- d |>
+  select(participant_id, condition, all_of(rt_cols)) |>
+  pivot_longer(-c(participant_id, condition), names_to = "scale", values_to = "rt") |>
+  drop_na(rt)
+
+rt_long |>
+  filter(rt < 0.5) |>
+  kable(caption = "Responses with RT < 0.5 s (flag for review)")
+```
+
+```{r rt-plot, fig.height=5}
+rt_long |>
+  mutate(scale = str_remove(scale, "_rt$")) |>
+  ggplot(aes(x = rt, y = fct_reorder(scale, rt, median, .na_rm = TRUE),
+             colour = participant_id)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_vline(xintercept = 0.5, linetype = "dashed", colour = "red", linewidth = 0.5) +
+  labs(title = "Reaction time per scale", x = "RT (s)", y = NULL,
+       colour = "Participant") +
+  theme(legend.position = "right")
+```
+
+### 2.5 Trigger name check
+
+Confirm every video row has a trigger name (needed to link to physiology).
+
+```{r trigger-check}
+d |>
+  select(participant_id, video_id, trigger_name) |>
+  mutate(trigger_missing = is.na(trigger_name)) |>
+  kable(caption = "Trigger names — NA indicates a failed lookup")
+```
+
+------------------------------------------------------------------------
+
+## 3. Descriptive statistics
+
+### 3.1 Summary table
+
+```{r summary-table}
+rating_cols <- c("stim_valence", "stim_arousal", "stim_approach",
+                 "stim_emotion_intensity",
+                 "block_start_valence", "block_start_arousal",
+                 "block_end_valence",   "block_end_arousal")
+
+d |>
+  select(participant_id, condition, all_of(rating_cols)) |>
+  pivot_longer(-c(participant_id, condition),
+               names_to = "measure", values_to = "value") |>
+  drop_na(value) |>
+  group_by(condition, measure) |>
+  summarise(
+    n    = n(),
+    mean = round(mean(value), 2),
+    sd   = round(sd(value),   2),
+    min  = min(value),
+    max  = max(value),
+    .groups = "drop"
+  ) |>
+  arrange(measure, condition) |>
+  kable(caption = "Descriptive statistics by condition and measure")
+```
+
+### 3.2 Stimulus ratings by condition and video
+
+```{r stim-ratings-plot}
+d |>
+  filter(condition %in% c("negative_induction", "positive_induction")) |>
+  select(participant_id, condition, video_id,
+         stim_valence, stim_arousal, stim_approach) |>
+  pivot_longer(starts_with("stim_"),
+               names_to = "measure", values_to = "value",
+               names_prefix = "stim_") |>
+  ggplot(aes(x = condition, y = value, colour = condition)) +
+  geom_jitter(width = 0.1, height = 0, size = 3, seed = 42) +
+  stat_summary(fun = mean, geom = "crossbar",
+               width = 0.4, linewidth = 0.7, colour = "black") +
+  scale_colour_manual(values = cond_colours, guide = "none") +
+  scale_y_continuous(limits = c(1, 7), breaks = 1:7) +
+  facet_wrap(~measure, ncol = 3) +
+  labs(title = "Stimulus ratings by condition",
+       subtitle = "Points = individual videos; crossbar = mean",
+       x = NULL, y = "Rating (1–7)")
+```
+
+```{r stim-ratings-per-video, fig.height=6}
+d |>
+  filter(condition %in% c("negative_induction", "positive_induction")) |>
+  select(participant_id, condition, video_id,
+         stim_valence, stim_arousal, stim_approach) |>
+  pivot_longer(c(stim_valence, stim_arousal, stim_approach),
+               names_to = "measure", values_to = "value",
+               names_prefix = "stim_") |>
+  ggplot(aes(x = video_id, y = value, fill = condition)) +
+  geom_boxplot(alpha = 0.5, outlier.shape = NA, width = 0.6) +
+  geom_point(size = 2.5, alpha = 0.8,
+             position = position_jitter(width = 0.1, seed = 42)) +
+  scale_fill_manual(values = cond_colours) +
+  scale_y_continuous(limits = c(1, 7), breaks = 1:7) +
+  facet_wrap(~ measure, ncol = 1) +
+  labs(title = "Stimulus ratings per video",
+       subtitle = "Points = individual participant ratings",
+       x = NULL, y = "Rating (1–7)", fill = "Condition") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+```
+
+```{r stim-ratings-table}
+d |>
+  filter(condition %in% c("negative_induction", "positive_induction")) |>
+  group_by(condition, video_id) |>
+  summarise(
+    n              = n(),
+    mean_valence   = round(mean(stim_valence,  na.rm = TRUE), 2),
+    mean_arousal   = round(mean(stim_arousal,  na.rm = TRUE), 2),
+    mean_approach  = round(mean(stim_approach, na.rm = TRUE), 2),
+    .groups = "drop"
+  ) |>
+  arrange(condition, video_id) |>
+  kable(caption = "Mean stimulus ratings per video")
+```
+
+### 3.3 State rating trajectories
+
+State valence and arousal across the four rating timepoints. Pre- and post-baseline are shared starting points; the negative and positive arms then diverge.
+
+`block_start_valence`/`block_start_arousal` = state before the baseline fixation cross (pre-baseline rating, only collected once per session and stored on the `baseline` row). `block_end_valence`/`block_end_arousal` = state at the end of each block.
+
+```{r trajectory-data}
+# Six-point trajectory reflecting the fixed condition order:
+# pre-baseline → post-baseline → negative induction →
+# negative recovery → positive induction → positive recovery.
+
+trajectory_levels <- c("Pre-baseline", "Post-baseline",
+                        "Negative induction", "Negative recovery",
+                        "Positive induction", "Positive recovery")
+
+trajectory <- bind_rows(
+  d |> filter(condition == "baseline") |>
+    distinct(participant_id, valence = block_start_valence, arousal = block_start_arousal) |>
+    mutate(timepoint = "Pre-baseline"),
+  d |> filter(condition == "baseline") |>
+    distinct(participant_id, valence = block_end_valence, arousal = block_end_arousal) |>
+    mutate(timepoint = "Post-baseline"),
+  d |> filter(condition == "negative_induction") |>
+    distinct(participant_id, valence = block_end_valence, arousal = block_end_arousal) |>
+    mutate(timepoint = "Negative induction"),
+  d |> filter(condition == "post_negative_induction_recovery") |>
+    distinct(participant_id, valence = block_end_valence, arousal = block_end_arousal) |>
+    mutate(timepoint = "Negative recovery"),
+  d |> filter(condition == "positive_induction") |>
+    distinct(participant_id, valence = block_end_valence, arousal = block_end_arousal) |>
+    mutate(timepoint = "Positive induction"),
+  d |> filter(condition == "post_positive_induction_recovery") |>
+    distinct(participant_id, valence = block_end_valence, arousal = block_end_arousal) |>
+    mutate(timepoint = "Positive recovery")
+) |>
+  mutate(timepoint = factor(timepoint, levels = trajectory_levels))
+```
+
+```{r trajectory-plot}
+trajectory |>
+  pivot_longer(c(valence, arousal), names_to = "measure", values_to = "value") |>
+  drop_na(value) |>
+  ggplot(aes(x = timepoint, y = value,
+             group = participant_id, colour = participant_id)) +
+  geom_line(linewidth = 0.8, alpha = 0.8) +
+  geom_point(size = 2.5) +
+  scale_y_continuous(limits = c(1, 7), breaks = 1:7) +
+  scale_x_discrete(guide = guide_axis(angle = 30)) +
+  facet_wrap(~measure, ncol = 2) +
+  labs(title  = "State ratings across timepoints",
+       x = NULL, y = "Rating (1–7)", colour = "Participant")
+```
+
+------------------------------------------------------------------------
+
+## 4. Condition effects
+
+One-way repeated measures ANOVA with `condition` as the within-subjects factor, run separately for `block_end_valence` and `block_end_arousal`. Models are fit with `lmer` (random intercept per participant), with the omnibus test via `anova()` and Bonferroni-corrected pairwise comparisons via `emmeans`.
+
+```{r manip-check-compute}
+# Manipulation check: change in state valence/arousal from post-baseline to post-induction.
+# block_end_valence of "baseline" condition = post-baseline rating.
+# block_end_valence of induction conditions = post-induction rating.
+
+baseline_end <- d |>
+  filter(condition == "baseline") |>
+  distinct(participant_id,
+           baseline_valence = block_end_valence,
+           baseline_arousal = block_end_arousal)
+
+manip_check <- d |>
+  filter(condition %in% c("negative_induction", "positive_induction")) |>
+  distinct(participant_id, condition, block_end_valence, block_end_arousal) |>
+  left_join(baseline_end, by = "participant_id") |>
+  mutate(
+    manip_check_valence = block_end_valence - baseline_valence,
+    manip_check_arousal = block_end_arousal - baseline_arousal,
+    manip_check_direction_correct = case_when(
+      condition == "positive_induction" & manip_check_valence > 0 ~ TRUE,
+      condition == "negative_induction" & manip_check_valence < 0 ~ TRUE,
+      is.na(manip_check_valence)                                  ~ NA,
+      TRUE                                                        ~ FALSE
+    )
+  )
+```
+
+```{r model-data}
+# One row per participant × condition for block-end state ratings.
+# distinct() is needed because induction conditions repeat block_end across video rows.
+block_end_ratings <- d |>
+  distinct(participant_id, condition, block_end_valence, block_end_arousal) |>
+  drop_na(block_end_valence)
+```
+
+### 4.1 Manipulation check
+
+Did the emotion induction shift state valence in the expected direction?
+
+```{r manip-check-plot}
+manip_check |>
+  ggplot(aes(x = condition, y = manip_check_valence, colour = condition,
+             group = participant_id)) +
+  geom_hline(yintercept = 0, linetype = "dashed", colour = "grey50") +
+  geom_line(colour = "grey60") +
+  geom_point(size = 3) +
+  scale_colour_manual(values = cond_colours, guide = "none") +
+  scale_y_continuous(limits = c(-7, 7)) +
+  labs(title    = "Manipulation check: Δ state valence (post-induction − post-baseline)",
+       subtitle = "Positive = valence increased; negative = valence decreased",
+       x = NULL, y = "Δ valence") +
+  facet_wrap(~participant_id)
+```
+
+```{r manip-check-table}
+manip_check |>
+  select(participant_id, condition,
+         manip_check_valence, manip_check_arousal, manip_check_direction_correct) |>
+  arrange(participant_id, condition) |>
+  kable(digits = 2, caption = "Manipulation check values per participant × condition")
+```
+
+### 4.2 Effect of condition on block-end state ratings
+
+```{r anova-valence}
+m_valence <- lmer(block_end_valence ~ condition + (1 | participant_id),
+                  data = block_end_ratings)
+anova(m_valence)
+```
+
+```{r posthoc-valence}
+emmeans(m_valence, pairwise ~ condition, adjust = "bonferroni")$contrasts |>
+  as.data.frame() |>
+  arrange(p.value) |>
+  kable(digits = 3, caption = "Post-hoc: block_end_valence pairwise comparisons (Bonferroni)")
+```
+
+```{r anova-arousal}
+m_arousal <- lmer(block_end_arousal ~ condition + (1 | participant_id),
+                  data = block_end_ratings)
+anova(m_arousal)
+```
+
+```{r posthoc-arousal}
+emmeans(m_arousal, pairwise ~ condition, adjust = "bonferroni")$contrasts |>
+  as.data.frame() |>
+  arrange(p.value) |>
+  kable(digits = 3, caption = "Post-hoc: block_end_arousal pairwise comparisons (Bonferroni)")
+```
+
+### 4.3 Paired comparison plots
+
+```{r paired-plots}
+block_end_ratings |>
+  pivot_longer(c(block_end_valence, block_end_arousal),
+               names_to = "measure", values_to = "value",
+               names_prefix = "block_end_") |>
+  ggplot(aes(x = condition, y = value, group = participant_id, colour = participant_id)) +
+  geom_line(linewidth = 0.8, alpha = 0.8) +
+  geom_point(size = 3) +
+  scale_y_continuous(limits = c(1, 7), breaks = 1:7) +
+  scale_x_discrete(guide = guide_axis(angle = 30)) +
+  facet_wrap(~measure, ncol = 2) +
+  labs(title = "Block-end state ratings across conditions",
+       x = NULL, y = "Rating (1–7)", colour = "Participant")
+```
+
+------------------------------------------------------------------------
+
+## Session info
+
+```{r session-info}
+sessionInfo()
+```

@@ -1,0 +1,733 @@
+---
+title: "Biosignals2 — Questionnaire Scoring & Descriptives"
+author: ""
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: show
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+## Overview
+
+This document loads the Qualtrics demographics & questionnaire export, scores six validated scales, and writes a single analysis-ready CSV.
+
+| Scale   | Items | Construct                             |
+|---------|-------|---------------------------------------|
+| GAD-7   | 7     | Generalised anxiety (past 2 weeks)    |
+| PHQ-9   | 9     | Depression (past 2 weeks)             |
+| AQ-10   | 10    | Autistic traits (screening)           |
+| PAQ-24  | 24    | Alexithymia (6 subscales, 1–7 each)   |
+| DAS-SF1 | 9     | Dysfunctional attitudes – Achievement |
+| DAS-SF2 | 9     | Dysfunctional attitudes – Dependency  |
+
+------------------------------------------------------------------------
+
+## 1. Packages & configuration
+
+```{r packages}
+library(tidyverse)
+library(psych)      # alpha()
+library(knitr)
+library(kableExtra)
+```
+
+```{r config}
+find_project_root <- function() {
+  # TRUE when x is a single usable string. The lookups below can return
+  # character(0), and `is.na(character(0)) || ...` is an error in R >= 4.3.
+  has_path <- function(x) length(x) == 1 && !is.na(x) && nzchar(x)
+
+  # When knitting, the working directory is the Rmd's folder
+  start <- tryCatch(knitr::current_input(dir = TRUE), error = function(e) NULL)
+  start <- if (has_path(start)) dirname(start) else NA_character_
+
+  if (!has_path(start)) {
+    start <- tryCatch({
+      ctx <- rstudioapi::getSourceEditorContext()
+      if (!is.null(ctx) && has_path(ctx$path))
+        dirname(normalizePath(ctx$path, winslash = "/", mustWork = FALSE))
+      else NA_character_
+    }, error = function(e) NA_character_)
+  }
+
+  if (!has_path(start)) start <- getwd()
+
+  current <- normalizePath(start, winslash = "/", mustWork = FALSE)
+  for (i in seq_len(15)) {
+    if (file.exists(file.path(current, "config.R"))) return(current)
+    parent <- dirname(current)
+    if (parent == current)
+      stop("Could not find config.R in this directory or any parent directory.")
+    current <- parent
+  }
+  stop("Could not find config.R after 15 levels up.")
+}
+
+project_dir <- find_project_root()
+source(file.path(project_dir, "config.R"))
+# QUESTIONNAIRE_DIR is now defined in config.R
+
+OUTPUT_PATH <- file.path(COMBINED_PSYCHO_DIR, "biosignals2_questionnaires_scored.csv")
+```
+
+------------------------------------------------------------------------
+
+## 2. Load raw data
+
+Qualtrics exports a 3-row header: (1) short column names, (2) full question text, (3) ImportId JSON. We use the ImportId row for unique column names, then skip all three header rows to read the data.
+
+```{r load-raw}
+# ── 2a. Find the most-recent questionnaire export ─────────────────────────────
+qfiles <- list.files(
+  QUESTIONNAIRE_DIR,
+  pattern = "^Biosignals2.*\\.csv$",
+  full.names = TRUE
+)
+
+if (length(qfiles) == 0)
+  stop("No Qualtrics CSV found in QUESTIONNAIRE_DIR: ", QUESTIONNAIRE_DIR)
+
+if (length(qfiles) > 1) {
+  qfiles <- qfiles[order(file.mtime(qfiles), decreasing = TRUE)]
+  message("Multiple files found – using most recent: ", basename(qfiles[1]))
+}
+qfile_path <- qfiles[1]
+message("Reading: ", basename(qfile_path))
+
+# ── 2b. Parse ImportIds for unique column names ────────────────────────────────
+hdr <- read_csv(
+  qfile_path,
+  n_max        = 3,
+  col_names    = FALSE,
+  col_types    = cols(.default = "c"),
+  show_col_types = FALSE
+)
+
+import_ids_raw <- as.character(hdr[3, ])
+import_ids     <- str_extract(import_ids_raw, '(?<="ImportId":")[^"]+')
+row1_names     <- as.character(hdr[1, ])
+
+# Fall back to (de-duplicated) row-1 names when ImportId can't be parsed
+col_names_final <- if_else(
+  !is.na(import_ids),
+  import_ids,
+  make.unique(row1_names, sep = "_x")
+)
+
+# ── 2c. Read data ──────────────────────────────────────────────────────────────
+df_raw <- read_csv(
+  qfile_path,
+  skip           = 3,
+  col_names      = col_names_final,
+  col_types      = cols(.default = "c"),
+  show_col_types = FALSE
+)
+
+cat("Rows loaded:", nrow(df_raw), "\n")
+cat("Columns:", ncol(df_raw), "\n")
+```
+
+------------------------------------------------------------------------
+
+## 3. Inspect & filter
+
+```{r inspect}
+# Completion summary
+df_raw |>
+  count(finished, progress = as.integer(progress)) |>
+  arrange(desc(progress)) |>
+  kable(caption = "Response completion status") |>
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+```{r filter}
+# Keep only completed responses (Finished == TRUE, Progress == 100)
+# A "labels" export writes Finished as TRUE/FALSE; a "values" export writes 1/0.
+df_complete <- df_raw |>
+  filter(
+    str_to_upper(finished) %in% c("TRUE", "1"),
+    as.integer(progress)   == 100
+  )
+
+cat(nrow(df_complete), "complete responses retained out of", nrow(df_raw), "total.\n")
+```
+
+```{r pid-clean}
+# ── Participant ID ─────────────────────────────────────────────────────────────
+# Column ImportId: QID7_1
+df <- df_complete |>
+  rename(participant_id = QID7_1) |>
+  mutate(participant_id = str_squish(str_to_upper(participant_id)))
+
+# Flag duplicates
+dup_ids <- df |> count(participant_id) |> filter(n > 1)
+if (nrow(dup_ids) > 0) {
+  message("WARNING: duplicate participant IDs found:")
+  print(dup_ids)
+}
+
+cat("Unique participant IDs:", n_distinct(df$participant_id), "\n")
+```
+
+------------------------------------------------------------------------
+
+## 4. Demographics
+
+```{r demographics}
+# A Qualtrics "values" export writes the choice code rather than the choice text
+# for these single-answer questions, so restore the labels here.
+#
+# ⚠️  Only the codes actually observed in the pilot data have been verified
+# (by comparing against the earlier label-style export). Any other code is left
+# visible as "code <n>" rather than silently mislabelled — if one appears, look
+# it up in the Qualtrics codebook and add it below.
+sex_map       <- c("0" = "Male", "1" = "Female")
+gender_map    <- c("1" = "Yes")
+ethnicity_map <- c("1" = "Asian (any background)",
+                   "2" = "Black (any background)",
+                   "3" = "Mixed (any background)",
+                   "4" = "White (any background)")
+
+relabel <- function(x, map) {
+  x   <- str_squish(as.character(x))
+  out <- unname(map[match(x, names(map))])
+  # Leave real text (a labels export) alone; mark unknown numeric codes.
+  is_num <- !is.na(x) & x != "" & str_detect(x, "^-?\\d+$")
+  out[is.na(out) & is_num] <- paste0("code ", x[is.na(out) & is_num])
+  out[is.na(out) & !is_num] <- x[is.na(out) & !is_num]
+  out
+}
+
+demo <- df |>
+  transmute(
+    participant_id,
+    age          = as.integer(QID1_TEXT),
+    sex_at_birth = relabel(QID3, sex_map),
+    gender_id    = relabel(QID4, gender_map),
+    ethnicity    = relabel(QID5, ethnicity_map)
+  )
+
+# Age
+cat("Age  — mean:", round(mean(demo$age, na.rm = TRUE), 1),
+    "  SD:", round(sd(demo$age, na.rm = TRUE), 1),
+    "  range:", min(demo$age, na.rm = TRUE), "–", max(demo$age, na.rm = TRUE), "\n")
+
+# Sex
+demo |> count(sex_at_birth) |>
+  kable(caption = "Biological sex at birth") |>
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+```{r ethnicity-table}
+demo |> count(ethnicity) |>
+  kable(caption = "Race/ethnicity") |>
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+------------------------------------------------------------------------
+
+## 5. Response-recoding helpers
+
+```{r recode-helpers}
+# ── Likert maps ────────────────────────────────────────────────────────────────
+
+gad7_map <- c(
+  "Not at all"                   = 0,
+  "Several days"                 = 1,
+  "More than half the days"      = 2,
+  "Nearly every day"             = 3
+)
+
+phq9_map <- c(
+  "Not at all"                      = 0,
+  "Several days"                    = 1,
+  "More than half of the days"      = 2,
+  "Nearly every day"                = 3
+)
+
+aq_agree_map    <- c("Definitely agree" = 1, "Slightly agree"    = 1,
+                     "Slightly disagree" = 0, "Definitely disagree" = 0)
+aq_disagree_map <- c("Definitely agree" = 0, "Slightly agree"    = 0,
+                     "Slightly disagree" = 1, "Definitely disagree" = 1)
+
+# AQ-10 is the one scale whose exported value is NOT the score: a values export
+# writes the choice position (1 = Definitely agree … 4 = Definitely disagree),
+# which still has to be collapsed to the 0/1 AQ-10 scoring.
+aq_agree_valmap    <- c("1" = 1, "2" = 1, "3" = 0, "4" = 0)
+aq_disagree_valmap <- c("1" = 0, "2" = 0, "3" = 1, "4" = 1)
+
+# PAQ-24 is a 7-point scale (1 = strongly disagree … 7 = strongly agree).
+# In the survey only the anchors and a few midpoints carry text labels, so a
+# "labels" export writes "---" for the unlabelled points and the item can never
+# be scored from text alone — export as values. This map is kept only so older
+# label-style exports still partially resolve.
+paq_map <- c(
+  "Strongly disagree"            = 1,
+  "Disagree"                     = 2,
+  "Slightly disagree"            = 3,
+  "Neither agree nor disagree"   = 4,
+  "Slightly agree"               = 5,
+  "Agree"                        = 6,
+  "Strongly agree"               = 7,
+  "---"                          = NA_real_   # unlabelled scale point
+)
+
+# DAS-SF: 7-point scale. All items are dysfunctionally worded EXCEPT
+# DAS-SF2 item 12 ("I do not need the approval of other people...").
+# Convention used here: Totally Agree = 7 (most dysfunctional) →
+# Totally Disagree = 1 (least dysfunctional).
+# ⚠️  Verify this direction against your scoring key.
+das_map <- c(
+  "Totally Agree"     = 7,
+  "Agree"             = 6,
+  "Slightly Agree"    = 5,
+  "Neutral"           = 4,
+  "Slightly Disagree" = 3,
+  "Disagree"          = 2,
+  "Totally Disagree"  = 1
+)
+
+# Qualtrics can export a question either as choice TEXT ("Not at all") or as the
+# numeric recode VALUE ("0"), and this project has used both. recode_numeric()
+# accepts either:
+#   * text entries are matched against `map`, case- and whitespace-insensitively
+#     (Qualtrics exports e.g. "Definitely Agree", and an exact-match lookup would
+#     silently turn every such response into NA);
+#   * purely numeric entries are translated by `num_map`, a named lookup from the
+#     exported value to the score. num_map = NULL means the exported value IS the
+#     score (true for GAD-7, PHQ-9, PAQ-24 and DAS-SF, but NOT for AQ-10).
+# Blanks and Qualtrics' "---" (an unlabelled scale point) stay NA either way.
+recode_numeric <- function(x, map, num_map = NULL) {
+  x   <- str_squish(as.character(x))
+  out <- unname(map[match(str_to_lower(x), str_to_lower(names(map)))])
+
+  is_num <- !is.na(x) & x != "" & str_detect(x, "^-?\\d+(\\.\\d+)?$")
+  if (any(is_num)) {
+    out[is_num] <- if (is.null(num_map)) {
+      as.numeric(x[is_num])
+    } else {
+      unname(num_map[match(x[is_num], names(num_map))])
+    }
+  }
+  out
+}
+
+# Cronbach's alpha that returns NA (instead of stopping the knit) when a scale
+# has too few answered items or complete responses to estimate it.
+safe_alpha <- function(items) {
+  items <- items[, colSums(!is.na(items)) > 0, drop = FALSE]
+  if (ncol(items) < 2 || sum(complete.cases(items)) < 3) return(NA_real_)
+  tryCatch(
+    suppressWarnings(psych::alpha(items, warnings = FALSE)$total$raw_alpha),
+    error = function(e) NA_real_
+  )
+}
+```
+
+------------------------------------------------------------------------
+
+## 6. GAD-7
+
+Items: QID8_1 – QID8_7 (0 = Not at all … 3 = Nearly every day) Total: 0–21 \| Clinical flag: ≥ 10
+
+```{r gad7}
+gad7_cols <- paste0("QID8_", 1:7)
+
+gad7 <- df |>
+  select(participant_id, all_of(gad7_cols)) |>
+  mutate(across(all_of(gad7_cols),
+                \(x) recode_numeric(x, gad7_map))) |>
+  rowwise() |>
+  mutate(
+    gad7_total    = sum(c_across(all_of(gad7_cols)), na.rm = FALSE),
+    gad7_n_missing = sum(is.na(c_across(all_of(gad7_cols)))),
+    gad7_severity = case_when(
+      gad7_total <= 4  ~ "Minimal",
+      gad7_total <= 9  ~ "Mild",
+      gad7_total <= 14 ~ "Moderate",
+      TRUE             ~ "Severe"
+    ),
+    gad7_flag = gad7_total >= 10
+  ) |>
+  ungroup()
+
+# Descriptives
+gad7 |>
+  summarise(
+    n        = sum(!is.na(gad7_total)),
+    mean     = round(mean(gad7_total, na.rm = TRUE), 2),
+    sd       = round(sd(gad7_total, na.rm = TRUE), 2),
+    min      = min(gad7_total, na.rm = TRUE),
+    max      = max(gad7_total, na.rm = TRUE),
+    n_flagged = sum(gad7_flag, na.rm = TRUE)
+  ) |>
+  kable(caption = "GAD-7 descriptives (total score 0–21; flagged ≥ 10)") |>
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+```{r gad7-severity}
+gad7 |> count(gad7_severity) |>
+  kable(caption = "GAD-7 severity distribution") |>
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+```{r gad7-alpha}
+gad7_items <- gad7 |> select(all_of(gad7_cols))
+cat("GAD-7 Cronbach's α =",
+    round(safe_alpha(gad7_items), 3), "\n")
+```
+
+------------------------------------------------------------------------
+
+## 7. PHQ-9
+
+Items: QID10_1–QID10_5 (first 5), QID32_6–QID32_9 (last 4) Total: 0–27 \| Clinical flag: ≥ 10 \| Item 9 (suicidal ideation) flagged separately
+
+```{r phq9}
+phq9_cols <- c(paste0("QID10_", 1:5), paste0("QID32_", 6:9))
+
+phq9 <- df |>
+  select(participant_id, all_of(phq9_cols)) |>
+  mutate(across(all_of(phq9_cols),
+                \(x) recode_numeric(x, phq9_map))) |>
+  rowwise() |>
+  mutate(
+    phq9_total     = sum(c_across(all_of(phq9_cols)), na.rm = FALSE),
+    phq9_n_missing = sum(is.na(c_across(all_of(phq9_cols)))),
+    phq9_severity  = case_when(
+      phq9_total <= 4  ~ "Minimal",
+      phq9_total <= 9  ~ "Mild",
+      phq9_total <= 14 ~ "Moderate",
+      phq9_total <= 19 ~ "Moderately severe",
+      TRUE             ~ "Severe"
+    ),
+    phq9_flag          = phq9_total >= 10,
+    phq9_item9_flagged = QID32_9 >= 1  # suicidal ideation item
+  ) |>
+  ungroup()
+
+phq9 |>
+  summarise(
+    n         = sum(!is.na(phq9_total)),
+    mean      = round(mean(phq9_total, na.rm = TRUE), 2),
+    sd        = round(sd(phq9_total, na.rm = TRUE), 2),
+    min       = min(phq9_total, na.rm = TRUE),
+    max       = max(phq9_total, na.rm = TRUE),
+    n_flagged = sum(phq9_flag, na.rm = TRUE),
+    n_item9   = sum(phq9_item9_flagged, na.rm = TRUE)
+  ) |>
+  kable(caption = "PHQ-9 descriptives (total 0–27; flagged ≥ 10; n_item9 = any suicidal ideation)") |>
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+```{r phq9-severity}
+phq9 |> count(phq9_severity) |>
+  kable(caption = "PHQ-9 severity distribution") |>
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+```{r phq9-alpha}
+phq9_items <- phq9 |> select(all_of(phq9_cols))
+cat("PHQ-9 Cronbach's α =",
+    round(safe_alpha(phq9_items), 3), "\n")
+```
+
+------------------------------------------------------------------------
+
+## 8. AQ-10
+
+Items: QID42 sub-items (10 items in order of appearance) Scoring: items 1, 7, 8, 10 → agree = 1; items 2–6, 9 → disagree = 1 Total: 0–10 \| Possible autism flag: ≥ 6
+
+```{r aq10}
+# Sub-IDs in Qualtrics don't always match item numbers; we use positional order.
+aq10_cols <- c("QID42_1","QID42_3","QID42_6","QID42_8","QID42_9",
+               "QID42_10","QID42_11","QID42_12","QID42_13","QID42_14")
+
+# AQ-10 standard scoring direction (Allison et al., 2012):
+# Forward (agree = autistic trait): positions 1, 7, 8, 10
+# Reverse (disagree = autistic trait): positions 2, 3, 4, 5, 6, 9
+aq_forward_pos  <- c(1, 7, 8, 10)
+aq_reverse_pos  <- c(2, 3, 4, 5, 6, 9)
+
+aq10 <- df |>
+  select(participant_id, all_of(aq10_cols)) |>
+  mutate(
+    across(
+      all_of(aq10_cols[aq_forward_pos]),
+      \(x) recode_numeric(x, aq_agree_map, aq_agree_valmap)
+    ),
+    across(
+      all_of(aq10_cols[aq_reverse_pos]),
+      \(x) recode_numeric(x, aq_disagree_map, aq_disagree_valmap)
+    )
+  ) |>
+  rowwise() |>
+  mutate(
+    aq10_total     = sum(c_across(all_of(aq10_cols)), na.rm = FALSE),
+    aq10_n_missing = sum(is.na(c_across(all_of(aq10_cols)))),
+    aq10_flag      = aq10_total >= 6
+  ) |>
+  ungroup()
+
+aq10 |>
+  summarise(
+    n         = sum(!is.na(aq10_total)),
+    mean      = round(mean(aq10_total, na.rm = TRUE), 2),
+    sd        = round(sd(aq10_total, na.rm = TRUE), 2),
+    min       = min(aq10_total, na.rm = TRUE),
+    max       = max(aq10_total, na.rm = TRUE),
+    n_flagged = sum(aq10_flag, na.rm = TRUE)
+  ) |>
+  kable(caption = "AQ-10 descriptives (total 0–10; flagged ≥ 6)") |>
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+```{r aq10-alpha}
+aq10_items <- aq10 |> select(all_of(aq10_cols))
+cat("AQ-10 Cronbach's α =",
+    round(safe_alpha(aq10_items), 3), "\n")
+```
+
+------------------------------------------------------------------------
+
+## 9. PAQ-24
+
+24 items across 6 QID blocks (4 items each). All items scored 1–7 (higher = more alexithymia). No reverse-scored items. Each subscale: 4–28 \| Total: 24–168.
+
+**⚠ Subscale assignment below is inferred from item content and Qualtrics block order. Verify against the Qualtrics survey builder.**
+
+Subscales (Preece et al., 2018): - **DIF-N** — Difficulty Identifying Feelings (Negative affect) - **DDF-N** — Difficulty Describing Feelings (Negative affect) - **IN-N** — Inattention to Emotions (Negative affect) - **DIF-P** — Difficulty Identifying Feelings (Positive affect) - **DDF-P** — Difficulty Describing Feelings (Positive affect) - **IN-P** — Inattention to Emotions (Positive affect)
+
+```{r paq24-cols}
+# ── Column assignments (verify against your Qualtrics survey) ─────────────────
+paq_DIF_N <- c("QID43_1",  "QID43_3",  "QID44_28", "QID44_29")
+paq_DDF_N <- c("QID43_6",  "QID43_8",  "QID44_13", "QID44_14")
+paq_IN_N  <- c("QID51_9",  "QID51_27", "QID51_28", "QID51_10")
+paq_DIF_P <- c("QID52_28", "QID52_29", "QID53_23", "QID53_24")
+paq_DDF_P <- c("QID52_17", "QID52_18", "QID53_25", "QID53_26")
+paq_IN_P  <- c("QID45_19", "QID45_20", "QID45_21", "QID45_22")
+
+paq_all_cols <- c(paq_DIF_N, paq_DDF_N, paq_IN_N, paq_DIF_P, paq_DDF_P, paq_IN_P)
+```
+
+```{r paq24-score}
+paq24 <- df |>
+  select(participant_id, all_of(paq_all_cols)) |>
+  mutate(across(all_of(paq_all_cols), \(x) recode_numeric(x, paq_map))) |>
+  rowwise() |>
+  mutate(
+    paq_DIF_N      = sum(c_across(all_of(paq_DIF_N)), na.rm = FALSE),
+    paq_DDF_N      = sum(c_across(all_of(paq_DDF_N)), na.rm = FALSE),
+    paq_IN_N       = sum(c_across(all_of(paq_IN_N)),  na.rm = FALSE),
+    paq_DIF_P      = sum(c_across(all_of(paq_DIF_P)), na.rm = FALSE),
+    paq_DDF_P      = sum(c_across(all_of(paq_DDF_P)), na.rm = FALSE),
+    paq_IN_P       = sum(c_across(all_of(paq_IN_P)),  na.rm = FALSE),
+    paq_total      = sum(c_across(all_of(paq_all_cols)), na.rm = FALSE),
+    paq_n_missing  = sum(is.na(c_across(all_of(paq_all_cols))))
+  ) |>
+  ungroup()
+
+# Remove raw item columns from scored output
+paq24_scores <- paq24 |> select(participant_id, starts_with("paq_"))
+
+# Descriptives per subscale
+paq24_scores |>
+  select(-participant_id, -paq_n_missing) |>
+  summarise(across(everything(),
+                   list(mean = \(x) round(mean(x, na.rm=TRUE), 2),
+                        sd   = \(x) round(sd(x, na.rm=TRUE), 2)),
+                   .names = "{.col}__{.fn}")) |>
+  pivot_longer(everything(), names_to = c("subscale", "stat"), names_sep = "__") |>
+  pivot_wider(names_from = stat, values_from = value) |>
+  kable(caption = "PAQ-24 subscale descriptives (each subscale: 4–28; total: 24–168)") |>
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+```{r paq24-alpha}
+subscale_list <- list(
+  DIF_N = paq_DIF_N, DDF_N = paq_DDF_N, IN_N = paq_IN_N,
+  DIF_P = paq_DIF_P, DDF_P = paq_DDF_P, IN_P  = paq_IN_P
+)
+
+paq_items_raw <- df |>
+  select(all_of(paq_all_cols)) |>
+  mutate(across(everything(), \(x) recode_numeric(x, paq_map)))
+
+alpha_table <- imap_dfr(subscale_list, function(cols, name) {
+  items <- paq_items_raw |> select(all_of(cols))
+  tibble(
+    subscale = name,
+    alpha    = round(safe_alpha(items), 3),
+    n_items  = ncol(items)
+  )
+})
+
+alpha_table |>
+  kable(caption = "PAQ-24 Cronbach's α per subscale") |>
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+
+cat("PAQ-24 total (all 24 items) α =",
+    round(safe_alpha(paq_items_raw), 3), "\n")
+```
+
+------------------------------------------------------------------------
+
+## 10. DAS-SF1 (Achievement)
+
+9 items (QID59). Responses: 1 (Totally Disagree) – 7 (Totally Agree). All items dysfunctionally worded → higher score = more dysfunctional. Total range: 9–63.
+
+```{r das-sf1}
+das1_cols <- c("QID59_23","QID59_27","QID59_28","QID59_29",
+               "QID59_24","QID59_25","QID59_26","QID59_32","QID59_33")
+
+das_sf1 <- df |>
+  select(participant_id, all_of(das1_cols)) |>
+  mutate(across(all_of(das1_cols), \(x) recode_numeric(x, das_map))) |>
+  rowwise() |>
+  mutate(
+    das_sf1_total     = sum(c_across(all_of(das1_cols)), na.rm = FALSE),
+    das_sf1_n_missing = sum(is.na(c_across(all_of(das1_cols))))
+  ) |>
+  ungroup()
+
+das_sf1 |>
+  summarise(
+    n    = sum(!is.na(das_sf1_total)),
+    mean = round(mean(das_sf1_total, na.rm = TRUE), 2),
+    sd   = round(sd(das_sf1_total, na.rm = TRUE), 2),
+    min  = min(das_sf1_total, na.rm = TRUE),
+    max  = max(das_sf1_total, na.rm = TRUE)
+  ) |>
+  kable(caption = "DAS-SF1 Achievement descriptives (total 9–63)") |>
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+```{r das-sf1-alpha}
+das1_items <- das_sf1 |> select(all_of(das1_cols))
+cat("DAS-SF1 Cronbach's α =",
+    round(safe_alpha(das1_items), 3), "\n")
+```
+
+------------------------------------------------------------------------
+
+## 11. DAS-SF2 (Dependency)
+
+9 items (QID60). Same 7-point response scale. **Note:** Item "I do not need the approval of other people in order to be happy" is positively worded and is reverse-scored (8 − raw) before summing. Identify this item's ImportId in the column list below and set `das2_reverse_col` accordingly.
+
+```{r das-sf2}
+das2_cols <- c("QID60_23","QID60_27","QID60_28","QID60_29",
+               "QID60_24","QID60_25","QID60_26","QID60_32","QID60_33")
+
+# ⚠️  Set this to the ImportId of the "I do not need approval" item.
+# Inspect `names(df)` alongside the Qualtrics question order to confirm.
+das2_reverse_col <- "QID60_25"   # placeholder — VERIFY
+
+das_sf2 <- df |>
+  select(participant_id, all_of(das2_cols)) |>
+  mutate(across(all_of(das2_cols), \(x) recode_numeric(x, das_map))) |>
+  # Reverse the positive item
+  mutate(across(all_of(das2_reverse_col), \(x) 8 - x)) |>
+  rowwise() |>
+  mutate(
+    das_sf2_total     = sum(c_across(all_of(das2_cols)), na.rm = FALSE),
+    das_sf2_n_missing = sum(is.na(c_across(all_of(das2_cols))))
+  ) |>
+  ungroup()
+
+das_sf2 |>
+  summarise(
+    n    = sum(!is.na(das_sf2_total)),
+    mean = round(mean(das_sf2_total, na.rm = TRUE), 2),
+    sd   = round(sd(das_sf2_total, na.rm = TRUE), 2),
+    min  = min(das_sf2_total, na.rm = TRUE),
+    max  = max(das_sf2_total, na.rm = TRUE)
+  ) |>
+  kable(caption = "DAS-SF2 Dependency descriptives (total 9–63)") |>
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+```{r das-sf2-alpha}
+das2_items <- das_sf2 |> select(all_of(das2_cols))
+cat("DAS-SF2 Cronbach's α =",
+    round(safe_alpha(das2_items), 3), "\n")
+```
+
+------------------------------------------------------------------------
+
+## 12. Clinical flags summary
+
+```{r clinical-flags}
+flags <- df |>
+  select(participant_id) |>
+  left_join(gad7  |> select(participant_id, gad7_total,  gad7_flag),  by = "participant_id") |>
+  left_join(phq9  |> select(participant_id, phq9_total,  phq9_flag, phq9_item9_flagged),
+            by = "participant_id") |>
+  left_join(aq10  |> select(participant_id, aq10_total,  aq10_flag),  by = "participant_id")
+
+flags |>
+  summarise(
+    `GAD-7 ≥ 10 (possible GAD)`      = sum(gad7_flag, na.rm = TRUE),
+    `PHQ-9 ≥ 10 (possible depression)` = sum(phq9_flag, na.rm = TRUE),
+    `PHQ-9 item 9 ≥ 1 (suicidal ideation)` = sum(phq9_item9_flagged, na.rm = TRUE),
+    `AQ-10 ≥ 6 (possible autism)`    = sum(aq10_flag, na.rm = TRUE)
+  ) |>
+  pivot_longer(everything(), names_to = "Flag", values_to = "n participants") |>
+  kable(caption = "Clinical screening flags") |>
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+------------------------------------------------------------------------
+
+## 13. Scale-score correlations
+
+```{r correlations}
+scale_scores <- df |>
+  select(participant_id) |>
+  left_join(gad7     |> select(participant_id, gad7_total),  by = "participant_id") |>
+  left_join(phq9     |> select(participant_id, phq9_total),  by = "participant_id") |>
+  left_join(aq10     |> select(participant_id, aq10_total),  by = "participant_id") |>
+  left_join(paq24_scores |> select(participant_id, paq_total),by = "participant_id") |>
+  left_join(das_sf1  |> select(participant_id, das_sf1_total),by = "participant_id")|>
+  left_join(das_sf2  |> select(participant_id, das_sf2_total),by = "participant_id")
+
+cor_mat <- scale_scores |>
+  select(-participant_id) |>
+  cor(use = "pairwise.complete.obs") |>
+  round(2)
+
+cor_mat |>
+  kable(caption = "Pearson correlations between scale totals") |>
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+------------------------------------------------------------------------
+
+## 14. Export scored dataset
+
+```{r export}
+scored_out <- demo |>
+  left_join(gad7  |> select(participant_id, gad7_total, gad7_severity, gad7_flag, gad7_n_missing),
+            by = "participant_id") |>
+  left_join(phq9  |> select(participant_id, phq9_total, phq9_severity, phq9_flag,
+                              phq9_item9_flagged, phq9_n_missing),
+            by = "participant_id") |>
+  left_join(aq10  |> select(participant_id, aq10_total, aq10_flag, aq10_n_missing),
+            by = "participant_id") |>
+  left_join(paq24_scores,  by = "participant_id") |>
+  left_join(das_sf1 |> select(participant_id, das_sf1_total, das_sf1_n_missing),
+            by = "participant_id") |>
+  left_join(das_sf2 |> select(participant_id, das_sf2_total, das_sf2_n_missing),
+            by = "participant_id")
+
+write_csv(scored_out, OUTPUT_PATH)
+cat("Scored dataset written to:\n", OUTPUT_PATH, "\n")
+cat("Rows:", nrow(scored_out), "  Columns:", ncol(scored_out), "\n")
+
+glimpse(scored_out)
+```

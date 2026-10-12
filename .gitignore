@@ -1,0 +1,33 @@
+# ── User config (copy templates and fill in your paths) ───────────────────────
+config.m
+config.R
+config.py
+config.yaml
+analysis/pspm/config.py
+
+# ── Raw data (lives in Box, not tracked by git) ───────────────────────────────
+**/*.acq
+analysis/data/
+
+# ── R artifacts ───────────────────────────────────────────────────────────────
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+analysis/.qc_cache/
+
+# ── Python cache ──────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+
+# ── MATLAB artifacts ──────────────────────────────────────────────────────────
+*.asv
+
+# Data and manuscripts
+manuscripts/
+pilot_data/
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

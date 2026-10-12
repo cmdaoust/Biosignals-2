@@ -1,0 +1,668 @@
+---
+title: "Biosignals2 — Data Concatenation & Cleaning (v2: merged pilot formats)"
+author: ""
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: show
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+## 1. Packages
+
+```{r packages}
+library(tidyverse)
+library(yaml)
+library(knitr)
+```
+
+```{r config}
+# Load project paths from config.R at the repo root.
+# Copy config_template.R to config.R and fill in SERVER_ROOT for your machine.
+config_path <- here::here("config.R")
+if (!file.exists(config_path)) {
+  stop("config.R not found at: ", config_path,
+       "\nCopy config_template.R to config.R and fill in your paths.")
+}
+source(config_path)
+psychopy_data_dir <- PSYCHOPY_DATA_DIR
+clean_data_dir    <- COMBINED_PSYCHO_DIR
+```
+
+------------------------------------------------------------------------
+
+## 2. Load and concatenate raw data
+
+Participant ID is everything before the first `_` in the filename (e.g. `002`, `n2026`, `p7259`).
+
+Two PsychoPy experiment versions are handled here:
+
+-   **v1 (pilot):** momentary and stimulus valence each collected on two alternating sliders (A and B). Columns: `momentary_valence_slider_A/B.response`, `stim_valence_slider_A/B.response`.
+-   **v2 (July update):** single combined affect screen; one slider each. Columns: `momentary_valence_slider.response`, `stim_valence_slider.response`.
+
+Row-type identifiers (e.g. `pre_baseline_ratings.momentary_arousal_slider.response`) are **unchanged** between versions. Valence extraction uses a triple coalesce: A → B → single, so both formats work in one pipeline. A `data_version` column records which format each participant contributed.
+
+```{r load-data}
+
+data_dir <- (psychopy_data_dir)
+
+csv_files <- list.files(data_dir, pattern = "\\.csv$", full.names = TRUE)
+if (length(csv_files) == 0) stop("No CSV files found in: ", data_dir)
+
+# Exclude old pilot IDs by filename (these were initial pilots I ran on myself, but they do not include the emotion label questions)
+
+exclude_ids <- c("001", "002")
+pattern     <- paste(exclude_ids, collapse = "|")
+csv_files   <- csv_files[!grepl(pattern, basename(csv_files), ignore.case = TRUE)]
+cat("Files after exclusion:", length(csv_files), "\n")
+print(basename(csv_files))
+
+# Split into task files vs biometrics files — different schemas, don't bind together
+task_files       <- csv_files[!grepl("_biometrics\\.csv$", csv_files)]
+biometrics_files <- csv_files[ grepl("_biometrics\\.csv$", csv_files)]
+
+# Helper: extract participant ID as everything before the first "_"
+extract_pid <- function(path) tolower(sub("_.*", "", basename(path)))
+
+# Loader: reads a set of same-schema CSVs and row-binds them
+load_csv_set <- function(files) {
+  map_dfr(files, function(path) {
+    df <- read_csv(path,
+                   show_col_types = FALSE,
+                   col_types      = cols(.default = col_character()),  # read all as char to avoid type conflicts
+                   name_repair    = "minimal",
+                   locale         = locale(encoding = "UTF-8"))
+    names(df)[1] <- gsub("^\ufeff", "", names(df)[1])  # strip BOM
+    df$participant_id <- extract_pid(path)
+    df
+  }) |>
+    type_convert(guess_integer = FALSE)  # re-infer types after binding
+}
+
+raw_task       <- load_csv_set(task_files)
+
+raw_biometrics <- load_csv_set(biometrics_files)
+
+cat("Task rows          :", nrow(raw_task), "\n")
+cat("Task participants  :", paste(sort(unique(raw_task$participant_id)), collapse = ", "), "\n")
+cat("Biometrics rows    :", nrow(raw_biometrics), "\n")
+cat("Biometrics parts   :", paste(sort(unique(raw_biometrics$participant_id)), collapse = ", "), "\n")
+```
+
+------------------------------------------------------------------------
+
+## 3. Helper functions
+
+```{r helpers}
+# Coalesce two columns into one numeric value
+coalesce_val <- function(a, b) coalesce(suppressWarnings(as.numeric(a)),
+                                        suppressWarnings(as.numeric(b)))
+
+# Triple coalesce: try A, then B, then a single-slider column.
+# Old format (v1): A or B will be non-NA → returns that value.
+# New format (v2): A and B are NA → falls through to the single-slider value.
+coalesce_val3 <- function(a, b, single) {
+  coalesce(coalesce_val(a, b), suppressWarnings(as.numeric(single)))
+}
+
+# Record which slider was presented first (v1 only; NA for v2 participants).
+slider_order_flag <- function(a, b) {
+  case_when(
+    !is.na(suppressWarnings(as.numeric(a))) ~ "valence_first",
+    !is.na(suppressWarnings(as.numeric(b))) ~ "valence_second",
+    TRUE ~ NA_character_
+  )
+}
+
+# Detect experiment version per participant.
+# v1: has data in the A-slider column; v2: that column is always NA.
+format_map <- raw_task |>
+  group_by(participant_id) |>
+  summarise(
+    data_version = if_else(
+      any(!is.na(suppressWarnings(as.numeric(`momentary_valence_slider_A.response`)))),
+      "v1_pilot", "v2_jul"
+    ),
+    .groups = "drop"
+  )
+
+cat("Format by participant:\n")
+print(format_map)
+```
+
+------------------------------------------------------------------------
+
+## 4. Extract each event type
+
+Each section below:
+
+1.  **Identifies** rows using prefixed indicator columns (unchanged between versions).
+2.  **Extracts** responses using `coalesce_val3` for valence (A → B → single) and directly for arousal (column name unchanged).
+
+### 4.1 Condition order (one row per participant)
+
+```{r cond-order}
+cond_order <- raw_task |>
+  filter(!is.na(conditionOrder) & conditionOrder != "") |>
+  distinct(participant_id, conditionOrder)
+```
+
+### 4.2 Pre-baseline momentary ratings
+
+```{r pre-baseline}
+pre_bl <- raw_task |>
+  filter(!is.na(`pre_baseline_ratings.momentary_arousal_slider.response`)) |>
+  transmute(
+    participant_id,
+    prebl_valence = coalesce_val3(
+      `momentary_valence_slider_A.response`,
+      `momentary_valence_slider_B.response`,
+      `momentary_valence_slider.response`
+    ),
+    prebl_valence_rt = coalesce_val3(
+      `momentary_valence_slider_A.rt`,
+      `momentary_valence_slider_B.rt`,
+      `momentary_valence_slider.rt`
+    ),
+    prebl_valence_slider_order = slider_order_flag(
+      `momentary_valence_slider_A.response`,
+      `momentary_valence_slider_B.response`
+    ),
+    prebl_arousal    = as.numeric(`momentary_arousal_slider.response`),
+    prebl_arousal_rt = as.numeric(`momentary_arousal_slider.rt`)
+  )
+```
+
+### 4.3 Post-baseline momentary ratings
+
+```{r post-baseline}
+post_bl <- raw_task |>
+  filter(!is.na(`post_baseline_ratings.momentary_arousal_slider.response`)) |>
+  transmute(
+    participant_id,
+    postbl_valence = coalesce_val3(
+      `momentary_valence_slider_A.response`,
+      `momentary_valence_slider_B.response`,
+      `momentary_valence_slider.response`
+    ),
+    postbl_valence_rt = coalesce_val3(
+      `momentary_valence_slider_A.rt`,
+      `momentary_valence_slider_B.rt`,
+      `momentary_valence_slider.rt`
+    ),
+    postbl_valence_slider_order = slider_order_flag(
+      `momentary_valence_slider_A.response`,
+      `momentary_valence_slider_B.response`
+    ),
+    postbl_arousal    = as.numeric(`momentary_arousal_slider.response`),
+    postbl_arousal_rt = as.numeric(`momentary_arousal_slider.rt`)
+  )
+```
+
+### 4.4 Post-induction momentary ratings
+
+```{r post-induction}
+post_ind <- raw_task |>
+  filter(!is.na(`post_emotion_induction_ratings.momentary_arousal_slider.response`)) |>
+  transmute(
+    participant_id,
+    condition,
+    postind_valence = coalesce_val3(
+      `momentary_valence_slider_A.response`,
+      `momentary_valence_slider_B.response`,
+      `momentary_valence_slider.response`
+    ),
+    postind_valence_rt = coalesce_val3(
+      `momentary_valence_slider_A.rt`,
+      `momentary_valence_slider_B.rt`,
+      `momentary_valence_slider.rt`
+    ),
+    postind_valence_slider_order = slider_order_flag(
+      `momentary_valence_slider_A.response`,
+      `momentary_valence_slider_B.response`
+    ),
+    postind_arousal    = as.numeric(`momentary_arousal_slider.response`),
+    postind_arousal_rt = as.numeric(`momentary_arousal_slider.rt`)
+  )
+```
+
+### 4.5 Post-recovery momentary ratings
+
+```{r post-recovery}
+post_rec <- raw_task |>
+  filter(!is.na(`post_emotion_recovery_ratings.momentary_arousal_slider.response`)) |>
+  transmute(
+    participant_id,
+    condition,
+    postrec_valence = coalesce_val3(
+      `momentary_valence_slider_A.response`,
+      `momentary_valence_slider_B.response`,
+      `momentary_valence_slider.response`
+    ),
+    postrec_valence_rt = coalesce_val3(
+      `momentary_valence_slider_A.rt`,
+      `momentary_valence_slider_B.rt`,
+      `momentary_valence_slider.rt`
+    ),
+    postrec_valence_slider_order = slider_order_flag(
+      `momentary_valence_slider_A.response`,
+      `momentary_valence_slider_B.response`
+    ),
+    postrec_arousal    = as.numeric(`momentary_arousal_slider.response`),
+    postrec_arousal_rt = as.numeric(`momentary_arousal_slider.rt`)
+  )
+```
+
+### 4.6 Per-video stimulus ratings
+
+`trigger_name` and `origional_video_id` are on different raw rows in the PsychoPy output. We build a lookup keyed on the filename stem and join it in.
+
+The v2 format renamed the stim valence sliders to a single `stim_valence_slider`; `stim_arousal_slider` and `stim_approach_slider` are unchanged.
+
+```{r trigger-lookup}
+trigger_lookup <- raw_task |>
+  filter(!is.na(trigger_name) & trigger_name != "" &
+         !is.na(stim_path)    & stim_path    != "") |>
+  transmute(
+    participant_id,
+    video_id     = str_remove(basename(stim_path), "\\.[^.]+$"),
+    trigger_name
+  )
+```
+
+```{r stim-ratings}
+stim_ratings <- raw_task |>
+  filter(!is.na(origional_video_id) & origional_video_id != "") |>
+  transmute(
+    participant_id,
+    video_id  = origional_video_id,
+    condition = case_when(
+      str_starts(origional_video_id, "P") ~ "positive",
+      str_starts(origional_video_id, "N") ~ "negative",
+      TRUE ~ NA_character_
+    ),
+    stim_valence = coalesce_val3(
+      `stim_valence_slider_A.response`,
+      `stim_valence_slider_B.response`,
+      `stim_valence_slider.response`
+    ),
+    stim_valence_rt = coalesce_val3(
+      `stim_valence_slider_A.rt`,
+      `stim_valence_slider_B.rt`,
+      `stim_valence_slider.rt`
+    ),
+    stim_valence_slider_order = slider_order_flag(
+      `stim_valence_slider_A.response`,
+      `stim_valence_slider_B.response`
+    ),
+    stim_arousal    = as.numeric(`stim_arousal_slider.response`),
+    stim_arousal_rt = as.numeric(`stim_arousal_slider.rt`),
+    stim_approach    = as.numeric(`stim_approach_slider.response`),
+    stim_approach_rt = as.numeric(`stim_approach_slider.rt`),
+    stim_emotion_label = emotionText.text,
+    stim_emotion_intensity = intensitySlider.response,
+    stim_emotion_intensity_rt = intensitySlider.rt
+  ) |>
+  left_join(trigger_lookup, by = c("participant_id", "video_id"))
+```
+
+------------------------------------------------------------------------
+
+## 5. Join into one row per video per subject
+
+```{r join}
+clean_data <- stim_ratings |>
+  left_join(post_ind,   by = c("participant_id", "condition")) |>
+  left_join(post_rec,   by = c("participant_id", "condition")) |>
+  left_join(pre_bl,     by = "participant_id") |>
+  left_join(post_bl,    by = "participant_id") |>
+  left_join(cond_order, by = "participant_id") |>
+  left_join(format_map, by = "participant_id") |>
+  mutate(
+    condition_rank = case_when(
+      conditionOrder == "pos_first" & condition == "positive" ~ 1L,
+      conditionOrder == "pos_first" & condition == "negative" ~ 2L,
+      conditionOrder == "neg_first" & condition == "negative" ~ 1L,
+      conditionOrder == "neg_first" & condition == "positive" ~ 2L,
+      TRUE ~ NA_integer_
+    )
+  ) |>
+  arrange(participant_id, condition_rank) |>
+  select(-condition_rank) |>
+  select(
+    participant_id, data_version, conditionOrder, condition, video_id, trigger_name,
+    # Stimulus ratings
+    stim_valence, stim_valence_rt, stim_valence_slider_order,
+    stim_arousal, stim_arousal_rt,
+    stim_approach, stim_approach_rt,
+    stim_emotion_label,
+    stim_emotion_intensity,
+    stim_emotion_intensity_rt,
+    # Post-induction momentary
+    postind_valence, postind_valence_rt, postind_valence_slider_order,
+    postind_arousal, postind_arousal_rt,
+    # Post-recovery momentary
+    postrec_valence, postrec_valence_rt, postrec_valence_slider_order,
+    postrec_arousal, postrec_arousal_rt,
+    # Pre-baseline momentary
+    prebl_valence,  prebl_valence_rt,  prebl_valence_slider_order,
+    prebl_arousal,  prebl_arousal_rt,
+    # Post-baseline momentary
+    postbl_valence, postbl_valence_rt, postbl_valence_slider_order,
+    postbl_arousal, postbl_arousal_rt,
+ 
+  )
+
+cat("Final rows   :", nrow(clean_data), "\n")
+cat("Final columns:", ncol(clean_data), "\n")
+cat("Rows/subject :", nrow(clean_data) / n_distinct(clean_data$participant_id), "\n")
+cat("\nParticipants by version:\n")
+count(clean_data, participant_id, data_version) |> print()
+```
+
+------------------------------------------------------------------------
+
+## 6. Manipulation check columns
+
+```{r manip-check}
+clean_data <- clean_data |>
+  mutate(
+    manip_check_valence = postind_valence - postbl_valence,
+    manip_check_arousal = postind_arousal - postbl_arousal,
+    manip_check_direction_correct = case_when(
+      condition == "positive" & manip_check_valence > 0 ~ TRUE,
+      condition == "negative" & manip_check_valence < 0 ~ TRUE,
+      is.na(manip_check_valence)                        ~ NA,
+      TRUE                                              ~ FALSE
+    )
+  )
+```
+
+------------------------------------------------------------------------
+
+## 7. Inspect
+
+### 7.1 Full table
+
+```{r view-table}
+clean_data |>
+  kable(digits = 2)
+```
+
+### 7.2 Check for unexpected NAs in key columns
+
+```{r na-check}
+clean_data |>
+  summarise(across(everything(), ~ sum(is.na(.)))) |>
+  pivot_longer(everything(), names_to = "column", values_to = "n_missing") |>
+  filter(n_missing > 0) |>
+  arrange(desc(n_missing)) |>
+  kable()
+```
+
+### 7.3 Slider order distribution (v1 only — NA expected for v2)
+
+```{r slider-check}
+clean_data |>
+  count(data_version, condition, stim_valence_slider_order) |>
+  kable()
+```
+
+### 7.4 Key ratings by version (sanity check)
+
+```{r version-check}
+clean_data |>
+  group_by(data_version, condition) |>
+  summarise(
+    n                = n(),
+    mean_stim_val    = mean(stim_valence, na.rm = TRUE),
+    mean_stim_ar     = mean(stim_arousal, na.rm = TRUE),
+    mean_postind_val = mean(postind_valence, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  kable(digits = 2)
+```
+
+------------------------------------------------------------------------
+
+## 9. Concatenate and apply condition labels to Biometrics data
+
+```{r}
+## --- Biometrics: assign experimental condition labels ---
+
+# Step 1: Per-participant clock offset (PsychoPy internal → biometrics recording clock)
+# offset = time_since_recording_start − thisRow.t  ≈ 0.59 s, stable within session
+clock_offset <- raw_task |>
+  filter(!is.na(time_since_recording_start), !is.na(`thisRow.t`)) |>
+  mutate(
+    psychopy_t  = as.numeric(`thisRow.t`),
+    bio_t       = as.numeric(time_since_recording_start),
+    offset      = bio_t - psychopy_t
+  ) |>
+  filter(abs(offset) < 10) |>   # drop anomalous rows (e.g. offset = −179 s)
+  group_by(participant_id) |>
+  summarise(clock_offset_s = median(offset, na.rm = TRUE), .groups = "drop")
+
+cat("Clock offsets per participant:\n")
+print(clock_offset)
+
+# Step 2: Extract event windows from task data (PsychoPy clock → convert to bio clock)
+# Baseline window
+baseline_windows <- raw_task |>
+  filter(!is.na(`baseline.started`)) |>
+  left_join(clock_offset, by = "participant_id") |>
+  transmute(
+    participant_id,
+    phase     = "baseline",
+    condition = NA_character_,
+    video_id  = NA_character_,
+    start_bio = as.numeric(`baseline.started`) + clock_offset_s,
+    end_bio   = as.numeric(`baseline.stopped`)  + clock_offset_s
+  )
+
+# Stimulus windows (condition inferred from stim_path)
+stimulus_windows <- raw_task |>
+  filter(!is.na(`stimuli.started`), !is.na(stim_path), stim_path != "") |>
+  left_join(clock_offset, by = "participant_id") |>
+  transmute(
+    participant_id,
+    phase     = "stimulus",
+    condition = case_when(
+      str_detect(stim_path, "/P|/p") ~ "positive",
+      str_detect(stim_path, "/N|/n") ~ "negative",
+      TRUE ~ NA_character_
+    ),
+    video_id  = str_remove(basename(stim_path), "\\.[^.]+$"),
+    start_bio = as.numeric(`stimuli.started`) + clock_offset_s,
+    end_bio   = as.numeric(`stimuli.stopped`)  + clock_offset_s
+  )
+
+# Recovery windows — condition carried from the condition column on those rows
+recovery_windows <- raw_task |>
+  filter(!is.na(`stim_recovery.started`)) |>
+  left_join(clock_offset, by = "participant_id") |>
+  transmute(
+    participant_id,
+    phase     = "recovery",
+    condition,
+    video_id  = NA_character_,
+    start_bio = as.numeric(`stim_recovery.started`) + clock_offset_s,
+    end_bio   = as.numeric(`stim_recovery.stopped`)  + clock_offset_s
+  )
+
+event_windows <- bind_rows(baseline_windows, stimulus_windows, recovery_windows) |>
+  filter(!is.na(start_bio), !is.na(end_bio))
+
+cat("\nEvent windows:\n")
+print(event_windows)
+
+# Step 3: Range-join biometrics rows to event windows
+# Each biometrics row gets labelled with whichever phase window its `time` falls in.
+# Rows outside all windows (e.g. ratings screens, instructions) get phase = NA.
+raw_biometrics_labelled <- raw_biometrics |>
+  mutate(time = as.numeric(time)) |>
+  left_join(
+    event_windows,
+    by = join_by(participant_id, between(time, start_bio, end_bio))
+  ) |>
+  select(-start_bio, -end_bio)|>
+  relocate(participant_id, phase, condition, video_id)
+  
+cat("\nBiometrics rows by phase:\n")
+count(raw_biometrics_labelled, participant_id, phase, condition) |> print()
+```
+
+## 10. Update condition labelling 
+
+```{r}
+cond_levels <- c("baseline", "negative_induction", "post_negative_induction_recovery",
+                 "positive_induction", "post_positive_induction_recovery")
+
+# Biometrics ------------------------------------------------------------------
+raw_biometrics_labelled <- raw_biometrics_labelled |>
+  mutate(
+    condition = factor(case_when(
+      phase == "baseline"                            ~ "baseline",
+      phase == "stimulus" & condition == "negative"  ~ "negative_induction",
+      phase == "recovery" & condition == "negative"  ~ "post_negative_recovery",
+      phase == "stimulus" & condition == "positive"  ~ "positive_induction",
+      phase == "recovery" & condition == "positive"  ~ "post_positive_recovery",
+      TRUE ~ NA_character_
+    ), levels = cond_levels)
+  ) |>
+  select(-phase)
+
+# Task data -------------------------------------------------------------------
+baseline_rows <- clean_data |>
+  distinct(participant_id, conditionOrder, data_version, postbl_valence, postbl_arousal) |>
+  transmute(participant_id, conditionOrder, data_version,
+            condition = "baseline", video_id = NA_character_, trigger_name = NA_character_,
+            block_end_valence = postbl_valence, block_end_arousal = postbl_arousal,
+            stim_valence = NA_real_, stim_valence_rt = NA_real_,
+            stim_arousal = NA_real_, stim_arousal_rt = NA_real_,
+            stim_approach = NA_real_, stim_approach_rt = NA_real_,
+            stim_emotion_label = NA_character_,
+            stim_emotion_intensity = NA_real_, stim_emotion_intensity_rt = NA_real_)
+
+negative_rows <- clean_data |>
+  filter(condition == "negative") |>
+  transmute(participant_id, conditionOrder, data_version,
+            condition = "negative_induction", video_id, trigger_name,
+            block_end_valence = postind_valence, block_end_arousal = postind_arousal,
+            stim_valence, stim_valence_rt, stim_arousal, stim_arousal_rt,
+            stim_approach, stim_approach_rt,
+            stim_emotion_label, stim_emotion_intensity, stim_emotion_intensity_rt)
+
+post_neg_rows <- clean_data |>
+  filter(condition == "negative") |>
+  distinct(participant_id, conditionOrder, data_version, postrec_valence, postrec_arousal) |>
+  transmute(participant_id, conditionOrder, data_version,
+            condition = "post_negative_induction_recovery", video_id = NA_character_, trigger_name = NA_character_,
+            block_end_valence = postrec_valence, block_end_arousal = postrec_arousal,
+            stim_valence = NA_real_, stim_valence_rt = NA_real_,
+            stim_arousal = NA_real_, stim_arousal_rt = NA_real_,
+            stim_approach = NA_real_, stim_approach_rt = NA_real_,
+            stim_emotion_label = NA_character_,
+            stim_emotion_intensity = NA_real_, stim_emotion_intensity_rt = NA_real_)
+
+positive_rows <- clean_data |>
+  filter(condition == "positive") |>
+  transmute(participant_id, conditionOrder, data_version,
+            condition = "positive_induction", video_id, trigger_name,
+            block_end_valence = postind_valence, block_end_arousal = postind_arousal,
+            stim_valence, stim_valence_rt, stim_arousal, stim_arousal_rt,
+            stim_approach, stim_approach_rt,
+            stim_emotion_label, stim_emotion_intensity, stim_emotion_intensity_rt)
+
+post_pos_rows <- clean_data |>
+  filter(condition == "positive") |>
+  distinct(participant_id, conditionOrder, data_version, postrec_valence, postrec_arousal) |>
+  transmute(participant_id, conditionOrder, data_version,
+            condition = "post_positive_induction_recovery", video_id = NA_character_, trigger_name = NA_character_,
+            block_end_valence = postrec_valence, block_end_arousal = postrec_arousal,
+            stim_valence = NA_real_, stim_valence_rt = NA_real_,
+            stim_arousal = NA_real_, stim_arousal_rt = NA_real_,
+            stim_approach = NA_real_, stim_approach_rt = NA_real_,
+            stim_emotion_label = NA_character_,
+            stim_emotion_intensity = NA_real_, stim_emotion_intensity_rt = NA_real_)
+
+clean_data_long <- bind_rows(baseline_rows, negative_rows, post_neg_rows,
+                             positive_rows, post_pos_rows) |>
+  mutate(condition = factor(condition, levels = cond_levels)) |>
+  relocate(participant_id, condition, video_id) |>
+  arrange(participant_id, condition)
+
+count(clean_data_long, condition)
+```
+
+## 11. Filter out data that isn't needed for subsequent analysis and save
+
+```{r}
+raw_biometrics_labelled <- raw_biometrics_labelled |>
+  filter(!is.na(condition))
+
+clean_data_long <- clean_data_long |>
+  select(-conditionOrder,-data_version,)
+
+dir.create(clean_data_dir, showWarnings = FALSE, recursive = TRUE)
+
+out_path <- file.path(clean_data_dir, "biosignals2_selfreport_ratings.csv")
+write_csv(clean_data_long, out_path)
+cat("Saved:", out_path, "\n")
+
+out_path <- file.path(clean_data_dir, "biosignals2_webcambiometrics.csv")
+write_csv(raw_biometrics_labelled, out_path)
+cat("Saved:", out_path, "\n")
+```
+
+## 9. Counterbalancing tracker
+
+```{r counterbalance}
+cb <- clean_data |>
+  distinct(participant_id, conditionOrder) |>
+  count(conditionOrder, name = "n_participants")
+
+n_total    <- sum(cb$n_participants)
+n_groups   <- nrow(cb)
+is_balanced <- n_groups > 1 && length(unique(cb$n_participants)) == 1
+
+cat("Total participants   :", n_total, "\n")
+cat("Condition orders seen:", paste(cb$conditionOrder, collapse = ", "), "\n")
+cat("Balanced             :", is_balanced, "\n\n")
+
+cb |>
+  mutate(
+    pct      = round(100 * n_participants / n_total),
+    balanced = if_else(is_balanced, "✓", "⚠ unequal groups")
+  ) |>
+  kable(caption = "Participants per counterbalancing group")
+```
+
+```{r counterbalance-plot}
+clean_data |>
+  distinct(participant_id, conditionOrder, data_version) |>
+  ggplot(aes(x = conditionOrder, fill = data_version)) +
+  geom_bar() +
+  geom_text(stat = "count", aes(label = after_stat(count)),
+            position = position_stack(vjust = 0.5), size = 4, colour = "white") +
+  scale_fill_manual(values = c(v1_pilot = "#5B8DB8", v2_jul = "#E07B54")) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.15)),
+                     breaks = scales::breaks_width(1)) +
+  labs(title = "Counterbalancing: participants per condition order",
+       x = NULL, y = "N participants", fill = "Data version") +
+  theme_bw(base_size = 12) +
+  theme(panel.grid.minor = element_blank())
+```
+
+------------------------------------------------------------------------
+
+## Session info
+
+```{r session-info}
+sessionInfo()
+```
