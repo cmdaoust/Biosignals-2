@@ -2165,9 +2165,22 @@ completeness_html <- tryCatch({
     c(ids_summary, ids_of_files(KUBIOS_RESULTS_DIR, "_hrv\\.csv$"))
   })
 
-  # Video: any video-pipeline file at the top level of the Box video folder (see section 6.1)
-  ids_video <- get_ids(ids_of_files(VIDEO_BOX_DIR,
-    "_recording\\.avi$|_frames\\.zip$|_1to1_ffv1\\.avi$|_frame_timestamps\\.csv$"))
+  # Video (top level of the Box video folder, same rule as section 6.1). Complete only with ALL of
+  #   <id>_frames.zip + <id>_1to1_ffv1.avi + <id>_frame_timestamps.csv            (PNG sessions)
+  #   or <id>_recording.avi + <id>_frame_timestamps.csv, with no PNG-pipeline files (old AVI sessions)
+  # Anyone with only some of these files is shown as partial, with what is missing.
+  vid <- map(c(zip = "_frames\\.zip$", avi = "_1to1_ffv1\\.avi$",
+               ts = "_frame_timestamps\\.csv$", old = "_recording\\.avi$"),
+             ~ get_ids(ids_of_files(VIDEO_BOX_DIR, .x)))
+  vid_old_session <- setdiff(vid$old, union(vid$zip, vid$avi))
+  ids_video <- sort(union(Reduce(intersect, vid[c("zip", "avi", "ts")]),
+                          intersect(vid_old_session, vid$ts)))
+  ids_video_partial <- setdiff(unique(unlist(vid, use.names = FALSE)), ids_video)
+  video_missing <- function(pid) {
+    need <- if (pid %in% vid_old_session) c(ts = "frame_timestamps.csv")
+            else c(zip = "frames.zip", avi = "1to1_ffv1.avi", ts = "frame_timestamps.csv")
+    paste0("no ", paste(need[!map_lgl(names(need), ~ pid %in% vid[[.x]])], collapse = ", no "))
+  }
 
   # Raw physiology: the BIOPAC session recording is the source of truth for a
   # participant having been run at all.
@@ -2189,7 +2202,9 @@ completeness_html <- tryCatch({
     Biometrics     = ids_raw_biometrics,
     FaceReader     = ids_facereader
   )
-  partial <- list(Questionnaires = ids_raw_q_partial)
+  partial <- list(Questionnaires = ids_raw_q_partial, Video = ids_video_partial)
+  partial_note <- function(nm, pid)
+    if (nm == "Video") video_missing(pid) else "incomplete Qualtrics response only"
   src_names <- names(sources)
 
   all_ids <- sort(unique(c(unlist(sources, use.names = FALSE), unlist(partial, use.names = FALSE))))
@@ -2208,15 +2223,16 @@ completeness_html <- tryCatch({
     miss <- src_names[!unlist(matrix_df[i, src_names])]
     pid  <- matrix_df$pid[i]
     paste(map_chr(miss, function(nm)
-      if (is_partial(nm, pid)) paste0(nm, " (incomplete Qualtrics response only)") else nm),
+      if (is_partial(nm, pid)) paste0(nm, " (", partial_note(nm, pid), ")") else nm),
       collapse = ", ")
   })
 
   n_total    <- nrow(matrix_df)
   n_complete <- sum(matrix_df$is_complete)
 
-  cell_html <- function(present, partial_only = FALSE) {
-    if (partial_only) "<td class='status-warn' style='text-align:center' title='Only an incomplete Qualtrics response'>&#9680; partial</td>"
+  cell_html <- function(present, partial_only = FALSE, note = "") {
+    if (partial_only) paste0("<td class='status-warn' style='text-align:center' title='", note,
+                             "'>&#9680; partial</td>")
     else if (present) "<td class='status-ok' style='text-align:center'>&#10003;</td>"
     else "<td class='status-warn' style='text-align:center'>&#10007;</td>"
   }
@@ -2224,7 +2240,10 @@ completeness_html <- tryCatch({
   matrix_rows_html <- map_chr(seq_len(nrow(matrix_df)), function(i) {
     r <- matrix_df[i, ]
     paste0("<tr><td class='mono'>", r$pid, "</td>",
-           paste(map_chr(src_names, ~ cell_html(r[[.x]], partial_only = !r[[.x]] && is_partial(.x, r$pid))),
+           paste(map_chr(src_names, function(nm) {
+             part <- !r[[nm]] && is_partial(nm, r$pid)
+             cell_html(r[[nm]], partial_only = part, note = if (part) partial_note(nm, r$pid) else "")
+           }),
                  collapse = ""),
            "<td>", r$n_present, "/", n_sources, "</td>",
            if (r$is_complete) "<td class='status-ok'>&#10003; complete</td>"
@@ -2279,7 +2298,11 @@ completeness_html <- tryCatch({
          <code>raw_questionnaire</code>), so this tab does not depend on re-knitting 01 or 04.
          Whether the combined CSVs have caught up is on the <strong>Combined datasets</strong> tab.
          The other sources: BIOPAC session recordings, Ledalab (EDA), Kubios (HRV), the Box video
-         folder and FaceReader exports. IDs are compared case-insensitively and whitespace-trimmed.</p>
+         folder and FaceReader exports. IDs are compared case-insensitively and whitespace-trimmed.
+         <strong>Video</strong> counts only when <code>{id}_frames.zip</code>, <code>{id}_1to1_ffv1.avi</code>
+         and <code>{id}_frame_timestamps.csv</code> are all there (old sessions recorded straight to AVI:
+         <code>{id}_recording.avi</code> + timestamps); with only some of them it shows as partial
+         (hover for what is missing).</p>
     </div>
     ', missing_note, '
     <div class="table-wrap" style="margin-top:1rem;"><table>

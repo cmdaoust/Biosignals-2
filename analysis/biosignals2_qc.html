@@ -175,7 +175,7 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
       <div class="tile-label">Participants with<br>complete dataset</div></div>
     <div class="tile blue"><div class="tile-value">3/1/0/1</div>
       <div class="tile-label">PsychoPy / Quest. /<br>Ledalab / Kubios IDs</div></div>
-    <div class="tile blue"><div class="tile-value">3/3/0</div>
+    <div class="tile blue"><div class="tile-value">0/3/0</div>
       <div class="tile-label">Video / Biometrics /<br>FaceReader IDs</div></div>
   </div>
 
@@ -189,17 +189,21 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
          <code>raw_questionnaire</code>), so this tab does not depend on re-knitting 01 or 04.
          Whether the combined CSVs have caught up is on the <strong>Combined datasets</strong> tab.
          The other sources: BIOPAC session recordings, Ledalab (EDA), Kubios (HRV), the Box video
-         folder and FaceReader exports. IDs are compared case-insensitively and whitespace-trimmed.</p>
+         folder and FaceReader exports. IDs are compared case-insensitively and whitespace-trimmed.
+         <strong>Video</strong> counts only when <code>{id}_frames.zip</code>, <code>{id}_1to1_ffv1.avi</code>
+         and <code>{id}_frame_timestamps.csv</code> are all there (old sessions recorded straight to AVI:
+         <code>{id}_recording.avi</code> + timestamps); with only some of them it shows as partial
+         (hover for what is missing).</p>
     </div>
     <div class="note"><strong>3 participant(s) missing data from at least one source:</strong>
-           <ul style="margin-top:.5rem;margin-left:1.2rem;line-height:1.8;"><li><span class='mono'>O8244</span> &mdash; missing: Questionnaires, Ledalab, Kubios, FaceReader</li>
-<li><span class='mono'>S1250</span> &mdash; missing: Questionnaires, Ledalab, Kubios, FaceReader</li>
-<li><span class='mono'>S9686</span> &mdash; missing: Ledalab, FaceReader</li></ul></div>
+           <ul style="margin-top:.5rem;margin-left:1.2rem;line-height:1.8;"><li><span class='mono'>O8244</span> &mdash; missing: Questionnaires, Ledalab, Kubios, Video (no frames.zip, no 1to1_ffv1.avi), FaceReader</li>
+<li><span class='mono'>S1250</span> &mdash; missing: Questionnaires, Ledalab, Kubios, Video (no 1to1_ffv1.avi), FaceReader</li>
+<li><span class='mono'>S9686</span> &mdash; missing: Ledalab, Video (no frames.zip), FaceReader</li></ul></div>
     <div class="table-wrap" style="margin-top:1rem;"><table>
       <thead><tr><th>Participant</th><th>PsychoPy</th><th>Questionnaires</th><th>Physiology</th><th>Ledalab</th><th>Kubios</th><th>Video</th><th>Biometrics</th><th>FaceReader</th><th>Sources</th><th>Status</th></tr></thead>
-      <tbody><tr><td class='mono'>O8244</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>4/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
-<tr><td class='mono'>S1250</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>4/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
-<tr><td class='mono'>S9686</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>6/8</td><td class='status-warn'>&#9888; incomplete</td></tr></tbody>
+      <tbody><tr><td class='mono'>O8244</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center' title='no frames.zip, no 1to1_ffv1.avi'>&#9680; partial</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>3/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>S1250</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center' title='no 1to1_ffv1.avi'>&#9680; partial</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>3/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>S9686</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center' title='no frames.zip'>&#9680; partial</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>5/8</td><td class='status-warn'>&#9888; incomplete</td></tr></tbody>
     </table></div>
   </section></div>
   <div id="tab-combined" class="tab-content"><div class="status-row">
@@ -629,7 +633,7 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
         <th>Timestamps</th><th>Zip (GB)</th><th>AVI (GB)</th><th>Frames</th><th>Duration (min)</th>
         <th>Camera fps</th><th>Status</th></tr></thead>
       <tbody><tr><td class='mono'>o8244</td><td>PNG</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>—</td><td>—</td><td>39,630</td><td>22.0</td><td>30.03</td><td class='status-warn'>⚠ no frames zip; no 1to1_ffv1.avi</td></tr>
-<tr><td class='mono'>s1250</td><td>PNG</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>—</td><td>—</td><td>35,129</td><td>19.5</td><td>30.05</td><td class='status-warn'>⚠ no frames zip; no 1to1_ffv1.avi</td></tr>
+<tr><td class='mono'>s1250</td><td>PNG</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>0.00</td><td>—</td><td>35,129</td><td>19.5</td><td>30.05</td><td class='status-warn'>⚠ no 1to1_ffv1.avi</td></tr>
 <tr><td class='mono'>s9686</td><td>PNG</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>—</td><td>5.31</td><td>36,625</td><td>20.4</td><td>29.92</td><td class='status-warn'>⚠ no frames zip</td></tr></tbody>
     </table></div>
   </section></div>
