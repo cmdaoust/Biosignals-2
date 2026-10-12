@@ -13,11 +13,6 @@ This document is for collaborators. It covers where data lives, what each file/f
 
 Box is not included in the GitHub repo. Code references Box paths via `config.py` (see below).
 
-> **Note:** this repo (`Biosignals-2`) replaced the earlier `Biosignals2` repo on 12 Oct 2026. It started
-> with a fresh history from the last `Biosignals2` commit (`384e31d`). `manuscripts/` and `pilot_data/`
-> are gitignored and are not in this repo or its history. The old `Biosignals2` repo is kept for its
-> history only.
-
 ---
 
 ## Quality-check reports
@@ -38,7 +33,6 @@ The links open the live pages on GitHub Pages, which show whatever was last push
 After regenerating a report, push the new `.html` (Pages takes a minute or two to update).
 
 **Session protocol checklist:** [biosignals2-protocol-checklist.html](https://cmdaoust.github.io/Biosignals-2/protocol_instructions/biosignals2-protocol-checklist.html)
-(source: `protocol_instructions/biosignals2-protocol-checklist.html`).
 
 ---
 
@@ -49,51 +43,48 @@ Root: `C:\Users\carme\Box\Project_Biosignals_study_2\3_Data\`
 
 ```
 3_Data/
-├── raw_physiology/              # BIOPAC .acq originals — ECG and EDA recordings, one per participant
-│   └── exports/                 # AcqKnowledge exports: full physiology .mat, EDA-only .mat and .acq cuts
-│                                #   Staging area — EDA .mat files are copied to ledalab/input/ when ready
-├── raw_psychopy/                # PsychoPy output files (includes webcam biometrics .csv and clocksync .json)
-├── raw_questionnaire/           # Raw questionnaire responses
-├── clean_combined_data/
-│   ├── psychopy/                # Cleaned/processed PsychoPy data
-│   ├── questionnaires/          # Cleaned questionnaire data
-│   └── psychopy_questionnaire/  # Merged psychopy + questionnaire dataset
+├── raw_physiology/                     # BIOPAC .acq originals — ECG and EDA recordings, one per participant
+│   └── entire_session_duration/        # AcqKnowledge exports: untrimmed acq data files (can be deleted at the end of the project)
+│   └── experimental_protocol_duration/ # AcqKnowledge exports: acq data files trimmed to only include experimental protocol
+├── raw_psychopy/                       # PsychoPy output files (includes webcam biometrics .csv and clocksync .json)
+├── raw_questionnaire/                  # Raw questionnaire responses downloaded from qualtrics      
 ├── ledalab/
-│   ├── input/                   # EDA-only .mat files copied from raw_physiology/exports/ — stable input for Ledalab
-│   ├── {id}_eda_era.txt         # Ledalab CDA ERA output per participant
-│   └── {id}_eda_scrlist.txt     # Ledalab individual SCR event list per participant
-├── pspm/                        # PsPM SCR pipeline output (pipeline abandoned — kept for reference)
-│   ├── preprocessed/            # Imported PsPM .mat files
-│   ├── missing epoch/           # Missing epoch .mat files
-│   ├── models/                  # SF model .mat files (AUC, SCL, MP, DCM)
-│   └── outputs/                 # Exported statistics .tsv files
+│   ├── input/                          # .mat files containing only EDA waveform, exported fron acqknowledge, ready for ledalab analysis
+│   ├── {id}_eda_era.txt                # Ledalab CDA ERA output per participant
+│   └── {id}_eda_scrlist.txt            # Ledalab individual SCR event list per participant
+├── pspm/                               # PsPM SCR pipeline output (pipeline abandoned — kept for reference)
+│   ├── preprocessed/                   # Imported PsPM .mat files
+│   ├── missing epoch/                  # Missing epoch .mat files
+│   ├── models/                         # SF model .mat files (AUC, SCL, MP, DCM)
+│   └── outputs/                        # Exported statistics .tsv files
 ├── event_onsets/
-│   ├── blocks/                  # All block-level event onset files. Naming convention:
-│   │                            #   {pid}_events_blocks_{source}_{software}.{ext}
-│   │                            #   source   = biopac | psychopy
-│   │                            #   software = pspm (archived) | ledalab | r
-│   │                            #   e.g. 001_carmen_pilot_events_blocks_psychopy_ledalab.txt
-│   │                            #        001_carmen_pilot_events_blocks_biopac_pspm.mat
-│   │                            #        002_events_blocks_psychopy_r.csv  ← block boundaries for R/FaceReader
-│   │                            #   Also contains nid_map_{source}_ledalab.txt (Ledalab condition legend)
-│   │                            #   and PsPM epochs files (_epochs_conditions_*.mat, *_labels.csv)
-│   └── stimulus_videos/         # Per-video timing files: {pid}_events_stimuli_{source}_pspm.mat
-│                                #   (PsPM archived pipeline only — no video-level Ledalab analysis)
-├── kubios/                      # Kubios HRV Scientific output (raw CSV/PDF/MAT) + tidy extracts
-└── video/                       # FaceReader output and webcam recordings per participant
-                                 #   (heart beat logs, expression logs, state logs, frame timestamps, .avi)
+│   ├── blocks/                         # All block-level event onset files. Naming convention:
+│   │                                   #   {pid}_events_blocks_{source}_{software}.{ext}
+│   │                                   #   source   = biopac | psychopy
+│   │                                   #   software = pspm (archived) | ledalab | r
+│   │                                   #   e.g. {pid}_events_blocks_psychopy_ledalab.txt
+│   │                                   #        {pid}_events_blocks_biopac_pspm.mat
+│   │                                   #        {pid}_events_blocks_psychopy_r.csv  ← block boundaries for R/FaceReader
+│   │                                   #   Also contains nid_map_{source}_ledalab.txt (Ledalab condition legend)
+│   │                                   #   and PsPM epochs files (_epochs_conditions_*.mat, *_labels.csv)
+│   └── stimulus_videos/                # Per-video timing files: {pid}_events_stimuli_{source}_pspm.mat
+│                                       #   (PsPM archived pipeline only — no video-level Ledalab analysis)
+├── kubios/                             # Kubios HRV Scientific output (raw CSV/PDF/MAT) + tidy extracts
+├── video/                              # FaceReader output and webcam recordings per participant
+│                                       #   (heart beat logs, expression logs, state logs, frame timestamps, .avi)
+├── clean_combined_data/                # Cleaned/processed data files with all participat data in one file 
 ```
 
 ### Kubios files
 
 Kubios HRV Scientific 4.3 was run on the BIOPAC ECG recordings. Output is one wide-format CSV per participant.
 
-`002_carmen_pilot_physiology_hrv.csv` covers 5 experimental blocks (baseline, negative induction, negative recovery, positive induction, positive recovery). The file contains:
+`{pid}_physiology_hrv.csv` covers 5 experimental blocks (baseline, negative induction, negative recovery, positive induction, positive recovery). The file contains:
 - Lines 1–60: Kubios analysis parameters and settings
 - Lines 62–151: Summary HRV statistics per block (RMSSD, SDNN, mean HR, LF/HF power, etc.)
 - Lines 207+: Per-beat RR interval data and spectral estimates (FFT and AR), one set of columns per block
 
-Two tidy extracts are also saved in `kubios/`: `002_carmen_pilot_kubios_summary.csv` (one row per block) and `002_carmen_pilot_kubios_rr.csv` (per-beat RR intervals). These are what `03_hr_comparison_pilot.Rmd` reads directly.
+Two tidy extracts are also saved in `kubios/`: `{pid}_kubios_summary.csv` (one row per block) and `002_carmen_pilot_kubios_rr.csv` (per-beat RR intervals). These are what `03_hr_comparison_pilot.Rmd` reads directly.
 
 ---
 
@@ -126,26 +117,26 @@ Biosignals-2/
 │   │                            #   measure (condition + random intercept per pid). Primary
 │   │                            #   measure: CDA.SCR. Planned contrasts: pos vs neg induction,
 │   │                            #   each induction vs baseline, each induction vs its recovery.
-│   ├── NOTES_TO_FOLLOW_UP.md    # Open methodological questions
-│   ├── generate_qc_report.R     # Builds biosignals2_qc.html (main-study QC dashboard)
-│   ├── generate_qc_report_pilot.R  # Builds biosignals2_qc_pilot.html (pilot participants)
-│   ├── biosignals2_qc.html      # Main-study QC dashboard (see "Quality-check reports" above)
-│   ├── biosignals2_qc_pilot.html   # Pilot QC report
 │   ├── kubios/
-│   │   └── Kubios_Samples.csv   # Kubios sample/block label mapping
-│   ├── ledalab/                 # EDA processing pipeline (active — see below)
+│   │   └── Kubios_Samples.csv   # Kubios sample/block label mapping, to be run before importing data into kubios software
+│   ├── ledalab/                 # EDA processing pipeline 
 │   │   ├── 01_create_ledalab_events_biopac.py   # Generate Ledalab epoch files from BIOPAC triggers
 │   │   ├── 02_create_ledalab_events_psychopy.py # Generate Ledalab epoch files from PsychoPy data (preferred)
 │   │   ├── 03_compare_ledalab_events.py         # Compare BIOPAC vs PsychoPy onset times to verify channel mapping
 │   │   ├── run_ledalab_batch.m  # Run Ledalab CDA analysis in MATLAB (batch)
 │   │   └── inspect_data.py      # Utility: inspect EDA data
+│   ├── video/                   # Scripts for extracting video event onsets
+│   ├── NOTES_TO_FOLLOW_UP.md    # Open methodological questions
+│   ├── generate_qc_report.R     # Builds biosignals2_qc.html (main-study QC dashboard)
+│   ├── generate_qc_report_pilot.R  # Builds biosignals2_qc_pilot.html (pilot participants)
+│   ├── biosignals2_qc.html      # Main-study QC dashboard (see "Quality-check reports" above)
+│   ├── biosignals2_qc_pilot.html   # Pilot QC report
 │   ├── pspm/                    # PsPM SCR pipeline (archived — see note below)
 │   │   ├── README.md            # PsPM pipeline documentation
 │   │   ├── 01_create_pspm_onsets_biopac.py      # (archived) Generate PsPM onset files from BIOPAC
 │   │   ├── 02_create_pspm_onsets_psychopy.py    # (archived) Generate PsPM onset files from PsychoPy
 │   │   ├── 03_compare_pspm_onsets.py            # (archived) Compare BIOPAC vs PsychoPy onsets
 │   │   └── archive/             # Archived PsPM MATLAB scripts (SF, DCM, AUC, SCL models)
-│   └── video/                   # Scripts for extracting video event onsets
 │
 ├── pilot_data/                  # NOT IN GIT (gitignored). Local pilot data copies for offline
 │                                #   troubleshooting without Box. Pilot 001: EDA + PsychoPy only.

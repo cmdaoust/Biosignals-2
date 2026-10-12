@@ -167,15 +167,15 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     <button class="tab-btn" data-tab="questionnaires">Questionnaires</button>
   </nav>
 
-  <div id="tab-completeness" class="tab-content active"><div class="note"><strong>Main study:</strong> pilot participants (<span class="mono">E5510, E9967, G2313, I4155, N2026, P7259, R2433, R4755, S0723, S0943</span>) are left out; they are in <code>biosignals2_qc_pilot.html</code>.<br>Left out of both reports: <span class='mono'>001</span> (test: Early pilot; pre-dates the emotion label question); <span class='mono'>002</span> (test: Early pilot; pre-dates the emotion label question); <span class='mono'>003</span> (test: Test session); <span class='mono'>1234</span> (test: questionnaire test run); <span class='mono'>234</span> (test: questionnaire test run); <span class='mono'>CARMEN</span> (test: Carmen's own test sessions); <span class='mono'>P1234</span> (test: questionnaire test run). <br>Edit <code>analysis/participant_status.csv</code> to change who is pilot, test or excluded. Files are untouched on disk.</div><div class="status-row">
-    <div class="tile blue"><div class="tile-value">4</div>
+  <div id="tab-completeness" class="tab-content active"><div class="note"><strong>Main study:</strong> pilot participants (<span class="mono">E5510, E9967, G2313, I4155, N2026, P7259, R2433, R4755, S0723, S0943</span>) are left out; they are in <code>biosignals2_qc_pilot.html</code>.<br>Left out of both reports: <span class='mono'>001</span> (test: Early pilot; pre-dates the emotion label question); <span class='mono'>002</span> (test: Early pilot; pre-dates the emotion label question); <span class='mono'>003</span> (test: Test session); <span class='mono'>123</span> (test: questionnaire test run); <span class='mono'>1234</span> (test: questionnaire test run); <span class='mono'>234</span> (test: questionnaire test run); <span class='mono'>CARMEN</span> (test: Carmen's own test sessions); <span class='mono'>P1234</span> (test: questionnaire test run). <br>Edit <code>analysis/participant_status.csv</code> to change who is pilot, test or excluded. Files are untouched on disk.</div><div class="status-row">
+    <div class="tile blue"><div class="tile-value">3</div>
       <div class="tile-label">Unique participant<br>IDs observed</div></div>
     <div class="tile warn">
-      <div class="tile-value">0/4</div>
+      <div class="tile-value">0/3</div>
       <div class="tile-label">Participants with<br>complete dataset</div></div>
     <div class="tile blue"><div class="tile-value">3/1/0/1</div>
       <div class="tile-label">PsychoPy / Quest. /<br>Ledalab / Kubios IDs</div></div>
-    <div class="tile blue"><div class="tile-value">2/3/0</div>
+    <div class="tile blue"><div class="tile-value">3/3/0</div>
       <div class="tile-label">Video / Biometrics /<br>FaceReader IDs</div></div>
   </div>
 
@@ -191,16 +191,14 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
          The other sources: BIOPAC session recordings, Ledalab (EDA), Kubios (HRV), the Box video
          folder and FaceReader exports. IDs are compared case-insensitively and whitespace-trimmed.</p>
     </div>
-    <div class="note"><strong>4 participant(s) missing data from at least one source:</strong>
-           <ul style="margin-top:.5rem;margin-left:1.2rem;line-height:1.8;"><li><span class='mono'>123</span> &mdash; missing: PsychoPy, Questionnaires (incomplete Qualtrics response only), Physiology, Ledalab, Kubios, Video, Biometrics, FaceReader</li>
-<li><span class='mono'>O8244</span> &mdash; missing: Questionnaires, Ledalab, Kubios, FaceReader</li>
-<li><span class='mono'>S1250</span> &mdash; missing: Questionnaires, Ledalab, Kubios, Video, FaceReader</li>
+    <div class="note"><strong>3 participant(s) missing data from at least one source:</strong>
+           <ul style="margin-top:.5rem;margin-left:1.2rem;line-height:1.8;"><li><span class='mono'>O8244</span> &mdash; missing: Questionnaires, Ledalab, Kubios, FaceReader</li>
+<li><span class='mono'>S1250</span> &mdash; missing: Questionnaires, Ledalab, Kubios, FaceReader</li>
 <li><span class='mono'>S9686</span> &mdash; missing: Ledalab, FaceReader</li></ul></div>
     <div class="table-wrap" style="margin-top:1rem;"><table>
       <thead><tr><th>Participant</th><th>PsychoPy</th><th>Questionnaires</th><th>Physiology</th><th>Ledalab</th><th>Kubios</th><th>Video</th><th>Biometrics</th><th>FaceReader</th><th>Sources</th><th>Status</th></tr></thead>
-      <tbody><tr><td class='mono'>123</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center' title='Only an incomplete Qualtrics response'>&#9680; partial</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>0/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
-<tr><td class='mono'>O8244</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>4/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
-<tr><td class='mono'>S1250</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>3/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
+      <tbody><tr><td class='mono'>O8244</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>4/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>S1250</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>4/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
 <tr><td class='mono'>S9686</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>6/8</td><td class='status-warn'>&#9888; incomplete</td></tr></tbody>
     </table></div>
   </section></div>
@@ -242,8 +240,7 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
       <thead><tr><th>Participant</th><th>PsychoPy raw</th><th>Self-report CSV</th>
         <th>Biometrics raw</th><th>Biometrics CSV</th><th>Quest. raw</th><th>Scored quest. CSV</th>
         <th>Status</th></tr></thead>
-      <tbody><tr><td class='mono'>123</td><td class='status-warn' style='text-align:center'>&#10007;</td><td style='text-align:center;color:var(--text-3)'>&mdash;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td style='text-align:center;color:var(--text-3)'>&mdash;</td><td class='status-warn' style='text-align:center'>&#9680; partial</td><td style='text-align:center;color:var(--text-3)'>&mdash;</td><td class='status-ok'>&#10003; in sync</td></tr>
-<tr><td class='mono'>O8244</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td style='text-align:center;color:var(--text-3)'>&mdash;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
+      <tbody><tr><td class='mono'>O8244</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td style='text-align:center;color:var(--text-3)'>&mdash;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
 <tr><td class='mono'>S1250</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td style='text-align:center;color:var(--text-3)'>&mdash;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
 <tr><td class='mono'>S9686</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>&#9888; re-knit 01; re-knit 04</td></tr></tbody>
     </table></div>
@@ -603,10 +600,10 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     </table></div>
   </section></div>
   <div id="tab-video"    class="tab-content"><div class="status-row">
-    <div class="tile blue"><div class="tile-value">2</div>
+    <div class="tile blue"><div class="tile-value">3</div>
       <div class="tile-label">Participants<br>in video folder</div></div>
     <div class="tile warn">
-      <div class="tile-value">0/2</div>
+      <div class="tile-value">0/3</div>
       <div class="tile-label">PNG participants with<br>zip + 1:1 AVI + timestamps</div></div>
     <div class="tile blue"><div class="tile-value">0</div>
       <div class="tile-label">Old AVI<br>sessions</div></div>
@@ -632,6 +629,7 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
         <th>Timestamps</th><th>Zip (GB)</th><th>AVI (GB)</th><th>Frames</th><th>Duration (min)</th>
         <th>Camera fps</th><th>Status</th></tr></thead>
       <tbody><tr><td class='mono'>o8244</td><td>PNG</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>—</td><td>—</td><td>39,630</td><td>22.0</td><td>30.03</td><td class='status-warn'>⚠ no frames zip; no 1to1_ffv1.avi</td></tr>
+<tr><td class='mono'>s1250</td><td>PNG</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>—</td><td>—</td><td>35,129</td><td>19.5</td><td>30.05</td><td class='status-warn'>⚠ no frames zip; no 1to1_ffv1.avi</td></tr>
 <tr><td class='mono'>s9686</td><td>PNG</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>—</td><td>5.31</td><td>36,625</td><td>20.4</td><td>29.92</td><td class='status-warn'>⚠ no frames zip</td></tr></tbody>
     </table></div>
   </section></div>

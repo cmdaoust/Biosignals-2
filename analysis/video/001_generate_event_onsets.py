@@ -104,6 +104,18 @@ writes, into FACEREADER_ONSETS_DIR:
   <id>_video_events.csv                 one file per participant
   all_participants_video_events.csv     everyone, with a `participant` column
 
+Participants that already have <id>_video_events.csv in FACEREADER_ONSETS_DIR
+are skipped, and their existing file is reused for the combined CSV - unless
+their PsychoPy data file or timestamps file (or, for older sessions, their
+AVI) was modified after it, in which case they are re-run automatically.
+Changes to THIS SCRIPT are not detected: after changing the timing logic,
+re-run everyone.
+
+  python 001_generate_event_onsets.py                      new participants only
+  python 001_generate_event_onsets.py --rerun S9686 x1234  also redo these (any case)
+  python 001_generate_event_onsets.py --rerun-all          redo everyone
+When running as cells instead, use RERUN_PARTICIPANTS / RERUN_ALL in the last cell.
+
 Data files with neither set of timing columns (e.g. sessions without a
 camera) and empty files from aborted runs are ignored. A participant with more
 than one usable data file (e.g. a restarted session) is skipped and reported,
@@ -570,14 +582,63 @@ def find_participants(data_dir, webcam_png_external_dir, video_box_dir, video_ex
     return dict(sorted(sessions.items())), problems
 
 
-def run_all(data_dir, webcam_png_external_dir, video_box_dir, out_dir, fps=30.0, video_external_dir=None):
+def read_existing_onsets(path):
+    """An existing <id>_video_events.csv, or None if it is missing, empty or unreadable."""
+    if not os.path.isfile(path):
+        return None
+    try:
+        df = pd.read_csv(path)
+    except (pd.errors.EmptyDataError, pd.errors.ParserError, UnicodeDecodeError):
+        return None
+    return df if len(df) else None
+
+
+def newer_inputs(session, out_path):
+    """Input files of a session (data file, timestamps file, older sessions' AVI) modified after `out_path`."""
+    inputs = [session['exp'], session['frames']]
+    if session['format'] == 'legacy_avi':   # onsets depend on the AVI's stored frame rate
+        inputs.append(session['video'])
+    out_time = os.path.getmtime(out_path)
+    return [p for p in inputs if p and os.path.isfile(p) and os.path.getmtime(p) > out_time]
+
+
+def run_all(data_dir, webcam_png_external_dir, video_box_dir, out_dir, fps=30.0, video_external_dir=None, rerun_all=False,
+            rerun=()):
+    """Process every participant. Unless `rerun_all`, participants that already have a readable
+    <id>_video_events.csv in `out_dir` are not re-run (except those listed in `rerun`, or whose
+    inputs changed since); their existing file goes into the combined CSV."""
     sessions, problems = find_participants(data_dir, webcam_png_external_dir, video_box_dir, video_external_dir)
     os.makedirs(out_dir, exist_ok=True)
-    print(f"Found {len(sessions)} participant(s) to process in {data_dir}")
+    rerun = {participant_id(p) for p in rerun}
+    known = set(sessions) | {p.split(': ', 1)[0] for p in problems}
+    for pid in sorted(rerun - known):
+        print(f"[WARNING] --rerun / RERUN_PARTICIPANTS lists '{pid}', but no data for that participant was found")
+
+    all_events, summary = [], []
+    if not rerun_all:
+        for pid in list(sessions):
+            if pid in rerun:
+                print(f"[RE-RUN] {pid}: listed in --rerun / RERUN_PARTICIPANTS")
+                continue
+            out_path = os.path.join(out_dir, f'{pid}_video_events.csv')
+            existing = read_existing_onsets(out_path)
+            if existing is None:
+                continue
+            newer = newer_inputs(sessions[pid], out_path)
+            if newer:
+                print(f"[RE-RUN] {pid}: {names(newer)} changed after {os.path.basename(out_path)} was written")
+                continue
+            del sessions[pid]
+            existing.insert(0, 'participant', pid)
+            all_events.append(existing)
+            summary.append((pid, 'already done - kept existing file'))
+    n_existing = len(all_events)
+
+    print(f"Found {len(sessions)} participant(s) to process in {data_dir}"
+          + (f" ({n_existing} already done, skipped - use --rerun-all to redo them)" if n_existing else ""))
     for p in problems:
         print(f"[SKIPPED] {p}")
 
-    all_events, summary = [], []
     for pid, s in sessions.items():
         print(f"\n{'=' * 70}\nParticipant {pid} ({s['format']})\n{'=' * 70}")
         if s['note']:
@@ -597,11 +658,15 @@ def run_all(data_dir, webcam_png_external_dir, video_box_dir, out_dir, fps=30.0,
 
     if all_events:
         combined_path = os.path.join(out_dir, 'all_participants_video_events.csv')
-        pd.concat(all_events, ignore_index=True).to_csv(combined_path, index=False)
-        print(f"\nCombined events for {len(all_events)} participant(s) saved to {combined_path}")
+        combined = pd.concat(all_events, ignore_index=True)
+        # stable sort keeps each participant's events in their original order
+        combined = combined.sort_values('participant', kind='stable').reset_index(drop=True)
+        combined.to_csv(combined_path, index=False)
+        print(f"\nCombined events for {len(all_events)} participant(s) "
+              f"({n_existing} from existing files) saved to {combined_path}")
 
     print(f"\n{'=' * 70}\nSummary")
-    for pid, status in summary:
+    for pid, status in sorted(summary):
         print(f"  {pid:>10} : {status}")
     for p in problems:
         pid, reason = p.split(': ', 1)
@@ -641,7 +706,21 @@ def load_config():
 # %%
 FPS = 30.0   # current sessions: must match --fps of 000_convert_png_to_avi.py --method realtime (default 30)
 
+RERUN_ALL = False          # when running as cells: True = redo everyone
+RERUN_PARTICIPANTS = []    # when running as cells: e.g. ['s9686'] to redo just them
+
 if __name__ == '__main__':
+    # From the terminal:
+    #   python 001_generate_event_onsets.py                     new participants only
+    #   python 001_generate_event_onsets.py --rerun S9686 x1234 also redo these
+    #   python 001_generate_event_onsets.py --rerun-all         redo everyone
+    import argparse
+    parser = argparse.ArgumentParser(description="Generate FaceReader event onsets from PsychoPy data.")
+    parser.add_argument('--rerun', nargs='+', default=[], metavar='ID',
+                        help="participant ID(s) to redo even if they already have onsets (any case)")
+    parser.add_argument('--rerun-all', action='store_true', help="redo every participant")
+    args, _ = parser.parse_known_args()   # ignore extra arguments added when run as cells in an IDE
     cfg = load_config()
     run_all(str(cfg.PSYCHOPY_DATA_DIR), str(cfg.WEBCAM_PNG_EXTERNAL_DIR), str(cfg.VIDEO_BOX_DIR),
-            str(cfg.FACEREADER_ONSETS_DIR), FPS, video_external_dir=getattr(cfg, 'VIDEO_EXTERNAL_DIR', None))
+            str(cfg.FACEREADER_ONSETS_DIR), FPS, video_external_dir=getattr(cfg, 'VIDEO_EXTERNAL_DIR', None),
+            rerun_all=RERUN_ALL or args.rerun_all, rerun=[*RERUN_PARTICIPANTS, *args.rerun])

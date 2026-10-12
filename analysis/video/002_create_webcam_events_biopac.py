@@ -33,9 +33,16 @@ Input   {RAW_PHYSIOLOGY_DIR}/{pid}_physiology_trimmed.acq      (config.py: trimm
 Output  {WEBCAM_EVENTS_DIR}/{pid}_events_biopac.csv
         WEBCAM_EVENTS_DIR from config.py if set, else SERVER_ROOT/event_onsets/webcam_biometrics
 
-Usage   python 002_create_webcam_events_biopac.py
+Participants that already have {pid}_events_biopac.csv are not re-run, unless their .acq file was
+modified after it (then they are redone automatically). Changes to THIS SCRIPT are not detected:
+after changing the event logic, use --rerun-all.
+
+Usage   python 002_create_webcam_events_biopac.py                      new participants only
+        python 002_create_webcam_events_biopac.py --rerun S9686 x1234  also redo these (any case)
+        python 002_create_webcam_events_biopac.py --rerun-all          redo everyone
 """
 
+import argparse
 import csv
 import glob
 import importlib.util
@@ -127,7 +134,24 @@ def events_for(acq):
     return (events if not problems else []), problems
 
 
-def main():
+def up_to_date(out_path, acq_path):
+    """True if out_path exists, has at least one event row, and is newer than the .acq file."""
+    if not os.path.isfile(out_path) or os.path.getmtime(acq_path) > os.path.getmtime(out_path):
+        return False
+    with open(out_path, newline="") as f:
+        return sum(1 for _ in f) > 1   # header + events
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Write BIOPAC trigger events in 001's event names.")
+    parser.add_argument("--rerun", nargs="+", default=[], metavar="ID",
+                        help="participant ID(s) to redo even if they already have events (any case)")
+    parser.add_argument("--rerun-all", action="store_true", help="redo every participant")
+    args, _ = parser.parse_known_args()   # ignore extra arguments added when run as cells in an IDE
+    return args
+
+
+def main(rerun_all=False, rerun=()):
     cfg = load_config()
     acq_dir = str(cfg.RAW_PHYSIOLOGY_DIR)
     out_dir = str(getattr(cfg, "WEBCAM_EVENTS_DIR",
@@ -140,17 +164,29 @@ def main():
         raise SystemExit(f"No *{ACQ_SUFFIX} in {acq_dir}")
     os.makedirs(out_dir, exist_ok=True)
 
-    written, skipped = [], {}
+    rerun = {p.lower() for p in rerun}
+    pids = {os.path.basename(p)[: -len(ACQ_SUFFIX)].lower() for p in files}
+    for pid in sorted(rerun - pids):
+        print(f"[WARNING] --rerun lists '{pid}', but there is no {pid}{ACQ_SUFFIX} in {acq_dir}")
+
+    written, skipped, done = [], {}, []
     for path in files:
         pid = os.path.basename(path)[: -len(ACQ_SUFFIX)].lower()
+        out = os.path.join(out_dir, f"{pid}_events_biopac.csv")
+        if not rerun_all and pid not in rerun and up_to_date(out, path):
+            done.append(pid)
+            continue
         print(f"\n{pid}  ({os.path.basename(path)})")
+        if os.path.isfile(out):
+            print("  [RE-RUN] " + ("listed in --rerun" if pid in rerun else
+                                   "--rerun-all" if rerun_all else
+                                   "existing file is empty or older than the .acq"))
         events, problems = events_for(bioread.read(path))
         if problems:
             for p in problems:
                 print(f"  [SKIPPED] {p}")
             skipped[pid] = problems
             continue
-        out = os.path.join(out_dir, f"{pid}_events_biopac.csv")
         with open(out, "w", newline="") as f:
             w = csv.writer(f)
             w.writerow(["event", "channel", "onset_s", "offset_s", "duration_s"])
@@ -159,10 +195,14 @@ def main():
                 print(f"  {name:20s} {ch:26s} {on:9.3f} -> {off:9.3f}  ({off - on:6.1f} s)")
         written.append(pid)
 
+    if done:
+        print(f"\nAlready done, not re-run ({len(done)}; use --rerun ID or --rerun-all to redo): "
+              f"{', '.join(done)}")
     print(f"\nWritten {len(written)} to {out_dir}; skipped {len(skipped)}"
           + (f": {', '.join(sorted(skipped))}" if skipped else ""))
     return 1 if skipped else 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    args = parse_args()
+    sys.exit(main(rerun_all=args.rerun_all, rerun=args.rerun))
