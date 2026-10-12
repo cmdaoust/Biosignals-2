@@ -9,9 +9,30 @@ This document is for collaborators. It covers where data lives, what each file/f
 | Location | Purpose |
 |---|---|
 | **Box** — `Project_Biosignals_study_2/3_Data/` | All raw and processed data (shared server) |
-| **GitHub** — `Biosignals2/` | Analysis code, config, and pilot data copies |
+| **GitHub** — `Biosignals-2/` | Analysis code, config, protocols and QC reports (no data) |
 
 Box is not included in the GitHub repo. Code references Box paths via `config.py` (see below).
+
+> **Note:** this repo (`Biosignals-2`) replaced the earlier `Biosignals2` repo on 12 Oct 2026. It started
+> with a fresh history from the last `Biosignals2` commit (`384e31d`). `manuscripts/` and `pilot_data/`
+> are gitignored and are not in this repo or its history. The old `Biosignals2` repo is kept for its
+> history only.
+
+---
+
+## Quality-check reports
+
+| Report | Covers | Regenerate with |
+|---|---|---|
+| [Main-study QC dashboard](analysis/biosignals2_qc.html) | Main-study participants | `analysis/generate_qc_report.R` |
+| [Pilot QC report](analysis/biosignals2_qc_pilot.html) | Pilot participants only | `analysis/generate_qc_report_pilot.R` |
+
+Each report checks PsychoPy self-report, Ledalab (EDA), Kubios (HRV), webcam biometrics, video,
+FaceReader and questionnaires. Sections for data that isn't available yet are left out rather than failing.
+The reports are snapshots: re-run the script and commit the new `.html` to update them.
+
+**Viewing:** GitHub shows `.html` files as source code, not as a web page. To view a report, open it
+from your local clone in a browser, or download it from GitHub (**Download raw file**) and open it.
 
 ---
 
@@ -72,10 +93,10 @@ Two tidy extracts are also saved in `kubios/`: `002_carmen_pilot_kubios_summary.
 
 ## GitHub — Code repository
 
-Root: `C:\Users\carme\OneDrive\Documents\GitHub\Biosignals2\`
+Root: `C:\Users\carme\Documents\Biosignals-2\` (outside OneDrive, which can lock or revert files in `.git`)
 
 ```
-Biosignals2/
+Biosignals-2/
 ├── config.py                    # Maps Box subdirectory paths — update SERVER_ROOT for your machine
 ├── config.R                     # Same paths for R scripts
 ├── config.m                     # Same paths for MATLAB scripts
@@ -100,6 +121,10 @@ Biosignals2/
 │   │                            #   measure: CDA.SCR. Planned contrasts: pos vs neg induction,
 │   │                            #   each induction vs baseline, each induction vs its recovery.
 │   ├── NOTES_TO_FOLLOW_UP.md    # Open methodological questions
+│   ├── generate_qc_report.R     # Builds biosignals2_qc.html (main-study QC dashboard)
+│   ├── generate_qc_report_pilot.R  # Builds biosignals2_qc_pilot.html (pilot participants)
+│   ├── biosignals2_qc.html      # Main-study QC dashboard (see "Quality-check reports" above)
+│   ├── biosignals2_qc_pilot.html   # Pilot QC report
 │   ├── kubios/
 │   │   └── Kubios_Samples.csv   # Kubios sample/block label mapping
 │   ├── ledalab/                 # EDA processing pipeline (active — see below)
@@ -116,45 +141,12 @@ Biosignals2/
 │   │   └── archive/             # Archived PsPM MATLAB scripts (SF, DCM, AUC, SCL models)
 │   └── video/                   # Scripts for extracting video event onsets
 │
-├── pilot_data/                  # Pilot data copies for offline troubleshooting — use this folder
-│   │                            #   if you don't have Box access (e.g. working on a new machine
-│   │                            #   before Box is set up). Normal analysis reads from Box directly.
-│   │
-│   │   # Note on pilot participants:
-│   │   # 001 — EDA and PsychoPy data only. No FaceReader or webcam biometrics were collected.
-│   │   # 002 — Full dataset: ECG (Kubios), FaceReader, webcam biometrics, PsychoPy, and EDA.
-│   │
-│   │   # --- Participant 001 ---
-│   ├── 001_carmen_pilot_eda_era.txt                            # Ledalab CDA ERA output (event-related activation per epoch)
-│   ├── 001_carmen_pilot_eda_scrlist.txt                        # Ledalab individual SCR event list (onset, amplitude)
-│   ├── 001_carmen_pilot_epochs_conditions_psychopy.mat         # PsPM epoch onset file (generated from PsychoPy timing)
-│   └── 001_carmen_pilot_epochs_conditions_psychopy_labels.csv  # Condition labels for the above
-│   │
-│   │   # --- Participant 002 ---
-│   │   # --- ECG (Kubios) ---
-│   ├── 002_carmen_pilot_physiology_hrv.csv        # Copy of raw Kubios output from Box/kubios/
-│   ├── 002_carmen_pilot_kubios_summary.csv        # Tidy extract: one row per block, HRV summary stats
-│   ├── 002_carmen_pilot_kubios_rr.csv             # Tidy extract: per-beat RR intervals (block, time_s, rr_s)
-│   │
-│   │   # --- FaceReader (video HR) ---
-│   ├── 002_carmen_pilot_video_20260612_113452_heart beat log.txt   # IBI series from FaceReader
-│   ├── 002_carmen_pilot_video_20260612_113452_detailed.txt         # Facial expression probabilities (1 fps)
-│   ├── 002_carmen_pilot_20260612_113452_state.txt                  # Dominant expression over time
-│   │
-│   │   # --- Webcam Biometrics (rPPG) ---
-│   ├── 002_carmen_pilot_Biosignals2_internalcamera_Psychopy_2026-06-12_10h55.04.705_biometrics.csv
-│   │       # rPPG output: video_time (ms), hr_peak (bool), bpm_fft (reliable), bpm_peak (noisy)
-│   ├── 002_carmen_pilot_Biosignals2_internalcamera_Psychopy_2026-06-12_10h55.04.705_clocksync.json
-│   │       # Clock sync: mono_reset = 70385.396062 (used to align video time to experiment time)
-│   ├── 002_carmen_pilot_frame_timestamps.csv      # Per-frame timestamps for the webcam recording
-│   │
-│   │   # --- Experiment timing ---
-│   ├── 002_carmen_pilot_videorecording_blocks.csv # Block start/end times (nearest_frame_start/end_t)
-│   └── 002_carmen_pilot_Biosignals2_internalcamera_Psychopy_2026-06-12_10h55.04.705.csv
-│           # PsychoPy trial-level data
-│
+├── pilot_data/                  # NOT IN GIT (gitignored). Local pilot data copies for offline
+│                                #   troubleshooting without Box. Pilot 001: EDA + PsychoPy only.
+│                                #   Pilot 002: full dataset (ECG/Kubios, FaceReader, webcam, PsychoPy, EDA).
+│                                #   Get the files from Box; the analysis normally reads Box directly.
 ├── experiment/                  # PsychoPy experiment files (.psyexp, .py) and stimulus lists
-└── manuscripts/                 # Preregistration and manuscript drafts
+└── manuscripts/                 # NOT IN GIT (gitignored). Preregistration and manuscript drafts
 ```
 
 ---
@@ -172,7 +164,7 @@ EDA is analysed using **Ledalab** (MATLAB toolbox, continuous decomposition anal
 
 Scripts 1–2 write to `event_onsets/blocks/` and are self-contained — no need to run the PsPM onset scripts first.
 
-**Ledalab output files** (in Box `ledalab/`; participant 001 copies also in `pilot_data/`):
+**Ledalab output files** (in Box `ledalab/`; participant 001 copies may also be in your local, untracked `pilot_data/`):
 - `{pid}_eda_era.txt` — event-related EDA: one row per epoch, columns include nSCR, latency, amplitude sum, phasic max, tonic, ISCR (CDA and TTP decompositions)
 - `{pid}_eda_scrlist.txt` — list of individual SCR events: onset (s) and amplitude (µS)
 
@@ -227,6 +219,6 @@ experiment/
 ## Setup for a new machine
 
 1. Install [Box Drive](https://www.box.com/resources/downloads) and sync `Project_Biosignals_study_2`.
-2. Clone this repo.
+2. Clone this repo. It contains no data: `pilot_data/` and `manuscripts/` are gitignored, so copy them from Box if you need them.
 3. Copy `config_template.R` → `config.R` and set `SERVER_ROOT` to the Box path on your machine. Do the same for `config_template.m` (MATLAB) if needed. (`config.R` and `config.m` are gitignored — never committed.)
 4. R analysis: open any `.Rmd` in `analysis/` in RStudio. Each script sources `config.R` automatically via `here::here("config.R")`.
