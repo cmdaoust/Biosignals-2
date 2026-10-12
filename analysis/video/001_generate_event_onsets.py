@@ -92,10 +92,10 @@ HOW TO RUN
 Paths are read from config.py, the nearest one in this folder or above it
 (the repo-root config.py, which is not tracked by git). It needs:
   PSYCHOPY_DATA_DIR      PsychoPy data files     <id>_<expName>_<date>.csv
-  WEBCAM_DIR             current sessions        <id>_frame_timestamps.csv (optional, for checks)
+  WEBCAM_PNG_EXTERNAL_DIR             current sessions        <id>_frame_timestamps.csv (optional, for checks)
   VIDEO_EXTERNAL_DIR (optional)   <id>_realtime_30fps.avi   (optional, file name only; also looked for in
-                                                 WEBCAM_DIR and OLD_WEBCAM_DIR)
-  OLD_WEBCAM_DIR         older sessions          <id>_frame_timestamps.csv and <id>_recording.avi
+                                                 WEBCAM_PNG_EXTERNAL_DIR and VIDEO_BOX_DIR)
+  VIDEO_BOX_DIR         older sessions          <id>_frame_timestamps.csv and <id>_recording.avi
                                                  (both required)
   FACEREADER_ONSETS_DIR  where results are written
 <id> is everything before the first "_" in the file name, ignoring upper/lower
@@ -508,30 +508,30 @@ def names(paths):
     return ', '.join(os.path.basename(p) for p in paths)
 
 
-def find_participants(data_dir, webcam_dir, old_webcam_dir, video_dir=None):
+def find_participants(data_dir, webcam_png_external_dir, video_box_dir, video_external_dir=None):
     """Return (sessions, problems).
 
     sessions: participant ID -> dict(format, exp, frames, video, note)
     problems: 'id: reason' strings for participants that were skipped."""
-    for label, folder in (('PSYCHOPY_DATA_DIR', data_dir), ('WEBCAM_DIR', webcam_dir),
-                          ('OLD_WEBCAM_DIR', old_webcam_dir)):
+    for label, folder in (('PSYCHOPY_DATA_DIR', data_dir), ('WEBCAM_PNG_EXTERNAL_DIR', webcam_png_external_dir),
+                          ('VIDEO_BOX_DIR', video_box_dir)):
         if not os.path.isdir(folder):
             raise FileNotFoundError(f"{label} '{folder}' does not exist (drive not connected?)")
 
     data_files = {pid: [p for p in paths if not p.endswith('_biometrics.csv')]
                   for pid, paths in index_by_participant(data_dir, '*_*Psychopy*.csv').items()}
     data_files = {pid: paths for pid, paths in data_files.items() if paths}
-    new_frames = index_by_participant(webcam_dir, '*_*frame_timestamps.csv')
+    new_frames = index_by_participant(webcam_png_external_dir, '*_*frame_timestamps.csv')
     # realtime AVIs from 000_convert_png_to_avi.py --method realtime (older runs: *_facereader.avi)
     new_videos = {}
-    for folder, pattern in ((video_dir or webcam_dir, '*_realtime_*fps.avi'), (webcam_dir, '*_realtime_*fps.avi'),
-                            (old_webcam_dir, '*_realtime_*fps.avi'), (webcam_dir, '*_facereader.avi')):
+    for folder, pattern in ((video_external_dir or webcam_png_external_dir, '*_realtime_*fps.avi'), (webcam_png_external_dir, '*_realtime_*fps.avi'),
+                            (video_box_dir, '*_realtime_*fps.avi'), (webcam_png_external_dir, '*_facereader.avi')):
         if not os.path.isdir(folder):
             continue
         for pid, paths in index_by_participant(folder, pattern).items():
             new_videos.setdefault(pid, paths)
-    old_frames = index_by_participant(old_webcam_dir, '*_*frame_timestamps.csv')
-    old_videos = index_by_participant(old_webcam_dir, '*_recording.avi')
+    old_frames = index_by_participant(video_box_dir, '*_*frame_timestamps.csv')
+    old_videos = index_by_participant(video_box_dir, '*_recording.avi')
 
     sessions, problems = {}, []
     for pid in sorted((set(new_frames) | set(old_frames)) - set(data_files)):
@@ -553,7 +553,7 @@ def find_participants(data_dir, webcam_dir, old_webcam_dir, video_dir=None):
             frames, videos = new_frames.get(pid, []), new_videos.get(pid, [])
             note = None
             if not frames:
-                note = f"no {pid}_frame_timestamps.csv in {webcam_dir} - skipping the recording-coverage check"
+                note = f"no {pid}_frame_timestamps.csv in {webcam_png_external_dir} - skipping the recording-coverage check"
             elif len(frames) > 1:
                 note = f"several timestamps files ({names(frames)}) - skipping the recording-coverage check"
             sessions[pid] = {'format': fmt, 'exp': exp_path, 'note': note,
@@ -563,15 +563,15 @@ def find_participants(data_dir, webcam_dir, old_webcam_dir, video_dir=None):
             frames, videos = old_frames.get(pid, []), old_videos.get(pid, [])
             if len(frames) != 1 or len(videos) != 1:
                 problems.append(f"{pid}: older session needs exactly one <id>_frame_timestamps.csv and one "
-                                f"<id>_recording.avi in {old_webcam_dir} (found {len(frames)} and {len(videos)})")
+                                f"<id>_recording.avi in {video_box_dir} (found {len(frames)} and {len(videos)})")
                 continue
             sessions[pid] = {'format': fmt, 'exp': exp_path, 'note': None,
                              'frames': frames[0], 'video': videos[0]}
     return dict(sorted(sessions.items())), problems
 
 
-def run_all(data_dir, webcam_dir, old_webcam_dir, out_dir, fps=30.0, video_dir=None):
-    sessions, problems = find_participants(data_dir, webcam_dir, old_webcam_dir, video_dir)
+def run_all(data_dir, webcam_png_external_dir, video_box_dir, out_dir, fps=30.0, video_external_dir=None):
+    sessions, problems = find_participants(data_dir, webcam_png_external_dir, video_box_dir, video_external_dir)
     os.makedirs(out_dir, exist_ok=True)
     print(f"Found {len(sessions)} participant(s) to process in {data_dir}")
     for p in problems:
@@ -609,7 +609,7 @@ def run_all(data_dir, webcam_dir, old_webcam_dir, out_dir, fps=30.0, video_dir=N
     return summary, problems
 
 
-CONFIG_VARIABLES = ('PSYCHOPY_DATA_DIR', 'WEBCAM_DIR', 'OLD_WEBCAM_DIR', 'FACEREADER_ONSETS_DIR')
+CONFIG_VARIABLES = ('PSYCHOPY_DATA_DIR', 'WEBCAM_PNG_EXTERNAL_DIR', 'VIDEO_BOX_DIR', 'FACEREADER_ONSETS_DIR')
 
 
 def load_config():
@@ -629,8 +629,8 @@ def load_config():
     missing = [v for v in CONFIG_VARIABLES if not hasattr(config, v)]
     if missing:
         raise AttributeError(f"{path} is missing {missing}. Add e.g.\n"
-                             f'  WEBCAM_DIR            = r"D:\\Biosignals2"\n'
-                             f'  OLD_WEBCAM_DIR        = os.path.join(SERVER_ROOT, "video")\n'
+                             f'  WEBCAM_PNG_EXTERNAL_DIR            = r"D:\\Biosignals2"\n'
+                             f'  VIDEO_BOX_DIR        = os.path.join(SERVER_ROOT, "video")\n'
                              f'  FACEREADER_ONSETS_DIR = os.path.join(SERVER_ROOT, "event_onsets", "facereader_video")')
     print(f"Paths from {path}:")
     for v in CONFIG_VARIABLES:
@@ -643,5 +643,5 @@ FPS = 30.0   # current sessions: must match --fps of 000_convert_png_to_avi.py -
 
 if __name__ == '__main__':
     cfg = load_config()
-    run_all(str(cfg.PSYCHOPY_DATA_DIR), str(cfg.WEBCAM_DIR), str(cfg.OLD_WEBCAM_DIR),
-            str(cfg.FACEREADER_ONSETS_DIR), FPS, video_dir=getattr(cfg, 'VIDEO_EXTERNAL_DIR', None))
+    run_all(str(cfg.PSYCHOPY_DATA_DIR), str(cfg.WEBCAM_PNG_EXTERNAL_DIR), str(cfg.VIDEO_BOX_DIR),
+            str(cfg.FACEREADER_ONSETS_DIR), FPS, video_external_dir=getattr(cfg, 'VIDEO_EXTERNAL_DIR', None))

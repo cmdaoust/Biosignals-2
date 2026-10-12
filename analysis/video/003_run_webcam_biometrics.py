@@ -9,7 +9,7 @@ For each participant it runs, skipping any step whose output already exists:
               via 000_convert_png_to_avi.py --method 1to1 (every PNG once, lossless). This is the
               same file FaceReader analyses. An older <id>_1to1.mkv is still used if there is no .avi
               (identical pixels); turn it into the .avi with 004_convert_mkv_to_avi.py --delete-mkv.
-              Older sessions without PNGs use OLD_WEBCAM_DIR (3_Data\video)\<id>_recording.avi.
+              Older sessions without PNGs use VIDEO_BOX_DIR (3_Data\video)\<id>_recording.avi.
   2. EXTRACT  video -> skin-colour (RGB) series, WITH the real frame timestamps
               (WebcamBiometrics eval/ts/extract/extractRGB.ts - slow, runs MediaPipe in Chromium;
               needs ~5 GB free temp space for a 19-min session, deleted afterwards)
@@ -88,14 +88,14 @@ Usage (from anywhere; paths come from config.py at the repo root)
 -----
   python 003_run_webcam_biometrics.py i4155                 # one participant
   python 003_run_webcam_biometrics.py i4155 r4755           # several
-  python 003_run_webcam_biometrics.py --all                 # every <id>_frames folder in WEBCAM_DIR
+  python 003_run_webcam_biometrics.py --all                 # every <id>_frames folder in WEBCAM_PNG_EXTERNAL_DIR
   python 003_run_webcam_biometrics.py i4155 --test          # first 30 s only: quick check, frames CSV only
   python 003_run_webcam_biometrics.py i4155 --redo          # re-run extract + analyse (slow)
   python 003_run_webcam_biometrics.py --all --reanalyse     # re-run analyse only (fast), e.g. after a src/ change
   python 003_run_webcam_biometrics.py --all --optimize      # optimised beat detector -> *_optimize.csv (fast)
   python 003_run_webcam_biometrics.py r2433 --optimize --live-delay-ms 733   # shorter live delay
 
-config.py variables used: SERVER_ROOT, WEBCAM_DIR, VIDEO_EXTERNAL_DIR, OLD_WEBCAM_DIR, FACEREADER_ONSETS_DIR, and optionally
+config.py variables used: SERVER_ROOT, WEBCAM_PNG_EXTERNAL_DIR, VIDEO_EXTERNAL_DIR, VIDEO_BOX_DIR, FACEREADER_ONSETS_DIR, and optionally
 WEBCAM_BIOMETRICS_REPO (default C:\Users\carme\OneDrive\Documents\GitHub\WebcamBiometrics)
 and WEBCAM_HR_DIR (default SERVER_ROOT\webcam_biometrics).
 
@@ -141,9 +141,9 @@ def load_config():
     root = str(cfg.SERVER_ROOT)
     paths = {
         "repo": str(getattr(cfg, "WEBCAM_BIOMETRICS_REPO", DEFAULT_REPO)),
-        "webcam_dir": str(cfg.WEBCAM_DIR),
-        "video_dir": str(getattr(cfg, "VIDEO_EXTERNAL_DIR", r"D:\Biosignals2_video")),
-        "old_video_dir": str(getattr(cfg, "OLD_WEBCAM_DIR", os.path.join(root, "video"))),
+        "webcam_png_external_dir": str(cfg.WEBCAM_PNG_EXTERNAL_DIR),
+        "video_external_dir": str(getattr(cfg, "VIDEO_EXTERNAL_DIR", r"D:\Biosignals2_video")),
+        "video_box_dir": str(getattr(cfg, "VIDEO_BOX_DIR", os.path.join(root, "video"))),
         "events_dir": str(getattr(cfg, "FACEREADER_ONSETS_DIR",
                                   os.path.join(root, "event_onsets", "facereader_video"))),
         "out_dir": str(getattr(cfg, "WEBCAM_HR_DIR", os.path.join(root, "webcam_biometrics"))),
@@ -200,30 +200,30 @@ def find_ci(folder, name):
 
 def step_video(pid, P, converter):
     """-> (video_path, timestamps_path), making the 1:1 video if needed."""
-    ts = find_ci(P["video_dir"], f"{pid}_frame_timestamps.csv")
+    ts = find_ci(P["video_external_dir"], f"{pid}_frame_timestamps.csv")
     for name in (f"{pid}_1to1_ffv1.avi", f"{pid}_1to1.mkv"):     # .avi = shared with FaceReader; .mkv = older
-        video = find_ci(P["video_dir"], name)
+        video = find_ci(P["video_external_dir"], name)
         if video and ts:
             print(f"  video: {video} (exists)")
             if video.lower().endswith(".mkv"):
                 print("         (older .mkv - same pixels as the .avi; for FaceReader run 004_convert_mkv_to_avi.py "
                       f"{pid} --delete-mkv to replace it with {pid}_1to1_ffv1.avi)")
             return video, ts
-    sessions, _ = converter.find_sessions(P["webcam_dir"]) if os.path.isdir(P["webcam_dir"]) else ({}, [])
+    sessions, _ = converter.find_sessions(P["webcam_png_external_dir"]) if os.path.isdir(P["webcam_png_external_dir"]) else ({}, [])
     match = {k.lower(): v for k, v in sessions.items()}.get(pid)
     if match:
         frames_dir, csv_path = match
         print(f"  video: converting {frames_dir} -> 1:1 FFV1 .avi")
-        out = converter.convert(frames_dir, csv_path, P["video_dir"], "1to1")
-        return out, find_ci(P["video_dir"], f"{pid}_frame_timestamps.csv")
-    legacy = find_ci(P["old_video_dir"], f"{pid}_recording.avi")
-    ts = find_ci(P["old_video_dir"], f"{pid}_frame_timestamps.csv")
+        out = converter.convert(frames_dir, csv_path, P["video_external_dir"], "1to1")
+        return out, find_ci(P["video_external_dir"], f"{pid}_frame_timestamps.csv")
+    legacy = find_ci(P["video_box_dir"], f"{pid}_recording.avi")
+    ts = find_ci(P["video_box_dir"], f"{pid}_frame_timestamps.csv")
     if legacy and ts:
         print(f"  video: {legacy} (older session, already 1:1)")
         return legacy, ts
-    raise RuntimeError(f"no {pid}_1to1_ffv1.avi / {pid}_1to1.mkv (+ timestamps) in {P['video_dir']}, no {pid}_recording.avi "
-                       f"(+ timestamps) in {P['old_video_dir']}, "
-                       f"and no {pid}_frames folder + timestamps CSV in {P['webcam_dir']}")
+    raise RuntimeError(f"no {pid}_1to1_ffv1.avi / {pid}_1to1.mkv (+ timestamps) in {P['video_external_dir']}, no {pid}_recording.avi "
+                       f"(+ timestamps) in {P['video_box_dir']}, "
+                       f"and no {pid}_frames folder + timestamps CSV in {P['webcam_png_external_dir']}")
 
 
 def step_extract_analyse(pid, video, ts, P, test, redo, reanalyse=False, optimize=False, live_delay_ms=None):
@@ -455,7 +455,7 @@ def step_export(pid, preds, ts, P, test, tag=""):
 def main():
     ap = argparse.ArgumentParser(description="WebcamBiometrics heart rate per participant -> CSV.")
     ap.add_argument("pids", nargs="*", help="participant IDs (e.g. i4155)")
-    ap.add_argument("--all", action="store_true", help="every <id>_frames folder in WEBCAM_DIR")
+    ap.add_argument("--all", action="store_true", help="every <id>_frames folder in WEBCAM_PNG_EXTERNAL_DIR")
     ap.add_argument("--test", action="store_true", help=f"first {TEST_SECONDS} s only (quick check)")
     ap.add_argument("--redo", action="store_true", help="re-run extract + analyse even if cached (slow: re-reads every frame)")
     ap.add_argument("--reanalyse", action="store_true",
@@ -476,7 +476,7 @@ def main():
     P = load_config()
     converter = load_module("convert_png", os.path.join(HERE, "000_convert_png_to_avi.py"))
     if a.all:
-        sessions, problems = converter.find_sessions(P["webcam_dir"])
+        sessions, problems = converter.find_sessions(P["webcam_png_external_dir"])
         pids = sorted(k.lower() for k in sessions)
         for p in problems:
             print(f"[SKIPPED] {p}")

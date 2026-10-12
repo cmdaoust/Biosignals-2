@@ -141,9 +141,9 @@ def write_avi(mkv, positions, width, height, out_fps, output_path):
         dec.wait()
 
 
-def convert(pid, video_dir, output_dir, method, fps=30.0):
-    mkv = os.path.join(video_dir, f"{pid}_1to1.mkv")
-    ts = os.path.join(video_dir, f"{pid}_frame_timestamps.csv")
+def convert(pid, video_external_dir, output_dir, method, fps=30.0):
+    mkv = os.path.join(video_external_dir, f"{pid}_1to1.mkv")
+    ts = os.path.join(video_external_dir, f"{pid}_frame_timestamps.csv")
     for p in (mkv, ts):
         if not os.path.exists(p):
             raise FileNotFoundError(f"{p} not found")
@@ -202,15 +202,15 @@ def main():
     if a.method != "realtime" and a.fps != 30.0:
         ap.error("--fps only applies to --method realtime")
 
-    video_dir = a.video_dir or C.default_output_dir()
-    output_dir = a.output_dir or video_dir
+    video_external_dir = a.video_dir or C.default_output_dir()
+    output_dir = a.output_dir or video_external_dir
     if a.all:
         pids = sorted(os.path.basename(p)[: -len("_1to1.mkv")]
-                      for p in glob.glob(os.path.join(video_dir, "*_1to1.mkv")))
+                      for p in glob.glob(os.path.join(video_external_dir, "*_1to1.mkv")))
     else:
         pids = a.pids
     if not pids:
-        ap.error(f"give participant IDs, or --all (no *_1to1.mkv found in {video_dir})" if a.all
+        ap.error(f"give participant IDs, or --all (no *_1to1.mkv found in {video_external_dir})" if a.all
                  else "give participant IDs, or --all")
 
     status = {}
@@ -221,7 +221,7 @@ def main():
             status[pid] = "skipped (exists)"
             continue
         try:
-            convert(pid, video_dir, output_dir, a.method, a.fps)
+            convert(pid, video_external_dir, output_dir, a.method, a.fps)
             status[pid] = "OK"
         except Exception as e:
             print(f"[ERROR] {e}")

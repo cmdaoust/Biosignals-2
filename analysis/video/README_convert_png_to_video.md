@@ -71,7 +71,7 @@ Until then, `003_run_webcam_biometrics.py` still reads the `.mkv` without proble
 
 ## What goes in
 
-For each participant, the script needs two things from the folder set as `WEBCAM_DIR` in `config.py` (currently `D:\Biosignals2_png_data`):
+For each participant, the script needs two things from the folder set as `WEBCAM_PNG_EXTERNAL_DIR` in `config.py` (currently `D:\Biosignals2_png_data`):
 
 | Item | What it is |
 |---|---|

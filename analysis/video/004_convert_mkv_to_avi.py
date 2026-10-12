@@ -229,15 +229,15 @@ def all_frames_identical(a, b):
     return len(sa) == len(sb) and len(sa) > 0 and sa == sb, len(sa), len(sb)
 
 
-def delete_mkv_if_identical(pid, video_dir, output_dir):
-    mkv = os.path.join(video_dir, f"{pid}_1to1.mkv")
+def delete_mkv_if_identical(pid, video_external_dir, output_dir):
+    mkv = os.path.join(video_external_dir, f"{pid}_1to1.mkv")
     avi = os.path.join(output_dir, f"{pid}_1to1_ffv1.avi")
     if not os.path.exists(mkv):
         print("  no .mkv to delete.")
         return
-    if os.path.normcase(os.path.dirname(os.path.abspath(avi))) != os.path.normcase(os.path.abspath(video_dir)):
-        print(f"  NOT deleting the .mkv: the .avi is in {output_dir}, not next to the .mkv in {video_dir} "
-              f"(003 and FaceReader look in {video_dir}). Move the .avi there first.")
+    if os.path.normcase(os.path.dirname(os.path.abspath(avi))) != os.path.normcase(os.path.abspath(video_external_dir)):
+        print(f"  NOT deleting the .mkv: the .avi is in {output_dir}, not next to the .mkv in {video_external_dir} "
+              f"(003 and FaceReader look in {video_external_dir}). Move the .avi there first.")
         return
     print("  checking every frame of the .avi against the .mkv before deleting it...")
     same, na, nb = all_frames_identical(mkv, avi)
@@ -248,9 +248,9 @@ def delete_mkv_if_identical(pid, video_dir, output_dir):
     print(f"  all {na} frames identical - deleted {os.path.basename(mkv)}; {os.path.basename(avi)} is now the only video.")
 
 
-def convert(pid, video_dir, output_dir, method, fps=30.0):
-    mkv = os.path.join(video_dir, f"{pid}_1to1.mkv")
-    ts = os.path.join(video_dir, f"{pid}_frame_timestamps.csv")
+def convert(pid, video_external_dir, output_dir, method, fps=30.0):
+    mkv = os.path.join(video_external_dir, f"{pid}_1to1.mkv")
+    ts = os.path.join(video_external_dir, f"{pid}_frame_timestamps.csv")
     for p in (mkv, ts):
         if not os.path.exists(p):
             raise FileNotFoundError(f"{p} not found")
@@ -320,15 +320,15 @@ def main():
     if a.delete_mkv and a.method != "1to1-ffv1avi":
         ap.error("--delete-mkv only applies to --method 1to1-ffv1avi")
 
-    video_dir = a.video_dir or C.default_output_dir()
-    output_dir = a.output_dir or video_dir
+    video_external_dir = a.video_dir or C.default_output_dir()
+    output_dir = a.output_dir or video_external_dir
     if a.all:
         pids = sorted(os.path.basename(p)[: -len("_1to1.mkv")]
-                      for p in glob.glob(os.path.join(video_dir, "*_1to1.mkv")))   # = everyone still with an .mkv
+                      for p in glob.glob(os.path.join(video_external_dir, "*_1to1.mkv")))   # = everyone still with an .mkv
     else:
         pids = a.pids
     if not pids:
-        ap.error(f"give participant IDs, or --all (no *_1to1.mkv found in {video_dir})" if a.all
+        ap.error(f"give participant IDs, or --all (no *_1to1.mkv found in {video_external_dir})" if a.all
                  else "give participant IDs, or --all")
 
     status = {}
@@ -339,10 +339,10 @@ def main():
                 print("Already converted - not redoing it (delete the output to redo it).")
                 status[pid] = "skipped (exists)"
             else:
-                convert(pid, video_dir, output_dir, a.method, a.fps)
+                convert(pid, video_external_dir, output_dir, a.method, a.fps)
                 status[pid] = "OK"
             if a.delete_mkv:
-                delete_mkv_if_identical(pid, video_dir, output_dir)
+                delete_mkv_if_identical(pid, video_external_dir, output_dir)
         except Exception as e:
             print(f"[ERROR] {e}")
             status[pid] = f"FAILED: {e}"

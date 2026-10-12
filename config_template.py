@@ -35,15 +35,15 @@ VIDEO_ONSETS_DIR = os.path.join(SERVER_ROOT, "event_onsets", "stimulus_videos")
 FACEREADER_ONSETS_DIR = os.path.join(SERVER_ROOT, "event_onsets", "facereader_video")  # events in FaceReader AVI time
 
 # Webcam (<id>_frames/, <id>_frame_timestamps.csv, <id>_facereader.avi)
-WEBCAM_DIR = r""  # e.g. r"D:\Biosignals2_png_data"   # <id>_frames\ + <id>_frame_timestamps.csv
+WEBCAM_PNG_EXTERNAL_DIR = r""  # e.g. r"D:\Biosignals2_png_data"   # external hard drive: <id>_frames\ + <id>_frame_timestamps.csv
 # Where the video analyses SAVE and READ the video files (1to1 .mkv, realtime / 1to1-facereader AVIs,
 # plus a copy of each <id>_frame_timestamps.csv): the external hard drive. The PNG originals are
 # archived on Box; these videos are working copies that can be rebuilt from them.
-VIDEO_EXTERNAL_DIR = r""  # e.g. r"D:\Biosignals2_video"
+VIDEO_EXTERNAL_DIR = r""  # e.g. r"D:\Biosignals2_video"   # external hard drive (not Box)
 # WebcamBiometrics code (used by 003_run_webcam_biometrics.py). Moved out of OneDrive on 7 Oct 2026.
 WEBCAM_BIOMETRICS_REPO = r""  # e.g. r"C:\Users\you\Documents\WebcamBiometrics"
 # Webcam, older sessions recorded straight to AVI (<id>_frame_timestamps.csv, <id>_recording.avi)
-OLD_WEBCAM_DIR = os.path.join(SERVER_ROOT, "video")
+VIDEO_BOX_DIR = os.path.join(SERVER_ROOT, "video")   # Box (same folder as VIDEO_BOX_DIR in config.R)
 LEDALAB_RESULTS_DIR = os.path.join(SERVER_ROOT, "ledalab")
 # Ledalab input: EDA-only .mat files prepared for Ledalab
 LEDALAB_INPUT_DIR = os.path.join(SERVER_ROOT, "ledalab", "input")
