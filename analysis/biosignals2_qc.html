@@ -168,7 +168,8 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
 
   <div id="tab-completeness" class="tab-content active"><div class="note"><strong>Main study:</strong> pilot participants (<span class="mono">E5510, E9967, G2313, I4155, N2026, P7259, R2433, R4755, S0723, S0943</span>) are left out; they are in <code>biosignals2_qc_pilot.html</code>.<br>Left out of both reports: <span class='mono'>001</span> (test: Early pilot; pre-dates the emotion label question); <span class='mono'>002</span> (test: Early pilot; pre-dates the emotion label question); <span class='mono'>003</span> (test: Test session); <span class='mono'>CARMEN</span> (test: Carmen's own test sessions). <br>Edit <code>analysis/participant_status.csv</code> to change who is pilot, test or excluded. Files are untouched on disk.</div><div class="note"><strong>&#10227; Combined data out of date.</strong> These participants are in
        the raw files but not in the combined CSV this report reads:<ul style="margin-top:.5rem;
-       margin-left:1.2rem;line-height:1.8;"><li>Questionnaires: <span class='mono'>S9686</span> &mdash; re-knit <code>04_questionnaire_analysis.Rmd</code></li></ul>Then re-run this report. If someone is still listed after re-knitting, the Rmd is
+       margin-left:1.2rem;line-height:1.8;"><li>PsychoPy: <span class='mono'>O8244, S1250</span> &mdash; re-knit <code>01_data_cleaning.Rmd</code></li>
+<li>Questionnaires: <span class='mono'>S9686</span> &mdash; re-knit <code>04_questionnaire_analysis.Rmd</code></li></ul>Then re-run this report. If someone is still listed after re-knitting, the Rmd is
        dropping their file (e.g. the filename filter in 01, or an incomplete Qualtrics response).</div><div class="status-row">
     <div class="tile blue"><div class="tile-value">3</div>
       <div class="tile-label">Unique participant<br>IDs observed</div></div>
@@ -177,7 +178,7 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
       <div class="tile-label">Participants with<br>complete dataset</div></div>
     <div class="tile blue"><div class="tile-value">1/0/0/1</div>
       <div class="tile-label">PsychoPy / Quest. /<br>Ledalab / Kubios IDs</div></div>
-    <div class="tile blue"><div class="tile-value">1/1/0</div>
+    <div class="tile blue"><div class="tile-value">1/3/0</div>
       <div class="tile-label">Video / Biometrics /<br>FaceReader IDs</div></div>
   </div>
 
@@ -192,13 +193,13 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
          (Qualtrics exports upper-case IDs; the other sources use lower-case).</p>
     </div>
     <div class="note"><strong>3 participant(s) missing data from at least one source:</strong>
-           <ul style="margin-top:.5rem;margin-left:1.2rem;line-height:1.8;"><li><span class='mono'>O8244</span> &mdash; missing: PsychoPy, Questionnaires, Ledalab, Kubios, Video, Biometrics, FaceReader</li>
-<li><span class='mono'>S1250</span> &mdash; missing: PsychoPy, Questionnaires, Ledalab, Kubios, Video, Biometrics, FaceReader</li>
+           <ul style="margin-top:.5rem;margin-left:1.2rem;line-height:1.8;"><li><span class='mono'>O8244</span> &mdash; missing: PsychoPy (raw file present &mdash; re-knit 01_data_cleaning.Rmd), Questionnaires, Ledalab, Kubios, Video, FaceReader</li>
+<li><span class='mono'>S1250</span> &mdash; missing: PsychoPy (raw file present &mdash; re-knit 01_data_cleaning.Rmd), Questionnaires, Ledalab, Kubios, Video, FaceReader</li>
 <li><span class='mono'>S9686</span> &mdash; missing: Questionnaires (raw file present &mdash; re-knit 04_questionnaire_analysis.Rmd), Ledalab, FaceReader</li></ul></div>
     <div class="table-wrap" style="margin-top:1rem;"><table>
       <thead><tr><th>Participant</th><th>PsychoPy</th><th>Questionnaires</th><th>Physiology</th><th>Ledalab</th><th>Kubios</th><th>Video</th><th>Biometrics</th><th>FaceReader</th><th>Sources</th><th>Status</th></tr></thead>
-      <tbody><tr><td class='mono'>O8244</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>1/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
-<tr><td class='mono'>S1250</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>1/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
+      <tbody><tr><td class='mono'>O8244</td><td class='status-warn' style='text-align:center' title='In the raw files but not the combined CSV: re-knit'>&#10227; re-knit</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>2/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>S1250</td><td class='status-warn' style='text-align:center' title='In the raw files but not the combined CSV: re-knit'>&#10227; re-knit</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>2/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
 <tr><td class='mono'>S9686</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center' title='In the raw files but not the combined CSV: re-knit'>&#10227; re-knit</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>5/8</td><td class='status-warn'>&#9888; incomplete</td></tr></tbody>
     </table></div>
   </section></div>
@@ -496,16 +497,16 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
         </table></div>
       </section></div>
   <div id="tab-biometrics" class="tab-content"><div class="status-row">
-    <div class="tile blue"><div class="tile-value">1</div>
+    <div class="tile blue"><div class="tile-value">3</div>
       <div class="tile-label">Sessions in<br>raw_psychopy</div></div>
     <div class="tile ok">
-      <div class="tile-value">1/1</div>
+      <div class="tile-value">3/3</div>
       <div class="tile-label">With<br>_biometrics.csv</div></div>
     <div class="tile ok">
-      <div class="tile-value">1/1</div>
+      <div class="tile-value">3/3</div>
       <div class="tile-label">With<br>_clocksync.json</div></div>
     <div class="tile warn">
-      <div class="tile-value">1</div>
+      <div class="tile-value">3</div>
       <div class="tile-label">Sessions<br>with issues</div></div>
   </div>
 
@@ -522,7 +523,9 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     <div class="table-wrap"><table>
       <thead><tr><th>Participant</th><th>_biometrics.csv</th><th>Size (MB)</th>
         <th>_clocksync.json</th><th>In combined</th><th>Status</th></tr></thead>
-      <tbody><tr><td class='mono'>s9686</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>0.0</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ _biometrics.csv only 1 KB (almost no frames); not in combined file</td></tr></tbody>
+      <tbody><tr><td class='mono'>o8244</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>0.0</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ _biometrics.csv only 1 KB (almost no frames); not in combined file</td></tr>
+<tr><td class='mono'>s1250</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>0.0</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ _biometrics.csv only 1 KB (almost no frames); not in combined file</td></tr>
+<tr><td class='mono'>s9686</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>0.0</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ _biometrics.csv only 1 KB (almost no frames); not in combined file</td></tr></tbody>
     </table></div>
   </section><div class="status-row" style="margin-top:2.75rem">
     <div class="tile blue"><div class="tile-value">0</div>
@@ -571,7 +574,7 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     <div class="section-head">
       <div class="section-label">Video Recordings</div>
       <h2>Video files per participant (Box video folder)</h2>
-      <p>Every PNG participant should have three files directly in <code>VIDEO_DIR</code>:
+      <p>Every PNG participant should have three files directly in <code>VIDEO_BOX_DIR</code>:
          <code>{pid}_frames.zip</code> (zipped PNG frames), <code>{pid}_1to1_ffv1.avi</code>
          (1:1 FFV1 video from 000_convert_png_to_avi.py) and <code>{pid}_frame_timestamps.csv</code>.
          Old sessions recorded straight to AVI need <code>{pid}_recording.avi</code> and
