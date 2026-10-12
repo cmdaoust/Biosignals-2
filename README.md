@@ -38,7 +38,7 @@ After regenerating a report, push the new `.html` (Pages takes a minute or two t
 
 ## Box — Data server
 
-Root: `C:\Users\carme\Box\Project_Biosignals_study_2\3_Data\`
+Root: `C:\Users\...\Box\Project_Biosignals_study_2\3_Data\`
 (Update the root path for your machine in `config.py`.)
 
 ```
@@ -84,13 +84,13 @@ Kubios HRV Scientific 4.3 was run on the BIOPAC ECG recordings. Output is one wi
 - Lines 62–151: Summary HRV statistics per block (RMSSD, SDNN, mean HR, LF/HF power, etc.)
 - Lines 207+: Per-beat RR interval data and spectral estimates (FFT and AR), one set of columns per block
 
-Two tidy extracts are also saved in `kubios/`: `{pid}_kubios_summary.csv` (one row per block) and `002_carmen_pilot_kubios_rr.csv` (per-beat RR intervals). These are what `03_hr_comparison_pilot.Rmd` reads directly.
+Two tidy extracts are also saved in `kubios/`: `{pid}_kubios_summary.csv` (one row per block) and `{pid}_kubios_rr.csv` (per-beat RR intervals). These are what `03_hr_comparison_pilot.Rmd` reads directly.
 
 ---
 
 ## GitHub — Code repository
 
-Root: `C:\Users\carme\Documents\Biosignals-2\` (outside OneDrive, which can lock or revert files in `.git`)
+Root: `C:\Users\...\Documents\Biosignals-2\` (Update root path to where you have cloned the repo)
 
 ```
 Biosignals-2/
@@ -206,7 +206,7 @@ This script compares heart rate and HRV across three sources for pilot participa
 
 | Source | Signal | Key data file |
 |---|---|---|
-| **ECG (Kubios)** | Gold standard — BIOPAC ECG, Kubios HRV | `002_carmen_pilot_kubios_summary.csv` + `_rr.csv` |
+| **ECG (Kubios)** | Gold standard — BIOPAC ECG, Kubios HRV | `{pid}_kubios_summary.csv` + `_rr.csv` |
 | **FaceReader** | Facial video HR (Noldus FaceReader) | `..._heart beat log.txt` |
 | **Webcam Biometrics** | rPPG from internal webcam (PsychoPy plugin) | `..._biometrics.csv` |
 
