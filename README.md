@@ -245,6 +245,6 @@ experiment/
 ## Setup for a new machine
 
 1. Install [Box Drive](https://www.box.com/resources/downloads) and sync `Project_Biosignals_study_2`.
-2. Clone this repo. It contains no data: `pilot_data/` and `manuscripts/` are gitignored, so copy them from Box if you need them.
-3. At the repo root, copy each template and fill in your paths: `config_template.py` → `config.py` (Python), `config_template.R` → `config.R` (R) and `config_template.m` → `config.m` (MATLAB). There is **one** config per language, at the repo root; every script finds it there. Don't put copies in `analysis/` or its subfolders. All three are gitignored and never committed.
+2. Clone this repo.
+3. At the repo root, copy each template and fill in your paths: `config_template.py` → `config.py` (Python), `config_template.R` → `config.R` (R) and `config_template.m` → `config.m` (MATLAB). There is **one** config per language, at the repo root; every script finds it there. Don't put copies in `analysis/` or its subfolders.
 4. R analysis: open any `.Rmd` in `analysis/` in RStudio. Each script sources `config.R` automatically via `here::here("config.R")`.
