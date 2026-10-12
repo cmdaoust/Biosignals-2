@@ -66,7 +66,7 @@ source(file.path(project_dir, "config.R"))
 DATA_PATH   <- file.path(COMBINED_PSYCHO_DIR, "biosignals2_selfreport_ratings.csv")
 BIOMETRICS_COMBINED_PATH <- file.path(COMBINED_PSYCHO_DIR, "biosignals2_webcambiometrics.csv")
 QUESTIONNAIRE_PATH <- file.path(COMBINED_PSYCHO_DIR, "biosignals2_questionnaires_scored.csv")
-# config.R exists both at the repo root and in analysis/, so project_dir may already be analysis/
+# config.R lives at the repo root; this also copes with an old copy in analysis/
 analysis_dir <- if (basename(project_dir) == "analysis") project_dir else file.path(project_dir, "analysis")
 OUTPUT_PATH  <- file.path(analysis_dir, if (exists("QC_MODE", inherits = FALSE) && QC_MODE == "pilot")
                                           "biosignals2_qc_pilot.html" else "biosignals2_qc.html")
@@ -1408,7 +1408,7 @@ biometrics_combined_html <- tryCatch({
 biometrics_html <- paste0(biometrics_raw_html, biometrics_combined_html)
 
 # ── 6.1 Video recordings ───────────────────────────────────────────────────────
-# Box video folder (VIDEO_DIR, top level only). Every PNG participant needs all three:
+# Box video folder (VIDEO_BOX_DIR, top level only). Every PNG participant needs all three:
 #   <id>_frames.zip            zipped PNG frames (the lossless original)
 #   <id>_1to1_ffv1.avi         1:1 FFV1 video made from the PNGs (000_convert_png_to_avi.py)
 #   <id>_frame_timestamps.csv  one row per frame
@@ -1423,9 +1423,9 @@ VIDEO_PATTERNS <- c(zip     = "_frames\\.zip$",
 
 video_html <- tryCatch({
 
-  if (!dir.exists(VIDEO_DIR))
-    stop(paste0("NO_FILES: VIDEO_DIR does not exist: ", VIDEO_DIR))
-  entries <- keep_files(list.files(VIDEO_DIR, full.names = TRUE))
+  if (!dir.exists(VIDEO_BOX_DIR))
+    stop(paste0("NO_FILES: VIDEO_BOX_DIR does not exist: ", VIDEO_BOX_DIR))
+  entries <- keep_files(list.files(VIDEO_BOX_DIR, full.names = TRUE))
   entries <- entries[!dir.exists(entries)]
 
   vfiles <- map_dfr(names(VIDEO_PATTERNS), function(k) {
@@ -1433,7 +1433,7 @@ video_html <- tryCatch({
     tibble(path = hits, kind = rep(k, length(hits)))
   })
   if (nrow(vfiles) == 0)
-    stop("NO_FILES: No frame zips, 1to1_ffv1 videos, recordings or frame timestamps found in VIDEO_DIR.")
+    stop("NO_FILES: No frame zips, 1to1_ffv1 videos, recordings or frame timestamps found in VIDEO_BOX_DIR.")
   vfiles <- vfiles |> mutate(pid = pid_from_file(path), size_gb = file.size(path) / 1024^3)
 
   ts_files <- vfiles$path[vfiles$kind == "ts"]
@@ -1532,7 +1532,7 @@ video_html <- tryCatch({
     <div class="section-head">
       <div class="section-label">Video Recordings</div>
       <h2>Video files per participant (Box video folder)</h2>
-      <p>Every PNG participant should have three files directly in <code>VIDEO_DIR</code>:
+      <p>Every PNG participant should have three files directly in <code>VIDEO_BOX_DIR</code>:
          <code>{pid}_frames.zip</code> (zipped PNG frames), <code>{pid}_1to1_ffv1.avi</code>
          (1:1 FFV1 video from 000_convert_png_to_avi.py) and <code>{pid}_frame_timestamps.csv</code>.
          Old sessions recorded straight to AVI need <code>{pid}_recording.avi</code> and
@@ -2097,7 +2097,7 @@ completeness_html <- tryCatch({
   })
 
   # Video: any video-pipeline file at the top level of the Box video folder (see section 6.1)
-  ids_video <- get_ids(ids_of_files(VIDEO_DIR,
+  ids_video <- get_ids(ids_of_files(VIDEO_BOX_DIR,
     "_recording\\.avi$|_frames\\.zip$|_1to1_ffv1\\.avi$|_frame_timestamps\\.csv$"))
 
   # Raw physiology: the BIOPAC session recording is the source of truth for a

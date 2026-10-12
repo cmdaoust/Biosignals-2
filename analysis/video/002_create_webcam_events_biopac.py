@@ -62,7 +62,7 @@ CHANNELS = {
 
 
 def load_config():
-    """Nearest config.py in this folder or above (normally analysis/config.py)."""
+    """Nearest config.py in this folder or above (the repo-root config.py)."""
     folder = os.path.dirname(os.path.abspath(__file__))
     while not os.path.isfile(os.path.join(folder, "config.py")):
         parent = os.path.dirname(folder)

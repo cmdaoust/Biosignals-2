@@ -170,10 +170,10 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
        the raw files but not in the combined CSV this report reads:<ul style="margin-top:.5rem;
        margin-left:1.2rem;line-height:1.8;"><li>Questionnaires: <span class='mono'>S9686</span> &mdash; re-knit <code>04_questionnaire_analysis.Rmd</code></li></ul>Then re-run this report. If someone is still listed after re-knitting, the Rmd is
        dropping their file (e.g. the filename filter in 01, or an incomplete Qualtrics response).</div><div class="status-row">
-    <div class="tile blue"><div class="tile-value">1</div>
+    <div class="tile blue"><div class="tile-value">3</div>
       <div class="tile-label">Unique participant<br>IDs observed</div></div>
     <div class="tile warn">
-      <div class="tile-value">0/1</div>
+      <div class="tile-value">0/3</div>
       <div class="tile-label">Participants with<br>complete dataset</div></div>
     <div class="tile blue"><div class="tile-value">1/0/0/1</div>
       <div class="tile-label">PsychoPy / Quest. /<br>Ledalab / Kubios IDs</div></div>
@@ -191,11 +191,15 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
          and FaceReader exports. IDs are compared case-insensitively and whitespace-trimmed
          (Qualtrics exports upper-case IDs; the other sources use lower-case).</p>
     </div>
-    <div class="note"><strong>1 participant(s) missing data from at least one source:</strong>
-           <ul style="margin-top:.5rem;margin-left:1.2rem;line-height:1.8;"><li><span class='mono'>S9686</span> &mdash; missing: Questionnaires (raw file present &mdash; re-knit 04_questionnaire_analysis.Rmd), Ledalab, FaceReader</li></ul></div>
+    <div class="note"><strong>3 participant(s) missing data from at least one source:</strong>
+           <ul style="margin-top:.5rem;margin-left:1.2rem;line-height:1.8;"><li><span class='mono'>O8244</span> &mdash; missing: PsychoPy, Questionnaires, Ledalab, Kubios, Video, Biometrics, FaceReader</li>
+<li><span class='mono'>S1250</span> &mdash; missing: PsychoPy, Questionnaires, Ledalab, Kubios, Video, Biometrics, FaceReader</li>
+<li><span class='mono'>S9686</span> &mdash; missing: Questionnaires (raw file present &mdash; re-knit 04_questionnaire_analysis.Rmd), Ledalab, FaceReader</li></ul></div>
     <div class="table-wrap" style="margin-top:1rem;"><table>
       <thead><tr><th>Participant</th><th>PsychoPy</th><th>Questionnaires</th><th>Physiology</th><th>Ledalab</th><th>Kubios</th><th>Video</th><th>Biometrics</th><th>FaceReader</th><th>Sources</th><th>Status</th></tr></thead>
-      <tbody><tr><td class='mono'>S9686</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center' title='In the raw files but not the combined CSV: re-knit'>&#10227; re-knit</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>5/8</td><td class='status-warn'>&#9888; incomplete</td></tr></tbody>
+      <tbody><tr><td class='mono'>O8244</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>1/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>S1250</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>1/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>S9686</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center' title='In the raw files but not the combined CSV: re-knit'>&#10227; re-knit</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>5/8</td><td class='status-warn'>&#9888; incomplete</td></tr></tbody>
     </table></div>
   </section></div>
   <div id="tab-psychopy" class="tab-content"><div class="status-row">
@@ -583,16 +587,16 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     </table></div>
   </section></div>
   <div id="tab-physiology" class="tab-content"><div class="status-row">
-    <div class="tile blue"><div class="tile-value">1</div>
+    <div class="tile blue"><div class="tile-value">3</div>
       <div class="tile-label">Participants with<br>physiology files</div></div>
     <div class="tile ok">
-      <div class="tile-value">1/1</div>
+      <div class="tile-value">3/3</div>
       <div class="tile-label">Session<br>recording</div></div>
-    <div class="tile ok">
-      <div class="tile-value">1/1</div>
+    <div class="tile warn">
+      <div class="tile-value">2/3</div>
       <div class="tile-label">Trimmed to<br>protocol</div></div>
     <div class="tile warn">
-      <div class="tile-value">0/1</div>
+      <div class="tile-value">0/3</div>
       <div class="tile-label">Exported<br>to .mat</div></div>
   </div>
 
@@ -611,7 +615,9 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
       <thead><tr><th>Participant</th><th>Session .acq</th><th>Size (MB)</th>
         <th>Trimmed physiology</th><th>Trimmed EDA</th>
         <th>.mat physiology</th><th>.mat EDA</th><th>Status</th></tr></thead>
-      <tbody><tr><td class='mono'>s9686</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>78.3</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ no .mat export</td></tr></tbody>
+      <tbody><tr><td class='mono'>o8244</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>73.7</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ no .mat export</td></tr>
+<tr><td class='mono'>s1250</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>48.3</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ not trimmed (EDA); no .mat export</td></tr>
+<tr><td class='mono'>s9686</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>78.3</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ no .mat export</td></tr></tbody>
     </table></div>
   </section></div>
   <div id="tab-facereader" class="tab-content"><div class="placeholder-box"><div class="placeholder-title">FaceReader</div><div class="placeholder-msg">No FaceReader exports found in FACEREADER_RESULTS_DIR.</div></div></div>

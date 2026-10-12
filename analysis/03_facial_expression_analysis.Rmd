@@ -87,7 +87,7 @@ file, like the other analysis Rmds). Variables used:
 |---|---|---|
 | `PSYCHOPY_DATA_DIR` | PsychoPy `.csv`, `*_biometrics.csv`, `*_clocksync.json` | required |
 | `FACEREADER_RESULTS_DIR` | FaceReader detailed logs (`.xlsx`/`.txt`) | required |
-| `VIDEO_DIR` | older sessions: `<id>_frame_timestamps.csv` | older sessions are dropped |
+| `VIDEO_BOX_DIR` | older sessions: `<id>_frame_timestamps.csv` | older sessions are dropped |
 | `FACIAL_EXPRESSION_DIR` | outputs of this analysis | `SERVER_ROOT/facial_expression` |
 | `AU_LOOKUP_PATH` | `blendshapes_au_lookup.xlsx` | `analysis/video/`, then `analysis/` |
 
@@ -127,7 +127,7 @@ if (length(missing_vars)) stop("config.R does not define: ", paste(missing_vars,
 
 psychopy_dir   <- PSYCHOPY_DATA_DIR
 facereader_dir <- FACEREADER_RESULTS_DIR
-legacy_dir     <- if (exists("VIDEO_DIR")) VIDEO_DIR else NA_character_
+legacy_dir     <- if (exists("VIDEO_BOX_DIR")) VIDEO_BOX_DIR else NA_character_
 output_dir     <- if (exists("FACIAL_EXPRESSION_DIR")) FACIAL_EXPRESSION_DIR else
                     file.path(SERVER_ROOT, "facial_expression")
 au_lookup_path <- if (exists("AU_LOOKUP_PATH")) AU_LOOKUP_PATH else {
@@ -135,7 +135,7 @@ au_lookup_path <- if (exists("AU_LOOKUP_PATH")) AU_LOOKUP_PATH else {
   cands[file.exists(cands)][1]
 }
 
-tibble(setting = c("config.R", "psychopy_dir", "facereader_dir", "legacy frame timestamps (VIDEO_DIR)",
+tibble(setting = c("config.R", "psychopy_dir", "facereader_dir", "legacy frame timestamps (VIDEO_BOX_DIR)",
                    "output_dir", "au_lookup"),
        path    = c(file.path(project_dir, "config.R"), psychopy_dir, facereader_dir, legacy_dir,
                    output_dir, au_lookup_path),
@@ -841,7 +841,7 @@ fr_status <- tibble(participant_id = sessions$participant_id) |>
     participant_id %in% fr_dupes ~ "dropped: several FaceReader detailed logs",
     participant_id %in% names(fr_list) ~ "ok",
     sessions$format == "legacy" & is.na(sessions$frames_path) ~
-      "dropped: older session without <id>_frame_timestamps.csv in VIDEO_DIR",
+      "dropped: older session without <id>_frame_timestamps.csv in VIDEO_BOX_DIR",
     TRUE ~ "dropped: no FaceReader detailed log"))
 
 overview <- overview |>

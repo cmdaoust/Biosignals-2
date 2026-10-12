@@ -5,7 +5,7 @@ One script to get WebcamBiometrics heart rate (rPPG) for each participant, as CS
 No ECG or FaceReader comparison here - that is the separate eval (eval/run_sussex_all.py).
 
 For each participant it runs, skipping any step whose output already exists:
-  1. VIDEO    PNG frames -> VIDEO_DIR (D:\Biosignals2_video)\<id>_1to1_ffv1.avi (+ <id>_frame_timestamps.csv)
+  1. VIDEO    PNG frames -> VIDEO_EXTERNAL_DIR (D:\Biosignals2_video)\<id>_1to1_ffv1.avi (+ <id>_frame_timestamps.csv)
               via 000_convert_png_to_avi.py --method 1to1 (every PNG once, lossless). This is the
               same file FaceReader analyses. An older <id>_1to1.mkv is still used if there is no .avi
               (identical pixels); turn it into the .avi with 004_convert_mkv_to_avi.py --delete-mkv.
@@ -84,7 +84,7 @@ OUTPUT COLUMNS
   coverage        share of captured frames in the event that have a heart-rate value
                   (low = face lost, or the start of the recording while the window fills)
 
-Usage (from anywhere; paths come from analysis\config.py)
+Usage (from anywhere; paths come from config.py at the repo root)
 -----
   python 003_run_webcam_biometrics.py i4155                 # one participant
   python 003_run_webcam_biometrics.py i4155 r4755           # several
@@ -95,7 +95,7 @@ Usage (from anywhere; paths come from analysis\config.py)
   python 003_run_webcam_biometrics.py --all --optimize      # optimised beat detector -> *_optimize.csv (fast)
   python 003_run_webcam_biometrics.py r2433 --optimize --live-delay-ms 733   # shorter live delay
 
-config.py variables used: SERVER_ROOT, WEBCAM_DIR, VIDEO_DIR, OLD_WEBCAM_DIR, FACEREADER_ONSETS_DIR, and optionally
+config.py variables used: SERVER_ROOT, WEBCAM_DIR, VIDEO_EXTERNAL_DIR, OLD_WEBCAM_DIR, FACEREADER_ONSETS_DIR, and optionally
 WEBCAM_BIOMETRICS_REPO (default C:\Users\carme\OneDrive\Documents\GitHub\WebcamBiometrics)
 and WEBCAM_HR_DIR (default SERVER_ROOT\webcam_biometrics).
 
@@ -142,7 +142,7 @@ def load_config():
     paths = {
         "repo": str(getattr(cfg, "WEBCAM_BIOMETRICS_REPO", DEFAULT_REPO)),
         "webcam_dir": str(cfg.WEBCAM_DIR),
-        "video_dir": str(getattr(cfg, "VIDEO_DIR", r"D:\Biosignals2_video")),
+        "video_dir": str(getattr(cfg, "VIDEO_EXTERNAL_DIR", r"D:\Biosignals2_video")),
         "old_video_dir": str(getattr(cfg, "OLD_WEBCAM_DIR", os.path.join(root, "video"))),
         "events_dir": str(getattr(cfg, "FACEREADER_ONSETS_DIR",
                                   os.path.join(root, "event_onsets", "facereader_video"))),

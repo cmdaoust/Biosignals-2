@@ -78,7 +78,7 @@ def _find_repo_root():
         current = parent
     raise FileNotFoundError(
         f"Could not find config.py searching upward from: {start}\n"
-        "Make sure config.py exists (in analysis/ or at the repo root)."
+        "Make sure config.py exists at the repo root (copy config_template.py)."
     )
 
 sys.path.insert(0, _find_repo_root())

@@ -54,7 +54,7 @@ script_dir <- function() {
   getwd()
 }
 HERE <- script_dir()
-cfg <- Filter(file.exists, file.path(c(HERE, dirname(HERE)), "config.R"))
+cfg <- Filter(file.exists, file.path(c(HERE, dirname(HERE), dirname(dirname(HERE))), "config.R"))  # repo root is 2 up
 if (length(cfg)) source(cfg[1])
 if (!exists("SERVER_ROOT")) SERVER_ROOT <- "C:/Users/carme/Box/Project_Biosignals_study_2/3_Data"
 FR_DIR <- get0("FACEREADER_RESULTS_DIR", ifnotfound = file.path(SERVER_ROOT, "facereader"))

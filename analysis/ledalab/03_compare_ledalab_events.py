@@ -18,12 +18,15 @@ Usage
   python 03_compare_ledalab_events.py
 
   Run both event creation scripts first, then run this.
-  Paths are read from config.py in the same directory.
+  Paths are read from config.py at the repo root.
 """
 
 import os
 import glob
 import pandas as pd
+import sys as _sys, os as _os
+# config.py lives at the repo root (two folders up from this script)
+_sys.path.insert(0, _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', '..')))
 from config import BLOCK_ONSETS_DIR
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────

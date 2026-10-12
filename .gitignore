@@ -3,7 +3,6 @@ config.m
 config.R
 config.py
 config.yaml
-analysis/pspm/config.py
 
 # ── Raw data (lives in Box, not tracked by git) ───────────────────────────────
 **/*.acq

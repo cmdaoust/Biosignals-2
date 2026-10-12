@@ -39,7 +39,7 @@ Usage
 -----
   python 03_compute_hrv_per_block_facereader.py
 
-  Paths are read from config.py in the same directory.
+  Paths are read from config.py at the repo root.
 """
 
 import os

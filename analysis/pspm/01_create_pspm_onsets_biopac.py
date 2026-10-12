@@ -34,8 +34,8 @@ Usage
 -----
   python create_pspm_onsets_biopac.py
 
-  Paths are read from config.py in the same directory.
-  Copy config_template.R → config.R (or edit config.py directly) and set SERVER_ROOT.
+  Paths are read from config.py at the repo root.
+  Copy config_template.py → config.py at the repo root and set SERVER_ROOT.
 """
 
 import os
@@ -44,6 +44,9 @@ import numpy as np
 import scipy.io as sio
 import pandas as pd
 import bioread
+import sys as _sys, os as _os
+# config.py lives at the repo root (two folders up from this script)
+_sys.path.insert(0, _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', '..')))
 from config import RAW_PHYSIOLOGY_DIR, PSYCHOPY_DATA_DIR, BLOCK_ONSETS_DIR, VIDEO_ONSETS_DIR
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────

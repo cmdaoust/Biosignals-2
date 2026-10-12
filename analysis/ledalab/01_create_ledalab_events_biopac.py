@@ -67,7 +67,7 @@ Usage
 -----
   python 01_create_ledalab_events_biopac.py
 
-  Paths are read from config.py in the same directory.
+  Paths are read from config.py at the repo root.
   Exits non-zero if any participant fails validation.
 """
 
@@ -76,6 +76,9 @@ import glob
 import sys
 import numpy as np
 import bioread
+import sys as _sys, os as _os
+# config.py lives at the repo root (two folders up from this script)
+_sys.path.insert(0, _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', '..')))
 from config import RAW_PHYSIOLOGY_DIR, BLOCK_ONSETS_DIR
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────

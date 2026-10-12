@@ -60,7 +60,7 @@ Usage
 -----
   python 02_create_ledalab_events_psychopy.py
 
-  Paths are read from config.py in the same directory.
+  Paths are read from config.py at the repo root.
   Participants with no trimmed recording are reported and skipped without
   failing the run; exits non-zero if any participant fails validation.
 """
@@ -71,6 +71,9 @@ import sys
 import numpy as np
 import pandas as pd
 import bioread
+import sys as _sys, os as _os
+# config.py lives at the repo root (two folders up from this script)
+_sys.path.insert(0, _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', '..')))
 from config import RAW_PHYSIOLOGY_DIR, PSYCHOPY_DATA_DIR, BLOCK_ONSETS_DIR
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────

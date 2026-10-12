@@ -31,7 +31,7 @@ can never be mixed up.
       FALLBACK ONLY: the same 1:1 frames uncompressed (rawvideo bgr24, ~30 GB for ~19 min), in
       case a FaceReader installation can't decode FFV1. Not needed while the 1to1 .avi works.
 
-Output folder: VIDEO_DIR from the nearest config.py above this script (the external drive,
+Output folder: VIDEO_EXTERNAL_DIR from the nearest config.py above this script (the external drive,
 D:\Biosignals2_video), else D:\Biosignals2_video, or --output-dir. Videos are working copies (the PNGs are archived on Box).
 Existing outputs are never overwritten: a participant that already has the output is skipped,
 so an interrupted batch can simply be rerun.
@@ -92,7 +92,7 @@ def output_name(pid, method, fps):
 
 
 def default_output_dir():
-    """VIDEO_DIR from the nearest config.py above this script, else DEFAULT_OUTPUT_DIR."""
+    """VIDEO_EXTERNAL_DIR from the nearest config.py above this script, else DEFAULT_OUTPUT_DIR."""
     folder = os.path.dirname(os.path.abspath(__file__))
     while True:
         path = os.path.join(folder, "config.py")
@@ -101,8 +101,8 @@ def default_output_dir():
             cfg = importlib.util.module_from_spec(spec)
             try:
                 spec.loader.exec_module(cfg)
-                if hasattr(cfg, "VIDEO_DIR"):
-                    return str(cfg.VIDEO_DIR)
+                if hasattr(cfg, "VIDEO_EXTERNAL_DIR"):
+                    return str(cfg.VIDEO_EXTERNAL_DIR)
             except Exception as e:  # a broken config shouldn't stop a conversion
                 print(f"[WARNING] couldn't read {path} ({e}); using {DEFAULT_OUTPUT_DIR}")
             break
@@ -401,7 +401,7 @@ def parse_args():
                    help="realtime = FaceReader expressions AVI (frames repeated/skipped onto a constant-fps "
                         "real-time grid); 1to1 = THE rPPG video for WebcamBiometrics AND FaceReader (every PNG once, "
                         "lossless FFV1 in .avi); 1to1-facereader = fallback, same frames uncompressed")
-    p.add_argument("--output-dir", help="Where to write (default: VIDEO_DIR in config.py, i.e. D:\\Biosignals2_video)")
+    p.add_argument("--output-dir", help="Where to write (default: VIDEO_EXTERNAL_DIR in config.py, i.e. D:\\Biosignals2_video)")
     p.add_argument("--fps", type=float, default=30.0,
                    help="realtime only: constant output frame rate (default: 30)")
     p.add_argument("--no-resample", action="store_true", help=argparse.SUPPRESS)

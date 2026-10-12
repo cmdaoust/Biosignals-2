@@ -21,7 +21,7 @@ Usage
 -----
   python compare_pspm_onsets.py
 
-  Paths are read from config.yaml at the project root.
+  Paths are read from config.py at the repo root.
   Copy config.yaml.example → config.yaml and set your paths.
 """
 
@@ -29,6 +29,9 @@ import os
 import glob
 import numpy as np
 import scipy.io as sio
+import sys as _sys, os as _os
+# config.py lives at the repo root (two folders up from this script)
+_sys.path.insert(0, _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', '..')))
 from config import BLOCK_ONSETS_DIR, VIDEO_ONSETS_DIR
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────

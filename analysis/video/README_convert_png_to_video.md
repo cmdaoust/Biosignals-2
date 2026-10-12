@@ -154,7 +154,7 @@ Done. Wrote: D:\Biosignals2_video\r2433_1to1_ffv1.avi (5.27 GB, 33666 frames)
 
 ## Where the files go
 
-By default, everything is saved to `VIDEO_DIR` from `config.py`, currently the folder `D:\Biosignals2_video` on the external hard drive:
+By default, everything is saved to `VIDEO_EXTERNAL_DIR` from `config.py`, currently the folder `D:\Biosignals2_video` on the external hard drive:
 
 ```
 D:\Biosignals2_video\

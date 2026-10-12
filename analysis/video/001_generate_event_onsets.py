@@ -90,10 +90,10 @@ cross-checked against the video file names (N... = negative, P... = positive).
 HOW TO RUN
 ----------
 Paths are read from config.py, the nearest one in this folder or above it
-(normally analysis/config.py, which is not tracked by git). It needs:
+(the repo-root config.py, which is not tracked by git). It needs:
   PSYCHOPY_DATA_DIR      PsychoPy data files     <id>_<expName>_<date>.csv
   WEBCAM_DIR             current sessions        <id>_frame_timestamps.csv (optional, for checks)
-  VIDEO_DIR (optional)   <id>_realtime_30fps.avi   (optional, file name only; also looked for in
+  VIDEO_EXTERNAL_DIR (optional)   <id>_realtime_30fps.avi   (optional, file name only; also looked for in
                                                  WEBCAM_DIR and OLD_WEBCAM_DIR)
   OLD_WEBCAM_DIR         older sessions          <id>_frame_timestamps.csv and <id>_recording.avi
                                                  (both required)
@@ -644,4 +644,4 @@ FPS = 30.0   # current sessions: must match --fps of 000_convert_png_to_avi.py -
 if __name__ == '__main__':
     cfg = load_config()
     run_all(str(cfg.PSYCHOPY_DATA_DIR), str(cfg.WEBCAM_DIR), str(cfg.OLD_WEBCAM_DIR),
-            str(cfg.FACEREADER_ONSETS_DIR), FPS, video_dir=getattr(cfg, 'VIDEO_DIR', None))
+            str(cfg.FACEREADER_ONSETS_DIR), FPS, video_dir=getattr(cfg, 'VIDEO_EXTERNAL_DIR', None))

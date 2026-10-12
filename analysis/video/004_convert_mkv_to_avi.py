@@ -49,10 +49,10 @@ How it works
 
 Never overwrites: a participant whose output already exists is skipped.
 
-Usage (paths from analysis\config.py: VIDEO_DIR, i.e. D:\)
+Usage (paths from config.py at the repo root: VIDEO_EXTERNAL_DIR, i.e. D:\)
 -----
   python 004_convert_mkv_to_avi.py r2433                               # FFV1 .avi for FaceReader (default)
-  python 004_convert_mkv_to_avi.py --all                               # every <id>_1to1.mkv in VIDEO_DIR
+  python 004_convert_mkv_to_avi.py --all                               # every <id>_1to1.mkv in VIDEO_EXTERNAL_DIR
   python 004_convert_mkv_to_avi.py --all --output-dir C:\fr_temp       # faster if on a different drive
   python 004_convert_mkv_to_avi.py r2433 --method 1to1-facereader
   python 004_convert_mkv_to_avi.py r2433 i4155 --method realtime
@@ -309,7 +309,7 @@ def main():
     ap.add_argument("--method", default="1to1-ffv1avi", choices=METHODS,
                     help="1to1-ffv1avi (default, for FaceReader), 1to1-facereader (uncompressed), realtime")
     ap.add_argument("--video-dir", help="folder with <id>_1to1.mkv + <id>_frame_timestamps.csv "
-                                        "(default VIDEO_DIR in config.py)")
+                                        "(default VIDEO_EXTERNAL_DIR in config.py)")
     ap.add_argument("--output-dir", help="where to write (default: the same folder)")
     ap.add_argument("--fps", type=float, default=30.0, help="realtime only: output frame rate (default 30)")
     ap.add_argument("--delete-mkv", action="store_true",

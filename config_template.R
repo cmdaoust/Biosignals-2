@@ -33,5 +33,5 @@ LEDALAB_RESULTS_DIR       <- file.path(SERVER_ROOT, "ledalab")
 
 KUBIOS_DIR                <- file.path(SERVER_ROOT, "kubios")
 FACEREADER_DIR            <- file.path(SERVER_ROOT, "video")       # pilot HR-comparison Rmds
-VIDEO_DIR                 <- file.path(SERVER_ROOT, "video")       # webcam recordings + frame timestamps
+VIDEO_BOX_DIR                 <- file.path(SERVER_ROOT, "video")       # Box: webcam recordings + frame timestamps
 FACEREADER_RESULTS_DIR    <- file.path(SERVER_ROOT, "facereader")  # FaceReader exports (QC report)
