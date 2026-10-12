@@ -16,6 +16,7 @@ PHYSIOLOGY_EXPORTS_DIR <- file.path(PHYSIOLOGY_ROOT, "exports")                 
 RAW_PHYSIOLOGY_DIR     <- PHYSIOLOGY_TRIMMED_DIR
 PSYCHOPY_DATA_DIR         <- file.path(SERVER_ROOT, "raw_psychopy")
 RAW_QUESTIONNAIRE_DIR     <- file.path(SERVER_ROOT, "raw_questionnaire")
+QUESTIONNAIRE_DIR         <- RAW_QUESTIONNAIRE_DIR   # used by 04 and the QC report
 
 COMBINED_DATA_DIR         <- file.path(SERVER_ROOT, "clean_combined_data")
 COMBINED_PSYCHO_DIR       <- file.path(COMBINED_DATA_DIR, "psychopy")

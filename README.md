@@ -29,6 +29,9 @@ Box is not included in the GitHub repo. Code references Box paths via `config.py
 
 Each report checks PsychoPy self-report, Ledalab (EDA), Kubios (HRV), webcam biometrics, video,
 FaceReader and questionnaires. Sections for data that isn't available yet are left out rather than failing.
+The **Completeness** tab reads PsychoPy, questionnaire and biometrics data straight from the raw Box folders;
+the **Combined datasets** tab shows whether the combined CSVs from `01`/`04` have caught up, and flags raw
+files those scripts would skip (e.g. a PsychoPy CSV in a subfolder, or a typo in a Qualtrics ID).
 The reports are snapshots: re-run the script and commit the new `.html` to update them.
 
 The links open the live pages on GitHub Pages, which show whatever was last pushed to `main`.

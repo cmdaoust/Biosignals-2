@@ -2052,6 +2052,85 @@ questionnaire_html <- tryCatch({
   }
 })
 
+# ── 7.4 Raw-file inventory (Box raw folders) ─────────────────────────────────────
+# The Completeness tab says whether data EXISTS, so it reads the raw Box folders, not the
+# combined CSVs (those can be out of date until 01/04 are re-knitted). The "Combined datasets"
+# tab then compares raw vs combined.
+QC_ID_RE <- "^[A-Za-z]?[0-9]{3,5}$"   # e.g. s9686, 002 (anything else falls back to the folder name)
+
+# PsychoPy: every file anywhere under PSYCHOPY_DATA_DIR (subfolders included). The ID comes
+# from the file name before the first "_"; if that doesn't look like an ID, from the first
+# subfolder name.
+raw_psy_inv <- tryCatch({
+  root <- normalizePath(PSYCHOPY_DATA_DIR, winslash = "/", mustWork = TRUE)
+  f    <- normalizePath(list.files(root, recursive = TRUE, full.names = TRUE), winslash = "/")
+  tibble(path = f) |>
+    mutate(rel       = substring(path, nchar(root) + 2),
+           file      = basename(path),
+           top_level = !grepl("/", rel, fixed = TRUE),
+           file_id   = str_extract(file, "^[^_]+"),
+           dir_id    = if_else(top_level, NA_character_, str_extract(rel, "^[^/_]+")),
+           pid       = qc_norm_id(case_when(
+                          str_detect(coalesce(file_id, ""), QC_ID_RE) ~ file_id,
+                          str_detect(coalesce(dir_id, ""),  QC_ID_RE) ~ dir_id,
+                          TRUE ~ file_id)),
+           kind      = case_when(
+                          str_detect(file, regex("_biometrics\\.csv$", ignore_case = TRUE)) ~ "biometrics",
+                          str_detect(file, regex("_clocksync\\.json$", ignore_case = TRUE)) ~ "clocksync",
+                          str_detect(file, regex("\\.csv$",    ignore_case = TRUE)) ~ "task_csv",
+                          str_detect(file, regex("\\.psydat$", ignore_case = TRUE)) ~ "psydat",
+                          str_detect(file, regex("\\.log$",    ignore_case = TRUE)) ~ "log",
+                          TRUE ~ "other"),
+           mtime     = file.mtime(path)) |>
+    filter(!is.na(pid), nzchar(pid), !is_excluded(pid))
+}, error = function(e) e)
+
+# Qualtrics: EVERY Biosignals2*.csv export in QUESTIONNAIRE_DIR (not just the newest), one row
+# per response, with the ID as typed (QID7_1) and whether it is complete (Finished = TRUE/1 and
+# Progress = 100, the same rule as 04_questionnaire_analysis.Rmd).
+read_qualtrics_ids <- function(path) {
+  hdr <- read_csv(path, n_max = 3, col_names = FALSE,
+                  col_types = cols(.default = "c"), show_col_types = FALSE)
+  import_ids <- str_extract(as.character(hdr[3, ]), '(?<="ImportId":")[^"]+')
+  import_ids <- if_else(is.na(import_ids), as.character(hdr[1, ]), import_ids)
+  raw_q <- read_csv(path, skip = 3, col_names = make.unique(import_ids),
+                    col_types = cols(.default = "c"), show_col_types = FALSE)
+  if (!"QID7_1" %in% names(raw_q)) stop("no QID7_1 (participant ID) column in ", basename(path))
+  done <- rep(TRUE, nrow(raw_q))
+  if ("finished" %in% names(raw_q)) done <- done & str_to_upper(raw_q$finished) %in% c("TRUE", "1")
+  if ("progress" %in% names(raw_q)) done <- done & suppressWarnings(as.integer(raw_q$progress)) %in% 100L
+  tibble(file = basename(path), typed_id = coalesce(raw_q$QID7_1, ""), complete = done)
+}
+raw_q_inv <- tryCatch({
+  qfiles <- list.files(QUESTIONNAIRE_DIR, pattern = "^Biosignals2.*\\.csv$", full.names = TRUE)
+  if (length(qfiles) == 0) stop("NO_FILES: no Biosignals2*.csv export in QUESTIONNAIRE_DIR")
+  newest <- basename(qfiles[which.max(file.mtime(qfiles))])
+  map_dfr(qfiles, read_qualtrics_ids) |>
+    mutate(newest_export = file == newest,
+           pid = qc_norm_id(str_squish(typed_id))) |>
+    filter(!is_excluded(pid))
+}, error = function(e) e)
+
+ok_inv <- function(x) !inherits(x, "error")
+ids_in <- function(df, ...) if (ok_inv(df)) sort(unique(filter(df, ...)$pid)) else character(0)
+
+# Raw presence
+ids_raw_psychopy   <- ids_in(raw_psy_inv, kind %in% c("task_csv", "psydat"))
+ids_raw_biometrics <- ids_in(raw_psy_inv, kind == "biometrics")
+ids_raw_q_complete <- ids_in(raw_q_inv, complete, nzchar(pid))
+ids_raw_q_newest   <- ids_in(raw_q_inv, complete, newest_export, nzchar(pid))
+ids_raw_q_partial  <- setdiff(ids_in(raw_q_inv, !complete, nzchar(pid)), ids_raw_q_complete)
+
+# Combined CSVs (what 01 / 04 wrote)
+ids_comb_selfreport <- if (inherits(selfreport, "error")) character(0) else
+  keep_ids(unique(qc_norm_id(selfreport$participant_id)))
+ids_comb_biometrics <- if (has_combined) unique(qc_norm_id(bm_combined$ids)) else character(0)
+ids_comb_q <- tryCatch(
+  if (file.exists(QUESTIONNAIRE_PATH))
+    keep_ids(unique(qc_norm_id(read_csv(QUESTIONNAIRE_PATH, show_col_types = FALSE,
+                                        col_select = "participant_id")$participant_id)))
+  else character(0), error = function(e) character(0))
+
 # ── 7.5 Cross-source participant completeness ───────────────────────────────────
 completeness_html <- tryCatch({
 
@@ -2070,16 +2149,6 @@ completeness_html <- tryCatch({
     f <- unlist(map(dirs[dir.exists(dirs)], ~ list.files(.x, pattern = pattern, ignore.case = TRUE)))
     str_extract(f, "^[^_]+")
   }
-
-  ids_psychopy <- get_ids(
-    if (inherits(selfreport, "error")) character(0) else selfreport$participant_id
-  )
-
-  ids_questionnaire <- get_ids({
-    if (file.exists(QUESTIONNAIRE_PATH))
-      read_csv(QUESTIONNAIRE_PATH, show_col_types = FALSE, col_select = "participant_id")$participant_id
-    else character(0)
-  })
 
   ids_ledalab <- get_ids(ids_of_files(LEDALAB_RESULTS_DIR, "_era\\.txt$"))
 
@@ -2104,63 +2173,30 @@ completeness_html <- tryCatch({
   # participant having been run at all.
   ids_physiology <- get_ids(ids_of_files(PHYSIOLOGY_SESSION_DIR, "_physiology\\.acq$"))
 
-  # Webcam biometrics: raw _biometrics.csv files written during the experiment
-  ids_biometrics <- get_ids(ids_of_files(PSYCHOPY_DATA_DIR, "_biometrics\\.csv$"))
-
   ids_facereader <- get_ids(ids_of_files(FACEREADER_RESULTS_DIR,
                                          "_detailed\\.txt$|_heart beat log\\.txt$|_state\\.txt$|_hrv_per_block\\.csv$"))
 
-  # ── Raw files not yet in the combined CSVs ──
-  # PsychoPy and Questionnaires above come from combined CSVs written by 01_data_cleaning.Rmd
-  # and 04_questionnaire_analysis.Rmd. IDs that are in the raw files but not in those CSVs
-  # usually mean the Rmd hasn't been re-knitted since the participant was run.
-  # Raw PsychoPy: every non-biometrics .csv in PSYCHOPY_DATA_DIR (as 01 reads them).
-  raw_psy_files <- list.files(PSYCHOPY_DATA_DIR, pattern = "\\.csv$", full.names = TRUE)
-  raw_psy_files <- raw_psy_files[!grepl("_biometrics\\.csv$", raw_psy_files, ignore.case = TRUE)]
-  ids_raw_psychopy <- get_ids(str_extract(basename(raw_psy_files), "^[^_]+"))
-
-  # Raw questionnaire: the newest Biosignals2*.csv in QUESTIONNAIRE_DIR, completed responses
-  # only (Finished = TRUE/1 and Progress = 100), ID in column QID7_1 — the same rules as 04.
-  qfiles <- list.files(QUESTIONNAIRE_DIR, pattern = "^Biosignals2.*\\.csv$", full.names = TRUE)
-  qfiles <- qfiles[order(file.mtime(qfiles), decreasing = TRUE)]
-  ids_raw_questionnaire <- get_ids({
-    if (length(qfiles) == 0) character(0) else {
-      hdr <- read_csv(qfiles[1], n_max = 3, col_names = FALSE,
-                      col_types = cols(.default = "c"), show_col_types = FALSE)
-      import_ids <- str_extract(as.character(hdr[3, ]), '(?<="ImportId":")[^"]+')
-      import_ids <- if_else(is.na(import_ids), as.character(hdr[1, ]), import_ids)
-      raw_q <- read_csv(qfiles[1], skip = 3, col_names = make.unique(import_ids),
-                        col_types = cols(.default = "c"), show_col_types = FALSE)
-      if (!"QID7_1" %in% names(raw_q)) character(0) else {
-        done <- rep(TRUE, nrow(raw_q))
-        if ("finished" %in% names(raw_q)) done <- done & str_to_upper(raw_q$finished) %in% c("TRUE", "1")
-        if ("progress" %in% names(raw_q)) done <- done & suppressWarnings(as.integer(raw_q$progress)) %in% 100L
-        str_squish(raw_q$QID7_1[done])
-      }
-    }
-  })
-
-  not_combined <- list(
-    PsychoPy       = setdiff(ids_raw_psychopy, ids_psychopy),
-    Questionnaires = setdiff(ids_raw_questionnaire, ids_questionnaire)
-  )
-  reknit_script <- c(PsychoPy = "01_data_cleaning.Rmd", Questionnaires = "04_questionnaire_analysis.Rmd")
-
+  # PsychoPy, questionnaires and biometrics come from the RAW Box folders (section 7.4).
+  # A questionnaire counts when there is a complete response; a partial-only response is
+  # shown separately.
   sources <- list(
-    PsychoPy       = ids_psychopy,
-    Questionnaires = ids_questionnaire,
+    PsychoPy       = ids_raw_psychopy,
+    Questionnaires = ids_raw_q_complete,
     Physiology     = ids_physiology,
     Ledalab        = ids_ledalab,
     Kubios         = ids_kubios,
     Video          = ids_video,
-    Biometrics     = ids_biometrics,
+    Biometrics     = ids_raw_biometrics,
     FaceReader     = ids_facereader
   )
+  partial <- list(Questionnaires = ids_raw_q_partial)
   src_names <- names(sources)
 
-  all_ids <- sort(unique(c(unlist(sources, use.names = FALSE), unlist(not_combined, use.names = FALSE))))
+  all_ids <- sort(unique(c(unlist(sources, use.names = FALSE), unlist(partial, use.names = FALSE))))
   if (length(all_ids) == 0)
     stop("NO_FILES: No participant IDs found in any data source yet.")
+
+  is_partial <- function(nm, pid) nm %in% names(partial) && pid %in% partial[[nm]]
 
   n_sources <- length(sources)
   matrix_df <- tibble(pid = all_ids)
@@ -2172,16 +2208,15 @@ completeness_html <- tryCatch({
     miss <- src_names[!unlist(matrix_df[i, src_names])]
     pid  <- matrix_df$pid[i]
     paste(map_chr(miss, function(nm)
-      if (nm %in% names(not_combined) && pid %in% not_combined[[nm]])
-        paste0(nm, " (raw file present &mdash; re-knit ", reknit_script[[nm]], ")") else nm),
+      if (is_partial(nm, pid)) paste0(nm, " (incomplete Qualtrics response only)") else nm),
       collapse = ", ")
   })
 
   n_total    <- nrow(matrix_df)
   n_complete <- sum(matrix_df$is_complete)
 
-  cell_html <- function(present, raw_only = FALSE) {
-    if (raw_only) "<td class='status-warn' style='text-align:center' title='In the raw files but not the combined CSV: re-knit'>&#10227; re-knit</td>"
+  cell_html <- function(present, partial_only = FALSE) {
+    if (partial_only) "<td class='status-warn' style='text-align:center' title='Only an incomplete Qualtrics response'>&#9680; partial</td>"
     else if (present) "<td class='status-ok' style='text-align:center'>&#10003;</td>"
     else "<td class='status-warn' style='text-align:center'>&#10007;</td>"
   }
@@ -2189,9 +2224,8 @@ completeness_html <- tryCatch({
   matrix_rows_html <- map_chr(seq_len(nrow(matrix_df)), function(i) {
     r <- matrix_df[i, ]
     paste0("<tr><td class='mono'>", r$pid, "</td>",
-           paste(map_chr(src_names, ~ cell_html(r[[.x]],
-             raw_only = !r[[.x]] && .x %in% names(not_combined) && r$pid %in% not_combined[[.x]])),
-             collapse = ""),
+           paste(map_chr(src_names, ~ cell_html(r[[.x]], partial_only = !r[[.x]] && is_partial(.x, r$pid))),
+                 collapse = ""),
            "<td>", r$n_present, "/", n_sources, "</td>",
            if (r$is_complete) "<td class='status-ok'>&#10003; complete</td>"
            else "<td class='status-warn'>&#9888; incomplete</td>",
@@ -2212,30 +2246,26 @@ completeness_html <- tryCatch({
            ' sources.</strong></div>')
   }
 
-  reknit_note <- {
-    hits <- names(not_combined)[lengths(not_combined) > 0]
-    if (length(hits) == 0) "" else paste0(
-      '<div class="note"><strong>&#10227; Combined data out of date.</strong> These participants are in
-       the raw files but not in the combined CSV this report reads:<ul style="margin-top:.5rem;
-       margin-left:1.2rem;line-height:1.8;">',
-      paste0("<li>", hits, ": <span class='mono'>", map_chr(hits, ~ paste(not_combined[[.x]], collapse = ", ")),
-             "</span> &mdash; re-knit <code>", reknit_script[hits], "</code></li>", collapse = "\n"),
-      '</ul>Then re-run this report. If someone is still listed after re-knitting, the Rmd is
-       dropping their file (e.g. the filename filter in 01, or an incomplete Qualtrics response).</div>')
-  }
+  read_errors <- c(
+    if (!ok_inv(raw_psy_inv)) paste0("Raw PsychoPy folder could not be read: ", conditionMessage(raw_psy_inv)),
+    if (!ok_inv(raw_q_inv))   paste0("Raw questionnaire exports could not be read: ",
+                                     sub("^NO_FILES: ", "", conditionMessage(raw_q_inv))))
+  read_error_note <- if (length(read_errors) == 0) "" else
+    paste0('<div class="note"><strong>Raw data not read:</strong> ',
+           paste(read_errors, collapse = "<br>"), '</div>')
 
-  paste0(reknit_note,
+  paste0(read_error_note,
   '<div class="status-row">
     <div class="tile blue"><div class="tile-value">', n_total, '</div>
       <div class="tile-label">Unique participant<br>IDs observed</div></div>
     <div class="tile ', if (n_complete == n_total) "ok" else "warn", '">
       <div class="tile-value">', n_complete, '/', n_total, '</div>
       <div class="tile-label">Participants with<br>complete dataset</div></div>
-    <div class="tile blue"><div class="tile-value">', length(ids_psychopy), '/',
-      length(ids_questionnaire), '/', length(ids_ledalab), '/', length(ids_kubios), '</div>
+    <div class="tile blue"><div class="tile-value">', length(ids_raw_psychopy), '/',
+      length(ids_raw_q_complete), '/', length(ids_ledalab), '/', length(ids_kubios), '</div>
       <div class="tile-label">PsychoPy / Quest. /<br>Ledalab / Kubios IDs</div></div>
     <div class="tile blue"><div class="tile-value">', length(ids_video), '/',
-      length(ids_biometrics), '/', length(ids_facereader), '</div>
+      length(ids_raw_biometrics), '/', length(ids_facereader), '</div>
       <div class="tile-label">Video / Biometrics /<br>FaceReader IDs</div></div>
   </div>
 
@@ -2243,11 +2273,13 @@ completeness_html <- tryCatch({
     <div class="section-head">
       <div class="section-label">Cross-Source Completeness</div>
       <h2>Does every participant have a complete dataset?</h2>
-      <p>A participant is <strong>complete</strong> when their ID appears in all ', n_sources, ' sources:
-         PsychoPy self-report, Qualtrics questionnaires, Ledalab (EDA), Kubios (HRV),
-         video recordings (Box video folder), webcam biometrics (raw <code>_biometrics.csv</code>)
-         and FaceReader exports. IDs are compared case-insensitively and whitespace-trimmed
-         (Qualtrics exports upper-case IDs; the other sources use lower-case).</p>
+      <p>A participant is <strong>complete</strong> when their ID appears in all ', n_sources, ' sources.
+         PsychoPy, questionnaires and biometrics are read from the <strong>raw Box folders</strong>
+         (<code>raw_psychopy</code>, subfolders included, and every Qualtrics export in
+         <code>raw_questionnaire</code>), so this tab does not depend on re-knitting 01 or 04.
+         Whether the combined CSVs have caught up is on the <strong>Combined datasets</strong> tab.
+         The other sources: BIOPAC session recordings, Ledalab (EDA), Kubios (HRV), the Box video
+         folder and FaceReader exports. IDs are compared case-insensitively and whitespace-trimmed.</p>
     </div>
     ', missing_note, '
     <div class="table-wrap" style="margin-top:1rem;"><table>
@@ -2260,13 +2292,166 @@ completeness_html <- tryCatch({
 }, error = function(e) {
   msg <- conditionMessage(e)
   if (startsWith(msg, "NO_FILES:")) {
+    unread <- c(if (!ok_inv(raw_psy_inv)) paste0("raw PsychoPy: ", conditionMessage(raw_psy_inv)),
+                if (!ok_inv(raw_q_inv))   paste0("raw questionnaires: ", sub("^NO_FILES: ", "", conditionMessage(raw_q_inv))))
     placeholder_section("Participant Completeness",
-      "No participant IDs could be read from any data source yet. This section will
+      paste0("No participant IDs could be read from any data source yet. This section will
        populate once at least one of PsychoPy, questionnaire, Ledalab, Kubios, video,
-       biometrics or FaceReader data is available.")
+       biometrics or FaceReader data is available.",
+       if (length(unread)) paste0("<br><br><strong>Could not read</strong> ", paste(unread, collapse = "; ")) else ""))
   } else {
     placeholder_section("Participant Completeness — load error", msg)
   }
+})
+
+# ── 7.6 Combined datasets (raw Box files vs the combined CSVs 01 / 04 write) ─────
+combined_html <- tryCatch({
+
+  esc <- function(x) gsub(">", "&gt;", gsub("<", "&lt;", gsub("&", "&amp;", x, fixed = TRUE), fixed = TRUE), fixed = TRUE)
+  fmt_time <- function(t) if (length(t) == 0 || all(is.na(t))) "&mdash;" else format(max(t, na.rm = TRUE), "%d %b %Y %H:%M")
+  ok  <- "<td class='status-ok' style='text-align:center'>&#10003;</td>"
+  bad <- "<td class='status-warn' style='text-align:center'>&#10007;</td>"
+  na  <- "<td style='text-align:center;color:var(--text-3)'>&mdash;</td>"
+
+  # 1. The combined files themselves: when written, and whether a raw file is newer
+  newest_raw <- function(kinds) if (ok_inv(raw_psy_inv)) {
+    t <- filter(raw_psy_inv, kind %in% kinds)$mtime; if (length(t)) max(t) else NA } else NA
+  newest_q <- tryCatch({
+    q <- list.files(QUESTIONNAIRE_DIR, pattern = "^Biosignals2.*\\.csv$", full.names = TRUE)
+    if (length(q)) max(file.mtime(q)) else NA }, error = function(e) NA)
+  files_df <- tibble(
+    dataset = c("Self-report ratings", "Webcam biometrics", "Scored questionnaires"),
+    path    = c(DATA_PATH, BIOMETRICS_COMBINED_PATH, QUESTIONNAIRE_PATH),
+    script  = c("01_data_cleaning.Rmd", "01_data_cleaning.Rmd", "04_questionnaire_analysis.Rmd"),
+    n_ids   = c(length(ids_comb_selfreport), length(ids_comb_biometrics), length(ids_comb_q)),
+    raw_t   = list(newest_raw(c("task_csv", "psydat")), newest_raw("biometrics"), newest_q)
+  ) |> mutate(exists = file.exists(path), mtime = file.mtime(path))
+  file_rows <- map_chr(seq_len(nrow(files_df)), function(i) {
+    r <- files_df[i, ]; raw_t <- r$raw_t[[1]]
+    stale <- r$exists && !is.na(raw_t) && raw_t > r$mtime
+    paste0("<tr><td>", r$dataset, "</td><td class='mono'>", basename(r$path), "</td>",
+           "<td>", if (r$exists) fmt_time(r$mtime) else "&mdash;", "</td>",
+           "<td>", fmt_time(raw_t), "</td><td>", r$n_ids, "</td>",
+           if (!r$exists) paste0("<td class='status-warn'>&#9888; not written yet &mdash; knit <code>", r$script, "</code></td>")
+           else if (stale) paste0("<td class='status-warn'>&#10227; older than newest raw file &mdash; re-knit <code>", r$script, "</code></td>")
+           else "<td class='status-ok'>&#10003; up to date</td>", "</tr>")
+  }) |> paste(collapse = "\n")
+
+  # 3. Raw files 01 / 04 will not pick up
+  problems <- character(0)
+  skip_psy <- character(0)   # pid -> why 01 skips its PsychoPy file
+  skip_q   <- character(0)   # pid -> why 04 skips its questionnaire
+  if (ok_inv(raw_psy_inv)) {
+    task <- filter(raw_psy_inv, kind %in% c("task_csv", "psydat", "log", "biometrics"))
+    by_pid <- task |> group_by(pid) |>
+      summarise(top_csv   = any(kind == "task_csv" & top_level),
+                sub_csv   = any(kind == "task_csv" & !top_level),
+                any_csv   = any(kind == "task_csv"),
+                has_other = any(kind %in% c("psydat", "log")),
+                sub_files = paste(esc(rel[!top_level & kind %in% c("task_csv", "biometrics")]), collapse = ", "),
+                .groups = "drop")
+    sub_only <- filter(by_pid, sub_csv & !top_csv)
+    skip_psy[sub_only$pid] <- "01 skips it: CSV is in a subfolder"
+    if (nrow(sub_only)) problems <- c(problems, paste0(
+      "<li><span class='mono'>", sub_only$pid, "</span> &mdash; PsychoPy CSV is in a subfolder (<span class='mono'>",
+      sub_only$sub_files, "</span>). 01 only reads files directly in <code>raw_psychopy</code>: move it up a level.</li>"))
+    no_csv <- filter(by_pid, !any_csv & has_other)
+    skip_psy[no_csv$pid] <- "01 can't read it: no PsychoPy CSV, only .psydat/.log"
+    if (nrow(no_csv)) problems <- c(problems, paste0(
+      "<li><span class='mono'>", no_csv$pid, "</span> &mdash; only <code>.psydat</code>/<code>.log</code>, no PsychoPy CSV. ",
+      "01 can't read these (PsychoPy may have stopped before saving the CSV).</li>"))
+  }
+  if (ok_inv(raw_q_inv)) {
+    other_ids <- unique(c(ids_raw_psychopy, ids_raw_biometrics,
+                          if (ok_inv(raw_psy_inv)) raw_psy_inv$pid else character(0)))
+    blank <- sum(raw_q_inv$complete & !nzchar(raw_q_inv$pid))
+    if (blank) problems <- c(problems, paste0("<li>", blank, " complete Qualtrics response(s) have no participant ID.</li>"))
+    stray <- raw_q_inv |> filter(complete, nzchar(pid), !pid %in% other_ids) |> distinct(typed_id, pid)
+    if (nrow(stray)) problems <- c(problems, paste0(
+      "<li>Qualtrics ID typed as <span class='mono'>&ldquo;", esc(stray$typed_id),
+      "&rdquo;</span> matches no PsychoPy file &mdash; possibly a typo.</li>"))
+    older_only <- setdiff(ids_raw_q_complete, ids_raw_q_newest)
+    skip_q[older_only] <- "04 skips it: complete response only in an older export"
+    if (length(older_only)) problems <- c(problems, paste0(
+      "<li><span class='mono'>", older_only, "</span> &mdash; complete response only in an older Qualtrics export; ",
+      "04 reads only the newest export.</li>"))
+  }
+  # 2. Per participant: raw vs combined
+  ids <- sort(unique(c(ids_raw_psychopy, ids_comb_selfreport, ids_raw_biometrics, ids_comb_biometrics,
+                       ids_raw_q_complete, ids_raw_q_partial, ids_comb_q)))
+  if (length(ids) == 0) stop("NO_FILES: no PsychoPy, biometrics or questionnaire data found, raw or combined.")
+  pair <- function(raw, comb, pid, script, skip = character(0)) {
+    in_raw <- pid %in% raw; in_comb <- pid %in% comb
+    list(cells = paste0(if (in_raw) ok else bad, if (in_comb) ok else if (in_raw) bad else na),
+         issue = if (in_raw && !in_comb && pid %in% names(skip)) skip[[pid]]
+                 else if (in_raw && !in_comb) paste0("re-knit ", script)
+                 else if (!in_raw && in_comb) "in combined CSV but no raw file found" else NA_character_)
+  }
+  pp_rows <- map_chr(ids, function(pid) {
+    p <- pair(ids_raw_psychopy,   ids_comb_selfreport, pid, "01", skip_psy)
+    b <- pair(ids_raw_biometrics, ids_comb_biometrics, pid, "01")
+    q <- pair(ids_raw_q_complete, ids_comb_q,          pid, "04", skip_q)
+    q_cells <- if (pid %in% ids_raw_q_partial)
+      paste0("<td class='status-warn' style='text-align:center'>&#9680; partial</td>",
+             if (pid %in% ids_comb_q) ok else na) else q$cells
+    issues <- unique(na.omit(c(p$issue, b$issue, q$issue)))
+    paste0("<tr><td class='mono'>", pid, "</td>", p$cells, b$cells, q_cells,
+           if (length(issues)) paste0("<td class='status-warn'>&#9888; ", paste(issues, collapse = "; "), "</td>")
+           else "<td class='status-ok'>&#10003; in sync</td>", "</tr>")
+  }) |> paste(collapse = "\n")
+
+  problems_html <- if (length(problems) == 0)
+    '<div class="note-ok"><strong>No raw files that 01 or 04 would skip.</strong></div>' else
+    paste0('<div class="note"><strong>Raw files 01 / 04 will skip or mis-read:</strong>
+            <ul style="margin-top:.5rem;margin-left:1.2rem;line-height:1.8;">',
+           paste(problems, collapse = "\n"), '</ul></div>')
+
+  n_issue <- sum(str_count(pp_rows, "&#9888;"))
+  paste0(
+  '<div class="status-row">
+    <div class="tile blue"><div class="tile-value">', length(ids_raw_psychopy), '/', length(ids_comb_selfreport), '</div>
+      <div class="tile-label">PsychoPy IDs<br>raw / combined</div></div>
+    <div class="tile blue"><div class="tile-value">', length(ids_raw_biometrics), '/', length(ids_comb_biometrics), '</div>
+      <div class="tile-label">Biometrics IDs<br>raw / combined</div></div>
+    <div class="tile blue"><div class="tile-value">', length(ids_raw_q_complete), '/', length(ids_comb_q), '</div>
+      <div class="tile-label">Questionnaire IDs<br>raw / combined</div></div>
+    <div class="tile ', if (n_issue == 0) "ok" else "warn", '"><div class="tile-value">', n_issue, '</div>
+      <div class="tile-label">Participants<br>out of sync</div></div>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">Combined Datasets</div>
+      <h2>Are the combined CSVs up to date with the raw Box files?</h2>
+      <p>The PsychoPy and Questionnaires tabs read these combined files. They are only as current as
+         the last time <code>01_data_cleaning.Rmd</code> / <code>04_questionnaire_analysis.Rmd</code> was knitted.</p>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Dataset</th><th>File</th><th>Written</th><th>Newest raw file</th><th>IDs</th><th>Status</th></tr></thead>
+      <tbody>', file_rows, '</tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">Per Participant</div>
+      <h2>Raw file vs combined CSV</h2>
+      <p>&#10003; present, &#10007; missing, &mdash; nothing to combine. A raw file without a combined
+         row means the Rmd needs re-knitting, or that it skips the file (see below).</p>
+    </div>
+    ', problems_html, '
+    <div class="table-wrap" style="margin-top:1rem;"><table>
+      <thead><tr><th>Participant</th><th>PsychoPy raw</th><th>Self-report CSV</th>
+        <th>Biometrics raw</th><th>Biometrics CSV</th><th>Quest. raw</th><th>Scored quest. CSV</th>
+        <th>Status</th></tr></thead>
+      <tbody>', pp_rows, '</tbody>
+    </table></div>
+  </section>')
+
+}, error = function(e) {
+  msg <- conditionMessage(e)
+  if (startsWith(msg, "NO_FILES:")) placeholder_section("Combined datasets", sub("^NO_FILES: ", "", msg))
+  else placeholder_section("Combined datasets — load error", msg)
 })
 
 # ── 8. CSS ─────────────────────────────────────────────────────────────────────
@@ -2459,6 +2644,7 @@ html_out <- paste0(
 
   <nav class="tab-bar">
     <button class="tab-btn active" data-tab="completeness">Completeness</button>
+    <button class="tab-btn" data-tab="combined">Combined datasets</button>
     <button class="tab-btn" data-tab="psychopy">PsychoPy</button>
     <button class="tab-btn" data-tab="ledalab">Ledalab (EDA)</button>
     <button class="tab-btn" data-tab="kubios">Kubios (HRV)</button>
@@ -2470,6 +2656,7 @@ html_out <- paste0(
   </nav>
 
   <div id="tab-completeness" class="tab-content active">', excluded_banner, completeness_html, '</div>
+  <div id="tab-combined" class="tab-content">',          combined_html, '</div>
   <div id="tab-psychopy" class="tab-content">',          psychopy_html, '</div>
   <div id="tab-ledalab"  class="tab-content">',          ledalab_html,  '</div>
   <div id="tab-kubios"   class="tab-content">',          kubios_html,   '</div>
