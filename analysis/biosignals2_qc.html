@@ -173,7 +173,7 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     <div class="tile warn">
       <div class="tile-value">0/3</div>
       <div class="tile-label">Participants with<br>complete dataset</div></div>
-    <div class="tile blue"><div class="tile-value">3/1/0/1</div>
+    <div class="tile blue"><div class="tile-value">3/1/0/3</div>
       <div class="tile-label">PsychoPy / Quest. /<br>Ledalab / Kubios IDs</div></div>
     <div class="tile blue"><div class="tile-value">0/3/0</div>
       <div class="tile-label">Video / Biometrics /<br>FaceReader IDs</div></div>
@@ -196,13 +196,13 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
          (hover for what is missing).</p>
     </div>
     <div class="note"><strong>3 participant(s) missing data from at least one source:</strong>
-           <ul style="margin-top:.5rem;margin-left:1.2rem;line-height:1.8;"><li><span class='mono'>O8244</span> &mdash; missing: Questionnaires, Ledalab, Kubios, Video (no frames.zip, no 1to1_ffv1.avi), FaceReader</li>
-<li><span class='mono'>S1250</span> &mdash; missing: Questionnaires, Ledalab, Kubios, Video (no 1to1_ffv1.avi), FaceReader</li>
+           <ul style="margin-top:.5rem;margin-left:1.2rem;line-height:1.8;"><li><span class='mono'>O8244</span> &mdash; missing: Questionnaires, Ledalab, Video (no frames.zip, no 1to1_ffv1.avi), FaceReader</li>
+<li><span class='mono'>S1250</span> &mdash; missing: Questionnaires, Ledalab, Video (no 1to1_ffv1.avi), FaceReader</li>
 <li><span class='mono'>S9686</span> &mdash; missing: Ledalab, Video (no frames.zip), FaceReader</li></ul></div>
     <div class="table-wrap" style="margin-top:1rem;"><table>
       <thead><tr><th>Participant</th><th>PsychoPy</th><th>Questionnaires</th><th>Physiology</th><th>Ledalab</th><th>Kubios</th><th>Video</th><th>Biometrics</th><th>FaceReader</th><th>Sources</th><th>Status</th></tr></thead>
-      <tbody><tr><td class='mono'>O8244</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center' title='no frames.zip, no 1to1_ffv1.avi'>&#9680; partial</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>3/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
-<tr><td class='mono'>S1250</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center' title='no 1to1_ffv1.avi'>&#9680; partial</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>3/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
+      <tbody><tr><td class='mono'>O8244</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center' title='no frames.zip, no 1to1_ffv1.avi'>&#9680; partial</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>4/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>S1250</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center' title='no 1to1_ffv1.avi'>&#9680; partial</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>4/8</td><td class='status-warn'>&#9888; incomplete</td></tr>
 <tr><td class='mono'>S9686</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center' title='no frames.zip'>&#9680; partial</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>5/8</td><td class='status-warn'>&#9888; incomplete</td></tr></tbody>
     </table></div>
   </section></div>
@@ -471,13 +471,13 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
   <div id="tab-ledalab"  class="tab-content"><div class="placeholder-box"><div class="placeholder-title">Ledalab (EDA)</div><div class="placeholder-msg">No <code>_era.txt</code> files found in <code>LEDALAB_RESULTS_DIR</code>.
        Run Ledalab batch with ERA export (filetype=2) and save outputs there.</div></div></div>
   <div id="tab-kubios"   class="tab-content"><div class="status-row">
-    <div class="tile blue"><div class="tile-value">1</div>
+    <div class="tile blue"><div class="tile-value">3</div>
       <div class="tile-label">Participants<br>with Kubios files</div></div>
-    <div class="tile ok">
-      <div class="tile-value">1/1</div>
+    <div class="tile warn">
+      <div class="tile-value">2/3</div>
       <div class="tile-label">In batch summary<br>and _hrv files</div></div>
     <div class="tile ok">
-      <div class="tile-value">1/1</div>
+      <div class="tile-value">3/3</div>
       <div class="tile-label">Complete<br>block sets</div></div>
     <div class="tile ok">
       <div class="tile-value">✓</div>
@@ -497,7 +497,9 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     <div class="table-wrap"><table>
       <thead><tr><th>Participant</th><th>Batch summary</th><th>_hrv file</th>
         <th>Files found</th><th>Metrics from</th><th>Blocks</th><th>Status</th></tr></thead>
-      <tbody><tr><td class='mono'>s9686</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr></tbody>
+      <tbody><tr><td class='mono'>s1250</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>_hrv file only</td><td>_hrv file</td><td>5</td><td class='status-warn'>⚠ not in batch summary</td></tr>
+<tr><td class='mono'>o8244</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>s9686</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr></tbody>
     </table></div>
   </section>
 
@@ -510,18 +512,18 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     <div class="table-wrap"><table>
       <thead><tr><th>Block</th><th>N participants</th><th>Mean HR (bpm)</th>
         <th>Mean RMSSD (ms)</th><th>Mean SDNN (ms)</th></tr></thead>
-      <tbody><tr><td class='mono'>baseline</td><td>1</td><td>85.6</td><td>40.7</td><td>44</td></tr>
-<tr><td class='mono'>negative_induction</td><td>1</td><td>86.5</td><td>30</td><td>31.9</td></tr>
-<tr><td class='mono'>negative_recovery</td><td>1</td><td>87.2</td><td>30.7</td><td>37.1</td></tr>
-<tr><td class='mono'>positive_induction</td><td>1</td><td>85.2</td><td>22.9</td><td>28.7</td></tr>
-<tr><td class='mono'>positive_recovery</td><td>1</td><td>88.6</td><td>20.4</td><td>27.9</td></tr></tbody>
+      <tbody><tr><td class='mono'>baseline</td><td>3</td><td>83.4</td><td>25.2</td><td>32.8</td></tr>
+<tr><td class='mono'>negative_induction</td><td>3</td><td>87.3</td><td>23.1</td><td>28.7</td></tr>
+<tr><td class='mono'>negative_recovery</td><td>3</td><td>86.2</td><td>22.7</td><td>33.4</td></tr>
+<tr><td class='mono'>positive_induction</td><td>3</td><td>81.7</td><td>20.5</td><td>27.4</td></tr>
+<tr><td class='mono'>positive_recovery</td><td>3</td><td>84.1</td><td>19.6</td><td>28.7</td></tr></tbody>
     </table></div>
     <div class="table-wrap" style="margin-top:1rem;"><table>
       <thead><tr><th>Metric</th><th>N values</th><th>Min</th><th>Max</th>
         <th>Expected range</th><th>Anomalies</th></tr></thead>
       <tbody>
-        <tr><td class="mono">mean_hr_bpm</td><td>5</td><td>85.2</td><td>88.6</td><td>40–120 bpm</td><td class='status-ok'>✓ none</td></tr>
-        <tr><td class="mono">rmssd_ms</td><td>5</td><td>20.4</td><td>40.7</td><td>5–200 ms</td><td class='status-ok'>✓ none</td></tr>
+        <tr><td class="mono">mean_hr_bpm</td><td>15</td><td>74</td><td>101</td><td>40–120 bpm</td><td class='status-ok'>✓ none</td></tr>
+        <tr><td class="mono">rmssd_ms</td><td>15</td><td>13.6</td><td>40.7</td><td>5–200 ms</td><td class='status-ok'>✓ none</td></tr>
       </tbody>
     </table></div>
   </section>
@@ -535,7 +537,17 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
         <div class="table-wrap"><table>
           <thead><tr><th>Participant</th><th>Block</th>
             <th>N beats</th><th>Status</th></tr></thead>
-          <tbody><tr><td class='mono'>s9686</td><td class='mono'>baseline</td><td>257</td><td class='status-ok'>✓</td></tr>
+          <tbody><tr><td class='mono'>o8244</td><td class='mono'>baseline</td><td>234</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>o8244</td><td class='mono'>negative_induction</td><td>221</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>o8244</td><td class='mono'>negative_recovery</td><td>234</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>o8244</td><td class='mono'>positive_induction</td><td>229</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>o8244</td><td class='mono'>positive_recovery</td><td>233</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>s1250</td><td class='mono'>baseline</td><td>260</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>s1250</td><td class='mono'>negative_induction</td><td>299</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>s1250</td><td class='mono'>negative_recovery</td><td>281</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>s1250</td><td class='mono'>positive_induction</td><td>266</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>s1250</td><td class='mono'>positive_recovery</td><td>258</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>s9686</td><td class='mono'>baseline</td><td>257</td><td class='status-ok'>✓</td></tr>
 <tr><td class='mono'>s9686</td><td class='mono'>negative_induction</td><td>256</td><td class='status-ok'>✓</td></tr>
 <tr><td class='mono'>s9686</td><td class='mono'>negative_recovery</td><td>262</td><td class='status-ok'>✓</td></tr>
 <tr><td class='mono'>s9686</td><td class='mono'>positive_induction</td><td>264</td><td class='status-ok'>✓</td></tr>
