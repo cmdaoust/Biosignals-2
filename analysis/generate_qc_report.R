@@ -132,6 +132,28 @@ placeholder_section <- function(title, msg) {
          '</div>')
 }
 
+# Manual follow-up notes, edited by hand in analysis/qc_notes.csv
+# (participant_id, section, note, date_added). section = the report tab the note belongs in,
+# e.g. "ledalab". Notes for participants dropped from this report are not shown.
+QC_NOTES_PATH <- file.path(analysis_dir, "qc_notes.csv")
+qc_notes_html <- function(section) {
+  if (!file.exists(QC_NOTES_PATH)) return("")
+  notes <- tryCatch(read_csv(QC_NOTES_PATH, col_types = cols(.default = "c")),
+                    error = function(e) NULL)
+  if (is.null(notes))
+    return(paste0('<div class="note"><strong>qc_notes.csv could not be read.</strong></div>'))
+  notes <- notes[!is.na(notes$section) & tolower(trimws(notes$section)) == tolower(section), , drop = FALSE]
+  notes <- notes[!is_excluded(notes$participant_id), , drop = FALSE]
+  if (nrow(notes) == 0) return("")
+  esc <- function(x) gsub(">", "&gt;", gsub("<", "&lt;", gsub("&", "&amp;", x, fixed = TRUE), fixed = TRUE), fixed = TRUE)
+  items <- paste0("<li><strong>", esc(qc_norm_id(notes$participant_id)), "</strong>: ",
+                  esc(notes$note),
+                  ifelse(is.na(notes$date_added), "", paste0(" <span class='mono'>(", esc(notes$date_added), ")</span>")),
+                  "</li>", collapse = "")
+  paste0('<div class="note"><strong>Follow-up notes</strong> (from <code>qc_notes.csv</code>)',
+         '<ul style="margin:.4rem 0 0 1.2rem;padding:0">', items, '</ul></div>')
+}
+
 # Cache for slow inputs that rarely change (the combined biometrics file, video frame timestamps).
 # A result is saved in analysis/.qc_cache/ and reused while every source file keeps the same size
 # and modification time. Delete the folder to force a full re-read; bump QC_CACHE_VERSION when the
@@ -860,6 +882,8 @@ ledalab_html <- tryCatch({
     placeholder_section("Ledalab (EDA) — load error", msg)
   }
 })
+
+ledalab_html <- paste0(qc_notes_html("ledalab"), ledalab_html)
 
 # ── 5. Kubios (HRV) ────────────────────────────────────────────────────────────
 # Participant IDs (file name up to the first "_") are searched for in two Kubios outputs:
