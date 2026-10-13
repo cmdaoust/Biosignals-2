@@ -1174,7 +1174,7 @@ kubios_html <- tryCatch({
   }
 })
 
-# ── 6. Webcam biometrics ───────────────────────────────────────────────────────
+# ── 6. Webcam biometrics (ONLINE: computed live during the session) ───────────
 # Raw files per session in PSYCHOPY_DATA_DIR, written by biometrics_server.py during the
 # experiment:  <id>_..._biometrics.csv  and  <id>_..._clocksync.json
 # plus the combined biosignals2_webcambiometrics.csv made by 01_data_cleaning.Rmd.
@@ -1430,6 +1430,161 @@ biometrics_combined_html <- tryCatch({
 })
 
 biometrics_html <- paste0(biometrics_raw_html, biometrics_combined_html)
+biometrics_online_note <- '<div class="note">Online = heart rate computed <strong>live during the
+  session</strong> and saved by PsychoPy in <code>raw_psychopy</code>. The heart rate recomputed afterwards
+  from the video (003) is in the <strong>Webcam HR (offline)</strong> tab.</div>'
+
+# ── 6.0b Offline webcam heart rate (003_run_webcam_biometrics.py) ──────────────
+# The ONLINE biometrics above were computed live during the session (raw_psychopy).
+# The OFFLINE results are recomputed afterwards from the 1:1 lossless video by
+# analysis/video/003_run_webcam_biometrics.py, written to WEBCAM_HR_DIR
+# (default SERVER_ROOT/webcam_biometrics):
+#   <id>_webcam_hr_frames.csv  one row per frame
+#   <id>_webcam_hr_events.csv  one row per event: hr_fft_median, n_beats, beats_per_min, coverage
+#   <id>_webcam_beats.csv      one row per beat: block, time_s (ECG clock), rr_s, near_gap
+# plus SERVER_ROOT/ecg_video_offsets.csv (pid, offset_s). *_optimize*.csv variants are ignored.
+WEBCAM_HR_DIR_QC   <- get0("WEBCAM_HR_DIR", ifnotfound = file.path(SERVER_ROOT, "webcam_biometrics"))
+ECG_OFFSETS_PATH   <- file.path(SERVER_ROOT, "ecg_video_offsets.csv")
+OFFLINE_BLOCKS     <- c("Baseline", "Negative Induction", "Negative Recovery",
+                        "Positive Induction", "Positive Recovery")
+MIN_OFFLINE_COVERAGE <- 0.8   # 003 flags blocks below this ("low coverage")
+
+biometrics_offline_html <- tryCatch({
+
+  if (!dir.exists(WEBCAM_HR_DIR_QC))
+    stop(paste0("NO_FILES: WEBCAM_HR_DIR does not exist: ", WEBCAM_HR_DIR_QC))
+  off_file <- function(suffix) {
+    f <- keep_files(list.files(WEBCAM_HR_DIR_QC, pattern = paste0("^[^_]+", suffix, "$"),
+                               full.names = TRUE, ignore.case = TRUE))
+    tibble(pid = pid_from_file(f), path = f)
+  }
+  frames_f <- off_file("_webcam_hr_frames\\.csv")
+  events_f <- off_file("_webcam_hr_events\\.csv")
+  beats_f  <- off_file("_webcam_beats\\.csv")
+  if (nrow(frames_f) + nrow(events_f) + nrow(beats_f) == 0)
+    stop("NO_FILES: No offline webcam heart-rate files (<id>_webcam_hr_events.csv etc.) in WEBCAM_HR_DIR.")
+
+  offsets <- if (file.exists(ECG_OFFSETS_PATH)) {
+    o <- tryCatch(read_csv(ECG_OFFSETS_PATH, col_types = cols(.default = "c")), error = function(e) NULL)
+    if (!is.null(o) && all(c("pid", "offset_s") %in% names(o)))
+      tibble(pid = str_to_lower(str_trim(o$pid)), offset_s = suppressWarnings(as.numeric(o$offset_s))) |>
+        filter(!is.na(offset_s)) |> distinct(pid, .keep_all = TRUE)
+    else tibble(pid = character(), offset_s = numeric())
+  } else tibble(pid = character(), offset_s = numeric())
+
+  ev <- map_dfr(events_f$path, function(f) {
+    x <- tryCatch(read_csv(f, col_types = cols(.default = "c")), error = function(e) NULL)
+    if (is.null(x) || !"event" %in% names(x)) return(tibble())
+    x |> filter(event %in% OFFLINE_BLOCKS) |>
+      transmute(pid = pid_from_file(f), event,
+                hr = suppressWarnings(as.numeric(hr_fft_median)),
+                coverage = suppressWarnings(as.numeric(coverage)))
+  })
+  ev_sum <- if (nrow(ev)) ev |> group_by(pid) |> summarise(
+      n_blocks   = n_distinct(event),
+      min_cov    = suppressWarnings(min(coverage, na.rm = TRUE)),
+      low_cov    = paste(event[!is.na(coverage) & coverage < MIN_OFFLINE_COVERAGE], collapse = ", "),
+      hr_min     = suppressWarnings(min(hr, na.rm = TRUE)),
+      hr_max     = suppressWarnings(max(hr, na.rm = TRUE)),
+      .groups = "drop") |>
+      mutate(across(c(min_cov, hr_min, hr_max), ~ ifelse(is.infinite(.x), NA, .x)))
+    else tibble(pid = character(), n_blocks = integer(), min_cov = numeric(), low_cov = character(),
+                hr_min = numeric(), hr_max = numeric())
+
+  bt_sum <- map_dfr(beats_f$path, function(f) {
+    x <- tryCatch(read_csv(f, col_types = cols(.default = "c")), error = function(e) NULL)
+    if (is.null(x)) return(tibble(pid = pid_from_file(f), n_beats = NA_integer_,
+                                  pct_near_gap = NA_real_, has_ecg_time = NA))
+    tibble(pid = pid_from_file(f), n_beats = nrow(x),
+           pct_near_gap = if ("near_gap" %in% names(x) && nrow(x))
+                            round(100 * mean(x$near_gap == "1", na.rm = TRUE), 1) else NA_real_,
+           has_ecg_time = "time_s" %in% names(x) && any(!is.na(x$time_s) & x$time_s != ""))
+  })
+
+  ocov <- tibble(pid = sort(unique(c(frames_f$pid, events_f$pid, beats_f$pid)))) |>
+    mutate(has_frames = pid %in% frames_f$pid,
+           has_events = pid %in% events_f$pid,
+           has_beats  = pid %in% beats_f$pid,
+           has_offset = pid %in% offsets$pid) |>
+    left_join(ev_sum, by = "pid") |> left_join(bt_sum, by = "pid") |>
+    mutate(issues = pmap_chr(list(has_frames, has_events, has_beats, has_offset, n_blocks,
+                                  low_cov, hr_min, hr_max, has_ecg_time),
+      function(fr, e, b, o, nbl, lc, hmin, hmax, ecg) {
+        paste(c(if (!fr) "no frames CSV",
+                if (!e) "no events CSV (run 001, then 003)",
+                if (!b) "no beats CSV",
+                if (!o) "no ECG->video offset",
+                if (e && !is.na(nbl) && nbl < length(OFFLINE_BLOCKS)) paste0(nbl, "/5 blocks"),
+                if (!is.na(lc) && lc != "") paste0("coverage < ", MIN_OFFLINE_COVERAGE, ": ", lc),
+                if (!is.na(hmin) && (hmin < 40 || hmax > 120)) "block HR outside 40–120",
+                if (b && isFALSE(ecg)) "beats have no ECG-clock times"),
+              collapse = "; ")
+      }),
+      status_html = status_cell(issues))
+
+  fmt1 <- function(x, d = 1) if_else(is.na(x), "—", formatC(x, format = "f", digits = d))
+  off_rows_html <- ocov |>
+    arrange(issues == "", pid) |>
+    mutate(html = paste0(
+      "<tr><td class='mono'>", pid, "</td>",
+      yes_no_cell(has_frames), yes_no_cell(has_events), yes_no_cell(has_beats), yes_no_cell(has_offset),
+      "<td>", if_else(is.na(n_blocks), "—", as.character(n_blocks)), "</td>",
+      "<td>", fmt1(min_cov, 2), "</td>",
+      "<td>", if_else(is.na(hr_min), "—", paste0(fmt1(hr_min), "–", fmt1(hr_max))), "</td>",
+      "<td>", if_else(is.na(n_beats), "—", as.character(n_beats)), "</td>",
+      "<td>", if_else(is.na(pct_near_gap), "—", paste0(fmt1(pct_near_gap), "%")), "</td>",
+      status_html, "</tr>")
+    ) |> pull(html) |> paste(collapse = "\n")
+
+  n_off   <- nrow(ocov)
+  n_all3  <- sum(ocov$has_frames & ocov$has_events & ocov$has_beats)
+  n_offs  <- sum(ocov$has_offset)
+  n_oiss  <- sum(ocov$issues != "")
+
+  paste0(
+  '<div class="status-row">
+    <div class="tile blue"><div class="tile-value">', n_off, '</div>
+      <div class="tile-label">Participants<br>analysed offline</div></div>
+    <div class="tile ', if (n_all3 == n_off) "ok" else "warn", '">
+      <div class="tile-value">', n_all3, '/', n_off, '</div>
+      <div class="tile-label">Frames, events<br>&amp; beats files</div></div>
+    <div class="tile ', if (n_offs == n_off) "ok" else "warn", '">
+      <div class="tile-value">', n_offs, '/', n_off, '</div>
+      <div class="tile-label">ECG→video<br>offset</div></div>
+    <div class="tile ', if (n_oiss == 0) "ok" else "warn", '">
+      <div class="tile-value">', if (n_oiss == 0) "✓" else n_oiss, '</div>
+      <div class="tile-label">Participants<br>with issues</div></div>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">Offline Webcam Heart Rate</div>
+      <h2>003 outputs per participant</h2>
+      <p>Recomputed after the session from the 1:1 lossless video by
+         <code>analysis/video/003_run_webcam_biometrics.py</code>, in <code>', WEBCAM_HR_DIR_QC, '</code>:
+         <code>{pid}_webcam_hr_frames.csv</code>, <code>{pid}_webcam_hr_events.csv</code>,
+         <code>{pid}_webcam_beats.csv</code>, and the participant&#39;s row in
+         <code>ecg_video_offsets.csv</code>. Block values come from the events file (5 blocks);
+         coverage = share of captured frames with a heart rate (flag below ', MIN_OFFLINE_COVERAGE, ').
+         Near gap = beats within 1 s before / 3 s after a face-loss gap (flagged, not removed).
+         <code>*_optimize*.csv</code> runs are not counted.</p>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Participant</th><th>Frames</th><th>Events</th><th>Beats</th><th>Offset</th>
+        <th>Blocks</th><th>Min coverage</th><th>Block HR (bpm)</th><th>Beats</th>
+        <th>Near gap</th><th>Status</th></tr></thead>
+      <tbody>', off_rows_html, '</tbody>
+    </table></div>
+  </section>')
+
+}, error = function(e) {
+  msg <- conditionMessage(e)
+  if (startsWith(msg, "NO_FILES:")) {
+    placeholder_section("Offline webcam heart rate", sub("^NO_FILES: ", "", msg))
+  } else {
+    placeholder_section("Offline webcam heart rate — load error", msg)
+  }
+})
 
 # ── 6.1 Video recordings ───────────────────────────────────────────────────────
 # Box video folder (VIDEO_BOX_DIR, top level only). Every PNG participant needs all three:
@@ -1953,33 +2108,9 @@ questionnaire_html <- tryCatch({
            html_esc(paste(dup_ids, collapse = ", ")), '</div>')
   } else ""
 
-  # Clinical screening flags
-  FLAGS <- tibble(
-    label = c("GAD-7 ≥ 10 (possible GAD)", "PHQ-9 ≥ 10 (possible depression)",
-              "PHQ-9 item 9 ≥ 1 (suicidal ideation)", "AQ-10 ≥ 6 (possible autism)"),
-    col   = c("gad7_flag", "phq9_flag", "phq9_item9_flagged", "aq10_flag")
-  ) |> filter(col %in% names(q))
-
-  flag_stats <- pmap_dfr(FLAGS, function(label, col) {
-    hit <- is_true(q[[col]])
-    tibble(label, col, n = sum(hit),
-           ids = paste(sort(q$participant_id[hit]), collapse = ", "))
-  })
-  n_item9 <- sum(flag_stats$n[flag_stats$col == "phq9_item9_flagged"])
-
-  flag_rows_html <- flag_stats |>
-    mutate(
-      status_html = case_when(
-        n == 0                            ~ "<td class='status-ok'>✓ none</td>",
-        col == "phq9_item9_flagged"       ~ "<td class='status-warn'>⚠ follow up per protocol</td>",
-        TRUE                              ~ "<td class='status-warn'>⚠ flagged</td>"
-      ),
-      html = paste0(
-        "<tr><td>", label, "</td>",
-        "<td>", n, "</td>",
-        "<td class='mono'>", if_else(ids == "", "—", html_esc(ids)), "</td>",
-        status_html, "</tr>")
-    ) |> pull(html) |> paste(collapse = "\n")
+  # GAD-7, PHQ-9, AQ-10 and DAS-SF are variables of interest, not screening measures, so
+  # no cut-off flags are shown. PHQ-9 item 9 (suicidal ideation) is kept as a safety check.
+  n_item9 <- if ("phq9_item9_flagged" %in% names(q)) sum(is_true(q$phq9_item9_flagged)) else 0L
 
   # Demographics
   ages <- suppressWarnings(as.numeric(q$age))
@@ -2004,8 +2135,9 @@ questionnaire_html <- tryCatch({
        Re-export as values, then re-knit 04_questionnaire_analysis.Rmd — this report reads the
        scored CSV it writes, not the Qualtrics export.</div>' else "",
     if (isTRUE(scored["DAS-SF1"] == 0) && isTRUE(scored["DAS-SF2"] == 0))
-      '<div class="note"><strong>DAS-SF1/SF2 are empty</strong> for every participant — check that
-       the block is displayed in the Qualtrics survey flow.</div>' else ""
+      '<div class="note"><strong>DAS-SF1/SF2 have no scores</strong> for any participant. If the
+       answers are in the Qualtrics export, their labels are not being recognised: re-knit
+       04_questionnaire_analysis.Rmd and read the "DAS-SF answers not recognised" output.</div>' else ""
   )
 
   paste0(
@@ -2054,17 +2186,6 @@ questionnaire_html <- tryCatch({
     </table></div>
   </section>
 
-  <section>
-    <div class="section-head">
-      <div class="section-label">Clinical Screening</div>
-      <h2>Participants above screening cut-offs</h2>
-      <p>Screening flags only, not diagnoses.</p>
-    </div>
-    <div class="table-wrap"><table>
-      <thead><tr><th>Flag</th><th>N</th><th>Participants</th><th>Status</th></tr></thead>
-      <tbody>', flag_rows_html, '</tbody>
-    </table></div>
-  </section>
 
   <section>
     <div class="section-head">
@@ -2230,6 +2351,7 @@ completeness_html <- tryCatch({
   # participant having been run at all.
   ids_physiology <- get_ids(ids_of_files(PHYSIOLOGY_SESSION_DIR, "_physiology\\.acq$"))
 
+  ids_webcam_offline <- get_ids(ids_of_files(WEBCAM_HR_DIR_QC, "^[^_]+_webcam_hr_events\\.csv$"))
   ids_facereader <- get_ids(ids_of_files(FACEREADER_RESULTS_DIR,
                                          "_detailed\\.(txt|xlsx)$|_heart beat log\\.(txt|xlsx)$|_state\\.(txt|xlsx)$|_hrv_per_block\\.csv$"))
 
@@ -2243,7 +2365,8 @@ completeness_html <- tryCatch({
     Ledalab        = ids_ledalab,
     Kubios         = ids_kubios,
     Video          = ids_video,
-    Biometrics     = ids_raw_biometrics,
+    `Webcam HR online`  = ids_raw_biometrics,
+    `Webcam HR offline` = ids_webcam_offline,
     FaceReader     = ids_facereader
   )
   partial <- list(Questionnaires = ids_raw_q_partial, Video = ids_video_partial)
@@ -2715,7 +2838,8 @@ html_out <- paste0(
     <button class="tab-btn" data-tab="psychopy">PsychoPy</button>
     <button class="tab-btn" data-tab="ledalab">Ledalab (EDA)</button>
     <button class="tab-btn" data-tab="kubios">Kubios (HRV)</button>
-    <button class="tab-btn" data-tab="biometrics">Webcam biometrics</button>
+    <button class="tab-btn" data-tab="biometrics">Webcam HR (online)</button>
+    <button class="tab-btn" data-tab="biometrics-offline">Webcam HR (offline)</button>
     <button class="tab-btn" data-tab="video">Video</button>
     <button class="tab-btn" data-tab="physiology">Raw physiology</button>
     <button class="tab-btn" data-tab="facereader">FaceReader</button>
@@ -2727,7 +2851,8 @@ html_out <- paste0(
   <div id="tab-psychopy" class="tab-content">',          psychopy_html, '</div>
   <div id="tab-ledalab"  class="tab-content">',          ledalab_html,  '</div>
   <div id="tab-kubios"   class="tab-content">',          kubios_html,   '</div>
-  <div id="tab-biometrics" class="tab-content">',        biometrics_html, '</div>
+  <div id="tab-biometrics" class="tab-content">',        biometrics_online_note, biometrics_html, '</div>
+  <div id="tab-biometrics-offline" class="tab-content">', biometrics_offline_html, '</div>
   <div id="tab-video"    class="tab-content">',          video_html,    '</div>
   <div id="tab-physiology" class="tab-content">',        physiology_html, '</div>
   <div id="tab-facereader" class="tab-content">',        facereader_html, '</div>

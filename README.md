@@ -222,6 +222,7 @@ Metrics compared per block: mean HR, SDNN, RMSSD, LF/HF power.
 ## Experiment
 
 The PsychoPy experiment files are in `experiment/`.
+*Note* - This needs to be updated from the Stimulus PC as some changes have been made
 
 ```
 experiment/
@@ -235,8 +236,7 @@ experiment/
 
 **To run the experiment:**
 1. Open `Biosignals2_Psychopy.psyexp` in PsychoPy Builder.
-2. Set counterbalancing manually at the top of the "Begin Experiment" code block (`condition_order`, `rating_start`).
-3. Press Run (green play button) or export to Python and run directly.
+2. Press Run (green play button) or export to Python and run directly.
 
 **Running offline (no BIOPAC/serial trigger box):** The serial trigger flag is set to `False` by default — `USE_REAL_SERIAL = False` in the "Begin Experiment" code block. The experiment will run normally and print trigger events to the console instead of sending them to hardware. Set `USE_REAL_SERIAL = True` in the lab when the trigger box is connected on COM3.
 
