@@ -1582,12 +1582,12 @@ video_html <- tryCatch({
 })
 
 # ── 6.2 FaceReader ─────────────────────────────────────────────────────────────
-# FACEREADER_RESULTS_DIR: FaceReader exports per participant
-#   <id>_detailed.txt  <id>_heart beat log.txt  <id>_state.txt
+# FACEREADER_RESULTS_DIR: FaceReader exports per participant, as .txt or .xlsx
+#   <id>_detailed  <id>_heart beat log  <id>_state   (.xlsx needs the readxl package)
 # and <id>_hrv_per_block.csv from 03_compute_hrv_per_block_facereader.py.
-FACEREADER_FILES <- c(detailed       = "_detailed\\.txt$",
-                      heart_beat_log = "_heart beat log\\.txt$",
-                      state          = "_state\\.txt$",
+FACEREADER_FILES <- c(detailed       = "_detailed\\.(txt|xlsx)$",
+                      heart_beat_log = "_heart beat log\\.(txt|xlsx)$",
+                      state          = "_state\\.(txt|xlsx)$",
                       hrv_per_block  = "_hrv_per_block\\.csv$")
 MIN_FACEREADER_BEATS <- 100
 
@@ -1596,6 +1596,7 @@ facereader_html <- tryCatch({
   if (!dir.exists(FACEREADER_RESULTS_DIR))
     stop(paste0("NO_FILES: FACEREADER_RESULTS_DIR does not exist: ", FACEREADER_RESULTS_DIR))
   fr_all <- keep_files(list.files(FACEREADER_RESULTS_DIR, full.names = TRUE))
+  fr_all <- fr_all[!startsWith(basename(fr_all), "~$")]   # Excel lock files
   fr <- bind_rows(
     tibble(pid = character(), kind = character(), path = character()),
     bind_rows(imap(FACEREADER_FILES, function(pattern, kind) {
@@ -1606,17 +1607,37 @@ facereader_html <- tryCatch({
   if (nrow(fr) == 0)
     stop("NO_FILES: No FaceReader exports found in FACEREADER_RESULTS_DIR.")
 
-  # FaceReader exports start with a short tab-separated header ("Frame rate<TAB>29.992", ...)
+  # FaceReader exports (.txt tab-separated or .xlsx) start with a short header
+  # ("Frame rate | 29.992", ...). fr_grid returns the first two columns as text.
+  fr_grid <- function(f, n_max = Inf) {
+    if (grepl("\\.xlsx$", f, ignore.case = TRUE)) {
+      if (!requireNamespace("readxl", quietly = TRUE))
+        stop('install.packages("readxl") to read FaceReader .xlsx exports')
+      g <- readxl::read_excel(f, sheet = 1, col_names = FALSE, col_types = "text",
+                              .name_repair = "minimal", n_max = n_max, progress = FALSE)
+      g <- as.data.frame(g, stringsAsFactors = FALSE)
+    } else {
+      l <- readLines(f, n = if (is.finite(n_max)) n_max else -1L, warn = FALSE, encoding = "UTF-8")
+      l[1] <- sub("^\ufeff", "", l[1])
+      parts <- strsplit(l, "\t", fixed = TRUE)
+      g <- data.frame(a = vapply(parts, function(x) if (length(x) >= 1) x[1] else NA_character_, ""),
+                      b = vapply(parts, function(x) if (length(x) >= 2) x[2] else NA_character_, ""),
+                      stringsAsFactors = FALSE)
+    }
+    if (ncol(g) < 2) g[[2]] <- NA_character_
+    data.frame(a = str_trim(g[[1]]), b = str_trim(g[[2]]), stringsAsFactors = FALSE)
+  }
   header_value <- function(f, key) {
-    h <- readLines(f, n = 12, warn = FALSE)
-    v <- str_match(h, paste0("^", key, "\\t(.*)$"))[, 2]
-    v <- v[!is.na(v)]
-    if (length(v) > 0) str_trim(v[1]) else NA_character_
+    g <- fr_grid(f, n_max = 12)
+    v <- g$b[!is.na(g$a) & str_detect(g$a, paste0("^", key, "$"))]
+    if (length(v) > 0 && !is.na(v[1])) v[1] else NA_character_
   }
   count_beats <- function(f) {
-    l <- readLines(f, warn = FALSE)
-    h <- which(str_detect(l, "^Time\\tInterbeat"))[1]
-    if (is.na(h)) NA_integer_ else sum(str_detect(l[-seq_len(h)], "^\\d{2}:\\d{2}:\\d{2}"))
+    g <- fr_grid(f)
+    h <- which(g$a == "Time" & str_detect(coalesce(g$b, ""), "^Interbeat"))[1]
+    if (is.na(h)) return(NA_integer_)
+    rest <- g$a[-seq_len(h)]
+    sum(!is.na(rest) & rest != "")
   }
   count_blocks <- function(f) tryCatch({
     x <- read_csv(f, show_col_types = FALSE)
@@ -1690,8 +1711,8 @@ facereader_html <- tryCatch({
     <div class="section-head">
       <div class="section-label">FaceReader Exports</div>
       <h2>FaceReader files per participant</h2>
-      <p>From <code>FACEREADER_RESULTS_DIR</code>: <code>{pid}_detailed.txt</code>,
-         <code>{pid}_heart beat log.txt</code>, <code>{pid}_state.txt</code> and
+      <p>From <code>FACEREADER_RESULTS_DIR</code>: <code>{pid}_detailed</code>,
+         <code>{pid}_heart beat log</code>, <code>{pid}_state</code> (.txt or .xlsx) and
          <code>{pid}_hrv_per_block.csv</code> (from 03_compute_hrv_per_block_facereader.py).
          Beats = heartbeats in the heart beat log (flag below ', MIN_FACEREADER_BEATS, ').
          Video and fps are read from the heart beat log header.</p>
@@ -1720,7 +1741,7 @@ facereader_html <- tryCatch({
 #   entire_session_duration/        {pid}_physiology.acq          — full session, as recorded
 #   experimental_protocol_duration/ {pid}_physiology_trimmed.acq  — cut to the protocol
 #                                   {pid}_eda_trimmed.acq         — EDA channel, cut to the protocol
-#   exports/                        {pid}_physiology.mat, {pid}_eda.mat — for Ledalab / PsPM
+# and the EDA .mat prepared for Ledalab: LEDALAB_INPUT_DIR/{pid}.mat (3_Data/ledalab/input)
 # A session recording well under this size is almost certainly a truncated take.
 MIN_PHYSIO_ACQ_MB <- 10
 
@@ -1739,10 +1760,13 @@ physiology_html <- tryCatch({
   session   <- physio_files("entire_session_duration",        "_physiology\\.acq$")
   trim_phys <- physio_files("experimental_protocol_duration", "_physiology_trimmed\\.acq$")
   trim_eda  <- physio_files("experimental_protocol_duration", "_eda_trimmed\\.acq$")
-  exp_phys  <- physio_files("exports",                        "_physiology\\.mat$")
-  exp_eda   <- physio_files("exports",                        "_eda\\.mat$")
+  # Ledalab input: one EDA file per participant named just {pid}.mat
+  eda_mat_files <- if (dir.exists(LEDALAB_INPUT_DIR))
+    list.files(LEDALAB_INPUT_DIR, pattern = "^[^_.]+\\.mat$", full.names = TRUE, ignore.case = TRUE) else character(0)
+  eda_mat_pids  <- str_to_lower(tools::file_path_sans_ext(basename(eda_mat_files)))
+  exp_eda   <- tibble(pid = eda_mat_pids[!is_excluded(eda_mat_pids)])
 
-  all_pids <- sort(unique(c(session$pid, trim_phys$pid, trim_eda$pid, exp_phys$pid, exp_eda$pid)))
+  all_pids <- sort(unique(c(session$pid, trim_phys$pid, trim_eda$pid, exp_eda$pid)))
   if (length(all_pids) == 0)
     stop("NO_FILES: No .acq or .mat files found under PHYSIOLOGY_ROOT.")
 
@@ -1752,22 +1776,18 @@ physiology_html <- tryCatch({
       session_mb    = session$size_mb[match(pid, session$pid)],
       has_trim_phys = pid %in% trim_phys$pid,
       has_trim_eda  = pid %in% trim_eda$pid,
-      has_exp_phys  = pid %in% exp_phys$pid,
       has_exp_eda   = pid %in% exp_eda$pid
     ) |>
     mutate(
-      issues = pmap_chr(list(has_session, session_mb, has_trim_phys, has_trim_eda,
-                             has_exp_phys, has_exp_eda),
-        function(sess, mb, tp, te, ep, ee) {
+      issues = pmap_chr(list(has_session, session_mb, has_trim_phys, has_trim_eda, has_exp_eda),
+        function(sess, mb, tp, te, ee) {
           x <- character(0)
           if (!sess)                        x <- c(x, "no session recording")
           if (sess && !is.na(mb) && mb < MIN_PHYSIO_ACQ_MB)
             x <- c(x, sprintf("session file only %.1f MB", mb))
           if (!tp)                          x <- c(x, "not trimmed (physiology)")
           if (!te)                          x <- c(x, "not trimmed (EDA)")
-          if (!ep && !ee)                   x <- c(x, "no .mat export")
-          else if (!ep)                     x <- c(x, "no physiology .mat")
-          else if (!ee)                     x <- c(x, "no EDA .mat")
+          if (!ee)                          x <- c(x, "no EDA .mat in ledalab/input")
           paste(x, collapse = "; ")
         }),
       status_html = status_cell(issues)
@@ -1780,14 +1800,14 @@ physiology_html <- tryCatch({
       yes_no_cell(has_session),
       "<td>", if_else(is.na(session_mb), "—", sprintf("%.1f", session_mb)), "</td>",
       yes_no_cell(has_trim_phys), yes_no_cell(has_trim_eda),
-      yes_no_cell(has_exp_phys), yes_no_cell(has_exp_eda),
+      yes_no_cell(has_exp_eda),
       status_html, "</tr>")
     ) |> pull(html) |> paste(collapse = "\n")
 
   n_phys_pids <- nrow(pcov)
   n_sess      <- sum(pcov$has_session)
   n_trimmed   <- sum(pcov$has_trim_phys & pcov$has_trim_eda)
-  n_exported  <- sum(pcov$has_exp_phys & pcov$has_exp_eda)
+  n_exported  <- sum(pcov$has_exp_eda)
   n_phys_issue <- sum(pcov$issues != "")
 
   paste0(
@@ -1802,7 +1822,7 @@ physiology_html <- tryCatch({
       <div class="tile-label">Trimmed to<br>protocol</div></div>
     <div class="tile ', if (n_exported == n_phys_pids) "ok" else "warn", '">
       <div class="tile-value">', n_exported, '/', n_phys_pids, '</div>
-      <div class="tile-label">Exported<br>to .mat</div></div>
+      <div class="tile-label">EDA .mat for<br>Ledalab</div></div>
   </div>
 
   <section>
@@ -1813,13 +1833,13 @@ physiology_html <- tryCatch({
          <code>entire_session_duration/{pid}_physiology.acq</code> as recorded, then
          <code>experimental_protocol_duration/{pid}_physiology_trimmed.acq</code> and
          <code>{pid}_eda_trimmed.acq</code> cut to the protocol, then
-         <code>exports/{pid}_physiology.mat</code> and <code>{pid}_eda.mat</code> for
-         Ledalab / PsPM. Session size flags a recording under ', MIN_PHYSIO_ACQ_MB, ' MB.</p>
+         the EDA <code>.mat</code> for Ledalab, <code>ledalab/input/{pid}.mat</code>
+         (<code>LEDALAB_INPUT_DIR</code>). Session size flags a recording under ', MIN_PHYSIO_ACQ_MB, ' MB.</p>
     </div>
     <div class="table-wrap"><table>
       <thead><tr><th>Participant</th><th>Session .acq</th><th>Size (MB)</th>
         <th>Trimmed physiology</th><th>Trimmed EDA</th>
-        <th>.mat physiology</th><th>.mat EDA</th><th>Status</th></tr></thead>
+        <th>EDA .mat (Ledalab input)</th><th>Status</th></tr></thead>
       <tbody>', physio_rows_html, '</tbody>
     </table></div>
   </section>')
@@ -2211,7 +2231,7 @@ completeness_html <- tryCatch({
   ids_physiology <- get_ids(ids_of_files(PHYSIOLOGY_SESSION_DIR, "_physiology\\.acq$"))
 
   ids_facereader <- get_ids(ids_of_files(FACEREADER_RESULTS_DIR,
-                                         "_detailed\\.txt$|_heart beat log\\.txt$|_state\\.txt$|_hrv_per_block\\.csv$"))
+                                         "_detailed\\.(txt|xlsx)$|_heart beat log\\.(txt|xlsx)$|_state\\.(txt|xlsx)$|_hrv_per_block\\.csv$"))
 
   # PsychoPy, questionnaires and biometrics come from the RAW Box folders (section 7.4).
   # A questionnaire counts when there is a complete response; a partial-only response is
