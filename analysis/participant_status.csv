@@ -10,8 +10,8 @@ P1234,test, questionnaire test run, 2026-10-12
 E5510,pilot,,2026-10-12
 E9967,pilot,,2026-10-12
 G2313,pilot,,2026-10-12
-I4155,faulty,participant repositioned their chair outside camera FOV,2026-10-12
+I4155,excluded,participant repositioned their chair outside camera FOV,2026-10-12
 N2026,pilot,,2026-10-12
 P7259,pilot,,2026-10-12
-S0723,pifaultylot,Session error: inductions only,2026-10-12
+S0723,excluded,Session error: inductions only,2026-10-12
 S0943,pilot,,2026-10-12
