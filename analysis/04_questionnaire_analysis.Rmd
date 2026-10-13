@@ -290,8 +290,24 @@ das_map <- c(
   "Neutral"           = 4,
   "Slightly Disagree" = 3,
   "Disagree"          = 2,
-  "Totally Disagree"  = 1
+  "Totally Disagree"  = 1,
+  # Wording of the original DAS response scale (Weissman & Beck), in case the
+  # Qualtrics choices use it
+  "Agree very much"    = 6,
+  "Agree slightly"     = 5,
+  "Disagree slightly"  = 3,
+  "Disagree very much" = 2,
+  "Strongly Agree"     = 7,
+  "Strongly Disagree"  = 1
 )
+
+# Print any DAS-SF answer that das_map doesn't recognise (it would be scored as
+# missing). If every participant's DAS-SF total is NA, the labels are listed here.
+das_unrecognised <- function(df, cols) {
+  v <- str_squish(unlist(df[, intersect(cols, names(df))], use.names = FALSE))
+  v <- v[!is.na(v) & v != "" & v != "---" & !str_detect(v, "^-?\\d+(\\.\\d+)?$")]
+  sort(unique(v[!str_to_lower(v) %in% str_to_lower(names(das_map))]))
+}
 
 # Qualtrics can export a question either as choice TEXT ("Not at all") or as the
 # numeric recode VALUE ("0"), and this project has used both. recode_numeric()
@@ -586,6 +602,10 @@ cat("PAQ-24 total (all 24 items) α =",
 das1_cols <- c("QID59_23","QID59_27","QID59_28","QID59_29",
                "QID59_24","QID59_25","QID59_26","QID59_32","QID59_33")
 
+unk1 <- das_unrecognised(df, das1_cols)
+if (length(unk1)) cat("DAS-SF answers not recognised (scored as missing):\n ",
+                      paste0('"', unk1, '"', collapse = "\n  "), "\n")
+
 das_sf1 <- df |>
   select(participant_id, all_of(das1_cols)) |>
   mutate(across(all_of(das1_cols), \(x) recode_numeric(x, das_map))) |>
@@ -627,6 +647,10 @@ das2_cols <- c("QID60_23","QID60_27","QID60_28","QID60_29",
 # ⚠️  Set this to the ImportId of the "I do not need approval" item.
 # Inspect `names(df)` alongside the Qualtrics question order to confirm.
 das2_reverse_col <- "QID60_25"   # placeholder — VERIFY
+
+unk2 <- das_unrecognised(df, das2_cols)
+if (length(unk2)) cat("DAS-SF answers not recognised (scored as missing):\n ",
+                      paste0('"', unk2, '"', collapse = "\n  "), "\n")
 
 das_sf2 <- df |>
   select(participant_id, all_of(das2_cols)) |>
