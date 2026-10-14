@@ -14,11 +14,11 @@ For each participant it runs, skipping any step whose output already exists:
               (WebcamBiometrics eval/ts/extract/extractRGB.ts - slow, runs MediaPipe in Chromium;
               needs ~5 GB free temp space for a 19-min session, deleted afterwards)
   3. ANALYSE  RGB series -> heart rate per frame (eval/ts/replay/analyseSeries.ts - fast)
-  4. EXPORT   -> 3_Data\webcam_biometrics\<id>_webcam_hr_frames.csv   (one row per frame)
-               -> 3_Data\webcam_biometrics\<id>_webcam_hr_events.csv  (one row per event)
-               -> 3_Data\webcam_biometrics\<id>_webcam_beats.csv      (one row per detected beat)
+  4. EXPORT   -> 3_Data\webcam_biometrics\<id>_webcam_hr_frames_<variant>.csv   (one row per frame)
+               -> 3_Data\webcam_biometrics\<id>_webcam_hr_events_<variant>.csv  (one row per event)
+               -> 3_Data\webcam_biometrics\<id>_webcam_beats_<variant>.csv      (one row per detected beat)
 
-<id>_webcam_beats.csv  - beat-by-beat, laid out like Kubios' <id>_kubios_rr.csv (block, time_s, rr_s)
+<id>_webcam_beats_<variant>.csv  - beat-by-beat, laid out like Kubios' <id>_kubios_rr.csv (block, time_s, rr_s)
   block           Baseline / <Valence> Induction / <Valence> Recovery the beat falls in (blank =
                   between blocks; Kubios has no beats there). Needs <id>_video_events.csv.
   time_s          beat time on the ECG / Kubios clock (trimmed .acq) = time_video_s + offset. The
@@ -46,17 +46,28 @@ For each participant it runs, skipping any step whose output already exists:
   ~150-250 ms AFTER its R-peak (pulse transit time) and is frame-quantised (~33 ms). So compare
   intervals / matched beats, not raw times one-to-one, and clean IBIs before any HRV.
 
-OPTIMISED BEAT DETECTOR (--optimize)
-  Step 3 runs eval/ts/replay/analyseSeries_optimize.ts instead (WebcamBiometrics branch
-  optimize/beat-detection; see its docs/beat-timing.md): a linear-phase FIR band-pass and sub-sample
-  peak timing. On 7 participants vs ECG (medians): beats within +-50 ms of an R-peak 31% -> 78%, false
-  beats 20% -> 5%, timing scatter 91 -> 34 ms. Outputs get an _optimize suffix
-  (<id>_webcam_beats_optimize.csv etc.), so the current results are kept and 005_compare_hrv.R
-  compares both. Only step 3 is redone - it reuses the cached RGB series (fast).
-  The FIR filter has a fixed delay (default 1000 ms, --live-delay-ms to change): live, a beat
-  appears that long after it happened. The saved beat times are the TRUE times (delay removed), so
-  beats, intervals and HRV here are not shifted. Only the frames CSV 'pulse' column (the filtered
-  waveform) runs that much behind its time_s; its 'beat' column marks the frame at each beat's true time.
+CODE VERSIONS (--variant) - every output file is labelled with the code that made it
+  baseline   Max Lovell's ORIGINAL WebcamBiometrics rPPG code (upstream main 1efc19b, a frozen copy in
+             WebcamBiometrics eval/baseline_src/; eval/ts/replay/analyseSeries_baseline.ts)
+  faceloss   original + the face-loss gap fix (reset at gaps > 0.5 s, 1 s warm-up; WebcamBiometrics
+             src/rppg on branch optimize/beat-detection; eval/ts/replay/analyseSeries.ts)
+  optimized  face-loss fix + linear-phase FIR filter + heart-rate-guided beat picking
+             (WebcamBiometrics *_optimize files; eval/ts/replay/analyseSeries_optimize.ts;
+             docs/beat-optimization-log.md)
+  Default: all three. Each gets its own files - <id>_webcam_beats_<variant>.csv,
+  <id>_webcam_hr_frames_<variant>.csv, <id>_webcam_hr_events_<variant>.csv - and its own cached
+  predictions (eval/cache/<id>/full.predictions_<variant>.json), so nothing overwrites another
+  version. Re-running a variant overwrites only that variant's files (same code -> same result).
+  Files from earlier runs without a variant label (<id>_webcam_beats.csv, *_optimize.csv) are left
+  untouched; they are not read by 005 any more (their code version is not recorded reliably).
+  All three are exported the same way (e.g. no interval is ever measured across a face-loss gap),
+  so differences between them come from the WebcamBiometrics code only.
+  The beats CSV has a 'variant' column too.
+
+  optimized only: the FIR filter + beat confirmation add ~1.6 s live delay (--live-delay-ms changes
+  the filter part, default 1000; a non-default value gets its own label, optimized_d733 etc.). Saved
+  beat times are TRUE times (delay removed), so beats, intervals and HRV are not shifted; only the
+  frames CSV 'pulse' column (the filtered waveform) runs behind its time_s.
 
 Step 4 is always redone (cheap). --reanalyse redoes step 3 only (seconds per participant), which is
 all a change to the heart-rate code in WebcamBiometrics/src needs. --redo redoes steps 2-3; step 2
@@ -64,7 +75,7 @@ re-reads every frame with MediaPipe (slow) and is only needed if extractRGB.ts o
 
 OUTPUT COLUMNS
 --------------
-<id>_webcam_hr_frames.csv
+<id>_webcam_hr_frames_<variant>.csv
   time_s          seconds since webcam recording start = the clock of PsychoPy's
                   stim_onset_since_rec_start and of onset_s in <id>_video_events.csv
   hr_fft_bpm      heart rate from the dominant pulse frequency over a sliding window (smooth;
@@ -77,7 +88,7 @@ OUTPUT COLUMNS
                   blank for results made before WebcamBiometrics' face-loss-gap fix
   Frames where no face was found are absent (see coverage below).
 
-<id>_webcam_hr_events.csv  (needs <id>_video_events.csv from 001_generate_event_onsets.py)
+<id>_webcam_hr_events_<variant>.csv  (needs <id>_video_events.csv from 001_generate_event_onsets.py)
   event, onset_s, offset_s, duration_s
   hr_fft_median, hr_fft_mean, hr_beats_median   over frames inside the event
   n_beats, beats_per_min      detected beats in the event and their rate (a cross-check)
@@ -88,12 +99,13 @@ Usage (from anywhere; paths come from config.py at the repo root)
 -----
   python 003_run_webcam_biometrics.py i4155                 # one participant
   python 003_run_webcam_biometrics.py i4155 r4755           # several
-  python 003_run_webcam_biometrics.py --all                 # every <id>_frames folder in WEBCAM_PNG_EXTERNAL_DIR
+  python 003_run_webcam_biometrics.py --all                 # every main-study participant with a video
+  python 003_run_webcam_biometrics.py --all --pilots        # ... plus pilots (participant_status.csv)
   python 003_run_webcam_biometrics.py i4155 --test          # first 30 s only: quick check, frames CSV only
   python 003_run_webcam_biometrics.py i4155 --redo          # re-run extract + analyse (slow)
   python 003_run_webcam_biometrics.py --all --reanalyse     # re-run analyse only (fast), e.g. after a src/ change
-  python 003_run_webcam_biometrics.py --all --optimize      # optimised beat detector -> *_optimize.csv (fast)
-  python 003_run_webcam_biometrics.py r2433 --optimize --live-delay-ms 733   # shorter live delay
+  python 003_run_webcam_biometrics.py --all --variant optimized          # one code version only
+  python 003_run_webcam_biometrics.py r2433 --variant optimized --live-delay-ms 733   # shorter live delay
 
 config.py variables used: SERVER_ROOT, WEBCAM_PNG_EXTERNAL_DIR, VIDEO_EXTERNAL_DIR, VIDEO_BOX_DIR, FACEREADER_ONSETS_DIR, and optionally
 WEBCAM_BIOMETRICS_REPO (default C:\Users\carme\OneDrive\Documents\GitHub\WebcamBiometrics)
@@ -153,7 +165,7 @@ def load_config():
     return paths
 
 
-def check_tools(repo, optimize=False):
+def check_tools(repo, variants=()):
     missing = [t for t in ("ffmpeg", "ffprobe", "npx") if shutil.which(t) is None]
     if missing:
         raise SystemExit(f"Not found on PATH: {missing}. Install ffmpeg (winget install ffmpeg) and Node.js.")
@@ -161,20 +173,45 @@ def check_tools(repo, optimize=False):
         if not os.path.exists(os.path.join(repo, p)):
             raise SystemExit(f"{os.path.join(repo, p)} not found. Is WEBCAM_BIOMETRICS_REPO right, and have "
                              f"you run 'npm install' and 'npx playwright install chromium' there?")
-    if optimize and not os.path.exists(os.path.join(repo, OPT_SCRIPT)):
-        raise SystemExit(f"{os.path.join(repo, OPT_SCRIPT)} not found: --optimize needs the WebcamBiometrics branch "
-                         f"optimize/beat-detection (in {repo}: git switch optimize/beat-detection).")
+    for v in variants:
+        if not os.path.exists(os.path.join(repo, VARIANT_SCRIPTS[v])):
+            raise SystemExit(f"{os.path.join(repo, VARIANT_SCRIPTS[v])} not found: --variant {v} needs the "
+                             f"WebcamBiometrics branch optimize/beat-detection (in {repo}: git switch optimize/beat-detection).")
 
 
-OPT_SCRIPT = "eval/ts/replay/analyseSeries_optimize.ts"
+# Which WebcamBiometrics replay script makes each labelled code version (see CODE VERSIONS above).
+VARIANT_SCRIPTS = {
+    "baseline": "eval/ts/replay/analyseSeries_baseline.ts",
+    "faceloss": "eval/ts/replay/analyseSeries.ts",
+    "optimized": "eval/ts/replay/analyseSeries_optimize.ts",
+}
+# Source files each version depends on: if any is newer than its cached predictions, they are rebuilt.
+VARIANT_SOURCES = {
+    "baseline": ["eval/baseline_src", "eval/ts/replay/analyseSeries_baseline.ts"],
+    "faceloss": ["src/rppg", "eval/ts/replay/analyseSeries.ts"],
+    "optimized": ["src/rppg", "eval/ts/replay/analyseSeries_optimize.ts"],
+}
 DEFAULT_LIVE_DELAY_MS = 1000   # = WebcamBiometrics LiveRoute_optimize default (liveFilterDelayMs)
 
 
-def opt_tag(optimize, live_delay_ms):
-    """File-name tag: '' (current detector), '_optimize' (default delay) or '_optimize_d733' etc."""
-    if not optimize:
-        return ""
-    return "_optimize" if live_delay_ms in (None, DEFAULT_LIVE_DELAY_MS) else f"_optimize_d{int(live_delay_ms)}"
+def variant_label(variant, live_delay_ms=None):
+    """'baseline' | 'faceloss' | 'optimized' | 'optimized_d733' (non-default live delay)."""
+    if variant == "optimized" and live_delay_ms not in (None, DEFAULT_LIVE_DELAY_MS):
+        return f"optimized_d{int(live_delay_ms)}"
+    return variant
+
+
+def newest_mtime(repo, paths):
+    newest = 0.0
+    for p in paths:
+        full = os.path.join(repo, p)
+        if os.path.isfile(full):
+            newest = max(newest, os.path.getmtime(full))
+        for root, _, files in os.walk(full):
+            for f in files:
+                if f.endswith(".ts"):
+                    newest = max(newest, os.path.getmtime(os.path.join(root, f)))
+    return newest
 
 
 def run(cmd, cwd):
@@ -196,6 +233,58 @@ def find_ci(folder, name):
         if entry.lower() == name.lower():
             return os.path.join(folder, entry)
     return None
+
+
+def find_all_participants(P, converter, include_pilots=False):
+    """--all: every participant with a video anywhere 003 can read one, filtered by
+    analysis/participant_status.csv (test sessions and excluded participants left out; pilots only
+    with --pilots). Prints who was found where and who was left out, so nothing is dropped silently.
+
+    NOTE (GitHub / other datasets): this discovery is specific to the Biosignals2 storage layout - PNG
+    folders named <id>_..._frames, <id>_1to1_ffv1.avi / <id>_1to1.mkv in VIDEO_EXTERNAL_DIR,
+    <id>_recording.avi in VIDEO_BOX_DIR, IDs = text before the first "_". To be replaced by a participant
+    manifest before sharing - see WebcamBiometrics docs/before-sharing.md."""
+    found = {}
+
+    def add(pid, where):
+        found.setdefault(pid.lower(), []).append(where)
+
+    if os.path.isdir(P["webcam_png_external_dir"]):
+        sessions, problems = converter.find_sessions(P["webcam_png_external_dir"])
+        for pid in sessions:
+            add(pid, "PNG frames")
+        for p in problems:
+            print(f"[PNG folder problem] {p}")
+    for folder, suffixes, where in ((P["video_external_dir"], ("_1to1_ffv1.avi", "_1to1.mkv"), "1:1 video"),
+                                    (P["video_box_dir"], ("_recording.avi",), "older recording")):
+        if not os.path.isdir(folder):
+            print(f"[--all] {where} folder not found: {folder}")
+            continue
+        for name in os.listdir(folder):
+            low = name.lower()
+            for suf in suffixes:
+                if low.endswith(suf) and "_" in name:
+                    add(name.split("_", 1)[0], where)
+    try:
+        sys.path.insert(0, os.path.dirname(HERE))          # analysis/participant_status.py
+        import participant_status as ps
+        status_of = ps.status_of
+    except Exception as e:                                  # missing/broken file: keep everyone, say so
+        print(f"[--all] WARNING: participant_status.csv not used ({e}) - every participant found is run")
+        status_of = lambda pid: "main"
+    keep, left_out = [], []
+    for pid in sorted(found):
+        st = status_of(pid)
+        if st == "main" or (st == "pilot" and include_pilots):
+            keep.append(pid)
+        else:
+            left_out.append(f"{pid} ({st})")
+    print(f"--all: {len(keep)} participant(s){' incl. pilots' if include_pilots else ' (main study; --pilots adds pilots)'}:")
+    for pid in keep:
+        print(f"    {pid:8s} {status_of(pid):6s} video: {', '.join(dict.fromkeys(found[pid]))}")
+    if left_out:
+        print(f"  left out (participant_status.csv): {', '.join(left_out)}")
+    return keep
 
 
 def step_video(pid, P, converter):
@@ -226,12 +315,12 @@ def step_video(pid, P, converter):
                        f"and no {pid}_frames folder + timestamps CSV in {P['webcam_png_external_dir']}")
 
 
-def step_extract_analyse(pid, video, ts, P, test, redo, reanalyse=False, optimize=False, live_delay_ms=None):
+def step_extract(pid, video, ts, P, test, redo):
+    """-> the cached RGB series (eval/cache/<id>/<full|test30>.json), extracting it if needed (slow)."""
     cache = os.path.join(P["repo"], "eval", "cache", pid)
     os.makedirs(cache, exist_ok=True)
     stem = "test30" if test else "full"
     series = os.path.join(cache, f"{stem}.json")
-    preds = os.path.join(cache, f"{stem}.predictions{opt_tag(optimize, live_delay_ms)}.json")
     npx = shutil.which("npx")
     if redo or not os.path.exists(series):
         cmd = [npx, "tsx", "eval/ts/extract/extractRGB.ts", video, series, "--timestamps", ts]
@@ -241,15 +330,26 @@ def step_extract_analyse(pid, video, ts, P, test, redo, reanalyse=False, optimiz
         run(cmd, P["repo"])
     else:
         print(f"  extract: {series} (exists; --redo to re-run)")
-    if redo or reanalyse or not os.path.exists(preds) or os.path.getmtime(preds) < os.path.getmtime(series):
-        print(f"  analyse:{' OPTIMISED beat detector' if optimize else ''}")
-        cmd = [npx, "tsx", OPT_SCRIPT if optimize else "eval/ts/replay/analyseSeries.ts", series, preds, "--label", pid]
-        if optimize and live_delay_ms is not None:
-            cmd += ["--config", json.dumps({"live": {"liveFilterDelayMs": live_delay_ms}})]
+    return series
+
+
+def step_analyse(pid, series, P, variant, label, redo, reanalyse, live_delay_ms=None):
+    """Run one labelled code version on the cached series -> its own predictions file."""
+    preds = series[:-len(".json")] + f".predictions_{label}.json"
+    stale = (not os.path.exists(preds) or os.path.getmtime(preds) < os.path.getmtime(series)
+             or os.path.getmtime(preds) < newest_mtime(P["repo"], VARIANT_SOURCES[variant]))
+    if redo or reanalyse or stale:
+        print(f"  analyse [{label}]:")
+        cmd = [shutil.which("npx"), "tsx", VARIANT_SCRIPTS[variant], series, preds, "--label", f"{pid} {label}"]
+        if variant == "optimized":
+            live = {"quiet": True}
+            if live_delay_ms is not None:
+                live["liveFilterDelayMs"] = live_delay_ms
+            cmd += ["--config", json.dumps({"live": live})]
         run(cmd, P["repo"])
     else:
-        print(f"  analyse: {preds} (exists)")
-    return preds, ts
+        print(f"  analyse [{label}]: {preds} (up to date)")
+    return preds
 
 
 # ── export ────────────────────────────────────────────────────────────────────
@@ -275,14 +375,18 @@ def load_predictions(path):
                 seg += 1
             r["segment"], prev = seg, r["time_s"]
     if any("beat_times_ms" in fr for fr in frames):
-        beats = sorted((t / 1000.0, r["segment"]) for fr, r in zip(frames, rows) for t in fr.get("beat_times_ms") or [])
         times = [r["time_s"] for r in rows]
         for r in rows:
             r["beat"] = 0
-        for t, _ in beats:   # flag the frame nearest the true beat time
+        beats = []
+        for t in sorted(t / 1000.0 for fr in frames for t in fr.get("beat_times_ms") or []):
+            # The frame at the beat's TRUE time gives its segment and gets the 'beat' flag. (A beat is
+            # reported later than it happened - e.g. one held when the face is lost comes with the first
+            # frame after the gap - so the frame that reported it can be in the next segment.)
             i = bisect.bisect_left(times, t)
             i = min((j for j in (i - 1, i) if 0 <= j < len(rows)), key=lambda j: abs(times[j] - t))
             rows[i]["beat"] = 1
+            beats.append((t, rows[i]["segment"]))
     else:
         beats = [(r["time_s"], r["segment"]) for r in rows if r["beat"]]
     return rows, beats, d.get("meta", {})
@@ -387,7 +491,7 @@ def face_loss_gaps(rows):
     return [(a, b) for a, b in zip(t, t[1:]) if b - a > MAX_GAP_S]
 
 
-def write_beats(rows, beats, pid, events_path, offset, out_path):
+def write_beats(rows, beats, pid, events_path, offset, out_path, label=""):
     blocks = []
     if events_path:
         with open(events_path, newline="", encoding="utf-8-sig") as f:
@@ -398,7 +502,7 @@ def write_beats(rows, beats, pid, events_path, offset, out_path):
     with open(out_path, "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["block", "time_s", "rr_s", "time_video_s", "bpm", "segment",
-                    "s_to_gap", "s_since_gap", "near_gap"])
+                    "s_to_gap", "s_since_gap", "near_gap", "variant"])
         prev = None
         for t, seg in beats:
             block = next((n for n, on, off in blocks if on <= t <= off), "")
@@ -411,16 +515,17 @@ def write_beats(rows, beats, pid, events_path, offset, out_path):
             n_near += near
             w.writerow([block, _fmt(t + offset if offset is not None else None, 4), _fmt(rr, 4),
                         f"{t:.4f}", _fmt(60 / rr if rr else None, 2), seg,
-                        _fmt(to_gap, 3), _fmt(since_gap, 3), near])
+                        _fmt(to_gap, 3), _fmt(since_gap, 3), near, label])
             prev = (t, seg)
     return len(beats), len(gaps), n_near
 
 
-def step_export(pid, preds, ts, P, test, tag=""):
+def step_export(pid, preds, ts, P, test, label):
     os.makedirs(P["out_dir"], exist_ok=True)
     rows, beats, meta = load_predictions(preds)
     if meta.get("live_delay_message"):
         print("  NOTE   : " + meta["live_delay_message"].replace("[rPPG live route] ", ""))
+    tag = f"_{label}"
     suffix = ("_test30" if test else "") + tag
     frames_csv = os.path.join(P["out_dir"], f"{pid}_webcam_hr_frames{suffix}.csv")
     write_frames(rows, frames_csv)
@@ -432,7 +537,7 @@ def step_export(pid, preds, ts, P, test, tag=""):
     events = find_ci(P["events_dir"], f"{pid}_video_events.csv")
     offset = ensure_offset(pid, P)
     beats_csv = os.path.join(P["out_dir"], f"{pid}_webcam_beats{tag}.csv")
-    n, n_gaps, n_near = write_beats(rows, beats, pid, events, offset, beats_csv)
+    n, n_gaps, n_near = write_beats(rows, beats, pid, events, offset, beats_csv, label)
     print(f"  beats  : {beats_csv}  ({n} beats; {n_gaps} face-loss gap(s) > {MAX_GAP_S} s, "
           f"{n_near} beats flagged near_gap; "
           + (f"ECG clock via offset {offset:.3f} s)" if offset is not None else
@@ -455,36 +560,47 @@ def step_export(pid, preds, ts, P, test, tag=""):
 def main():
     ap = argparse.ArgumentParser(description="WebcamBiometrics heart rate per participant -> CSV.")
     ap.add_argument("pids", nargs="*", help="participant IDs (e.g. i4155)")
-    ap.add_argument("--all", action="store_true", help="every <id>_frames folder in WEBCAM_PNG_EXTERNAL_DIR")
+    ap.add_argument("--all", action="store_true",
+                    help="every participant with a video (PNG frames, 1:1 video or older recording), minus test "
+                         "sessions and excluded participants in analysis/participant_status.csv")
+    ap.add_argument("--pilots", action="store_true", help="with --all: include pilot participants too")
     ap.add_argument("--test", action="store_true", help=f"first {TEST_SECONDS} s only (quick check)")
     ap.add_argument("--redo", action="store_true", help="re-run extract + analyse even if cached (slow: re-reads every frame)")
     ap.add_argument("--reanalyse", action="store_true",
                     help="re-run only the analyse step on the cached RGB series (fast) - use after a change to the "
                          "heart-rate code in WebcamBiometrics/src, e.g. the face-loss gap fix")
-    ap.add_argument("--optimize", action="store_true",
-                    help="use the optimised beat detector (analyseSeries_optimize.ts: FIR filter, true beat times); "
-                         "writes *_optimize.csv next to the current results. Reuses the cached RGB series (fast).")
+    ap.add_argument("--variant", nargs="+", choices=list(VARIANT_SCRIPTS) + ["all"], default=["all"],
+                    help="which WebcamBiometrics code version(s) to run: baseline (original), faceloss (original + "
+                         "face-loss gap fix), optimized (gap fix + FIR + heart-rate-guided beats), or all (default). "
+                         "Each writes its own *_<variant>.csv files.")
+    ap.add_argument("--optimize", action="store_true", help="old name for --variant optimized")
     ap.add_argument("--live-delay-ms", type=float, default=None,
-                    help=f"with --optimize: the FIR filter's live delay (default {DEFAULT_LIVE_DELAY_MS}). Shorter = "
+                    help=f"optimized only: the FIR filter's live delay (default {DEFAULT_LIVE_DELAY_MS}). Shorter = "
                          "beats shown sooner live, somewhat less accurate. Saved beat times are true times either way. "
-                         "A non-default value gets its own files (*_optimize_d<ms>.csv).")
+                         "A non-default value gets its own files (*_optimized_d<ms>.csv).")
     a = ap.parse_args()
-    if a.live_delay_ms is not None and not a.optimize:
-        raise SystemExit("--live-delay-ms only applies with --optimize.")
-    tag = opt_tag(a.optimize, a.live_delay_ms)
+    variants = ["optimized"] if a.optimize else (list(VARIANT_SCRIPTS) if "all" in a.variant else list(dict.fromkeys(a.variant)))
+    if a.live_delay_ms is not None and "optimized" not in variants:
+        raise SystemExit("--live-delay-ms only applies to --variant optimized.")
 
     P = load_config()
     converter = load_module("convert_png", os.path.join(HERE, "000_convert_png_to_avi.py"))
     if a.all:
-        sessions, problems = converter.find_sessions(P["webcam_png_external_dir"])
-        pids = sorted(k.lower() for k in sessions)
-        for p in problems:
-            print(f"[SKIPPED] {p}")
+        pids = find_all_participants(P, converter, a.pilots)
     else:
         pids = [p.lower() for p in a.pids]
+        try:                                                # named IDs always run; just say if they're flagged
+            sys.path.insert(0, os.path.dirname(HERE))
+            import participant_status as ps
+            for pid in pids:
+                if ps.status_of(pid) != "main":
+                    print(f"[note] {pid} is '{ps.status_of(pid)}' in participant_status.csv - running it because you named it")
+        except Exception:
+            pass
     if not pids:
         raise SystemExit("Give participant IDs, or --all.")
-    check_tools(P["repo"], a.optimize)
+    check_tools(P["repo"], variants)
+    print(f"code versions: {', '.join(variant_label(v, a.live_delay_ms) for v in variants)}")
     for k, v in P.items():
         print(f"{k:11s}: {v}")
 
@@ -493,9 +609,11 @@ def main():
         print(f"\n{'=' * 70}\n{pid}{' (TEST: first %d s)' % TEST_SECONDS if a.test else ''}\n{'=' * 70}")
         try:
             video, ts = step_video(pid, P, converter)
-            preds, ts = step_extract_analyse(pid, video, ts, P, a.test, a.redo, a.reanalyse,
-                                             a.optimize, a.live_delay_ms)
-            step_export(pid, preds, ts, P, a.test, tag)
+            series = step_extract(pid, video, ts, P, a.test, a.redo)
+            for v in variants:
+                label = variant_label(v, a.live_delay_ms)
+                preds = step_analyse(pid, series, P, v, label, a.redo, a.reanalyse, a.live_delay_ms)
+                step_export(pid, preds, ts, P, a.test, label)
             status[pid] = "OK"
         except Exception as e:
             print(f"  [ERROR] {e}")

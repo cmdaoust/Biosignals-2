@@ -3,8 +3,8 @@
 # Main-study participants only. For the pilot participants run generate_qc_report_pilot.R,
 # which sources this script with QC_MODE = "pilot" and writes biosignals2_qc_pilot.html.
 #
-# Covers: PsychoPy self-report | Ledalab (EDA) | Kubios (HRV) | Webcam biometrics | Video | FaceReader |
-#         Questionnaires
+# Covers: PsychoPy self-report | Ledalab (EDA) | Kubios (HRV: ECG, and FaceReader + webcam beats) |
+#         Webcam biometrics | Video | FaceReader | Questionnaires
 # Each section degrades gracefully when files are not yet present.
 #
 # Run from RStudio (open script → Source), or from the R console:
@@ -885,6 +885,123 @@ ledalab_html <- tryCatch({
 
 ledalab_html <- paste0(qc_notes_html("ledalab"), ledalab_html)
 
+# ── 4.9 Kubios helpers (shared by the Kubios ECG and Kubios video tabs) ────────
+# Kubios is run on three heart-beat streams, each with its own Kubios_Samples.csv (same 5 blocks):
+#   ECG         {pid}_physiology_trimmed.acq             samples + results in KUBIOS_RESULTS_DIR
+#   FaceReader  {pid}_facereader_beats_kubios.txt         in FACEREADER_RESULTS_DIR
+#   Webcam      {pid}_webcam_beats_<variant>_kubios.txt   in WEBCAM_HR_DIR
+# The two video files and their Kubios_Samples.csv come from
+# analysis/kubios/002_create_kubios_samples_video.py. Kubios names its report after the file it
+# analysed ({input}_hrv.csv) and lists that file in the batch summary's FileName column, so the
+# stream is told apart by the input file name. Results are looked for in the stream's folder, its
+# kubios/ subfolder and KUBIOS_RESULTS_DIR.
+WEBCAM_HR_DIR_QC <- get0("WEBCAM_HR_DIR", ifnotfound = file.path(SERVER_ROOT, "webcam_biometrics"))
+# Webcam code versions (003 --variant) that must be run through Kubios. Other versions found are
+# listed but not required.
+WEBCAM_KUBIOS_VARIANTS <- c("optimized")
+KUBIOS_BLOCKS <- c("baseline", "negative_induction", "negative_recovery",
+                   "positive_induction", "positive_recovery")
+MIN_KUBIOS_BLOCK_BEATS <- 100   # ~150-250 expected in a 3-minute block
+
+# "ecg", "facereader", "webcam_<variant>" or "webcam_unlabelled", from a file name
+kubios_stream <- function(name) {
+  n <- str_to_lower(basename(as.character(name)))
+  v <- str_match(n, "_webcam_beats_([a-z0-9_]+?)(_kubios)?(_hrv)?\\.(csv|txt|acq|mat)$")[, 2]
+  case_when(str_detect(n, "facereader") ~ "facereader",
+            !is.na(v)                   ~ paste0("webcam_", v),
+            str_detect(n, "webcam")     ~ "webcam_unlabelled",
+            TRUE                        ~ "ecg")
+}
+kubios_stream_label <- function(s) case_when(
+  s == "ecg" ~ "ECG", s == "facereader" ~ "FaceReader",
+  startsWith(s, "webcam_") ~ paste0("Webcam (", sub("^webcam_", "", s), ")"), TRUE ~ s)
+
+# "neg_induction(2)", "negative_reconvery(3)" (pilot typo) -> names used in KUBIOS_BLOCKS
+kubios_norm_block <- function(x) {
+  x |> str_trim() |> str_remove("\\(\\d+\\)$") |> str_to_lower() |>
+    str_replace("^neg_", "negative_") |> str_replace("^pos_", "positive_") |>
+    str_replace("reconvery", "recovery")
+}
+kub_num   <- function(x) suppressWarnings(as.numeric(str_trim(x)))
+kub_blank <- function(x) x[!is.na(x) & nzchar(x)]
+kub_pid   <- function(x) str_to_lower(str_extract(basename(as.character(x)), "^[^_]+"))
+
+# Batch summary KubiosHRVresults*.csv: "sep=," and a title line, then the header row; one row per
+# analysed file; samples S1..S5 unlabelled (taken in Kubios_Samples.csv order).
+kubios_read_summaries <- function(files) {
+  empty <- tibble(pid = character(), file = character(), input_file = character(), stream = character(),
+                  block = character(), mean_hr_bpm = numeric(), rmssd_ms = numeric(), sdnn_ms = numeric(),
+                  mtime = as.POSIXct(character()))
+  bind_rows(empty, map_dfr(files, function(f) {
+    # name_repair: every row ends in a trailing comma, giving one unnamed column
+    raw <- tryCatch(read_csv(f, skip = 2, col_types = cols(.default = col_character()),
+                             name_repair = "unique_quiet", show_col_types = FALSE),
+                    error = function(e) NULL)
+    if (is.null(raw) || !"FileName" %in% names(raw)) return(tibble())
+    raw <- raw |> filter(!is.na(FileName), nzchar(str_trim(FileName)))
+    map_dfr(seq_along(KUBIOS_BLOCKS), function(i) {
+      metric <- function(name) {
+        col <- paste0("S", i, "_", name)
+        if (col %in% names(raw)) kub_num(raw[[col]]) else rep(NA_real_, nrow(raw))
+      }
+      tibble(pid = kub_pid(raw$FileName), file = basename(f), input_file = basename(raw$FileName),
+             stream = kubios_stream(raw$FileName),
+             block = KUBIOS_BLOCKS[i], mean_hr_bpm = metric("Mean HR (bpm)"),
+             rmssd_ms = metric("RMSSD (ms)"), sdnn_ms = metric("SDNN (ms)"),
+             mtime = file.mtime(f))
+    })
+  }))
+}
+
+# Kubios text report {input}_hrv.csv. Each value row is "label:, v1, , v2, ..." (blank spacer columns)
+kubios_read_reports <- function(files) {
+  empty <- tibble(pid = character(), file = character(), stream = character(), block = character(),
+                  n_beats = numeric(), mean_hr_bpm = numeric(), rmssd_ms = numeric(),
+                  sdnn_ms = numeric(), artefact_pct = numeric(), mtime = as.POSIXct(character()))
+  row_values <- function(lines, pattern) {
+    i <- which(str_detect(lines, pattern))[1]
+    if (is.na(i)) return(character(0))
+    kub_blank(str_trim(str_split(lines[i], ",")[[1]][-1]))
+  }
+  bind_rows(empty, map_dfr(files, function(f) {
+    lines  <- tryCatch(read_lines(f), error = function(e) character(0))
+    head_i <- which(str_detect(lines, fixed("RR Interval Samples Selected for Analysis")))[1]
+    if (is.na(head_i)) return(tibble())
+    labels <- kub_blank(str_trim(str_split(lines[head_i + 1], ",")[[1]][-1]))
+    n      <- length(labels)
+    if (n == 0) return(tibble())
+    values <- function(pattern) { x <- kub_num(row_values(lines, pattern)); length(x) <- n; x }
+    tibble(pid = kub_pid(f), file = basename(f), stream = kubios_stream(f),
+           block = kubios_norm_block(labels),
+           n_beats = values(fixed("Beats total:")), mean_hr_bpm = values(fixed("Mean HR (beats/min):")),
+           rmssd_ms = values(fixed("RMSSD (ms):")), sdnn_ms = values(fixed("SDNN (ms):")),
+           # label differs between Kubios versions; NA when the report has no such row
+           artefact_pct = values(regex("^\\s*(Artefacts?|Artifacts?|Beats?) corrected.*%", ignore_case = TRUE)),
+           mtime = file.mtime(f))
+  }))
+}
+
+# Rows of a Kubios_Samples.csv: file name -> number of blocks with numeric START/END
+kubios_read_samples <- function(path) {
+  if (!file.exists(path)) return(tibble(input_file = character(), n_windows = integer()))
+  l <- read_lines(path)
+  l <- l[nzchar(str_trim(l))]
+  if (length(l) < 2) return(tibble(input_file = character(), n_windows = integer()))
+  parts <- str_split(l[-1], ",")
+  tibble(input_file = map_chr(parts, 1),
+         n_windows  = map_int(parts, function(p) {
+           v <- p[-(1:2)]
+           if (length(v) < 3) return(0L)
+           idx <- seq(1, length(v) - 2, by = 3)
+           sum(!is.na(kub_num(v[idx + 1])) & !is.na(kub_num(v[idx + 2])))
+         }))
+}
+
+kubios_result_dirs <- function(dir) {
+  d <- unique(c(dir, file.path(dir, "kubios"), KUBIOS_RESULTS_DIR))
+  d[dir.exists(d)]
+}
+
 # ── 5. Kubios (HRV) ────────────────────────────────────────────────────────────
 # Participant IDs (file name up to the first "_") are searched for in two Kubios outputs:
 #   batch summary  KubiosHRVresults*.csv  one row per .acq file; samples S1..S5 have no labels
@@ -896,50 +1013,19 @@ ledalab_html <- paste0(qc_notes_html("ledalab"), ledalab_html)
 # the two, which also checks that order.
 kubios_html <- tryCatch({
 
-  KUBIOS_BLOCKS <- c("baseline","negative_induction","negative_recovery",
-                     "positive_induction","positive_recovery")
-
-  # "neg_induction(2)", "negative_reconvery(3)" (pilot typo) -> names used in KUBIOS_BLOCKS
-  norm_block <- function(x) {
-    x |> str_trim() |> str_remove("\\(\\d+\\)$") |> str_to_lower() |>
-      str_replace("^neg_", "negative_") |> str_replace("^pos_", "positive_") |>
-      str_replace("reconvery", "recovery")
-  }
-  to_num     <- function(x) suppressWarnings(as.numeric(str_trim(x)))
-  drop_blank <- function(x) x[nzchar(x)]
-  pid_of     <- function(x) str_to_lower(str_extract(basename(x), "^[^_]+"))
-
+  # KUBIOS_BLOCKS and the readers are in section 4.9. Only ECG results belong here: FaceReader /
+  # webcam reports or batch-summary rows saved in this folder are shown on the Kubios video tab.
   summary_files <- list.files(KUBIOS_RESULTS_DIR, pattern = "^KubiosHRVresults.*\\.csv$",
                               full.names = TRUE, ignore.case = TRUE)
   hrv_files     <- keep_files(
     list.files(KUBIOS_RESULTS_DIR, pattern = "_hrv\\.csv$", full.names = TRUE))
+  hrv_files     <- hrv_files[kubios_stream(hrv_files) == "ecg"]
 
   if (length(summary_files) == 0 && length(hrv_files) == 0)
     stop("NO_FILES: No KubiosHRVresults.csv or _hrv.csv files found in KUBIOS_RESULTS_DIR.")
 
-  # Batch summary: "sep=," and a title line, then the header row
-  summary_long <- bind_rows(
-    tibble(pid = character(), file = character(), acq_file = character(), block = character(),
-           mean_hr_bpm = numeric(), rmssd_ms = numeric(), sdnn_ms = numeric(),
-           mtime = as.POSIXct(character())),
-    map_dfr(summary_files, function(f) {
-      # name_repair: every row ends in a trailing comma, giving one unnamed column
-      raw <- read_csv(f, skip = 2, col_types = cols(.default = col_character()),
-                      name_repair = "unique_quiet", show_col_types = FALSE)
-      if (!"FileName" %in% names(raw)) return(tibble())
-      raw <- raw |> filter(!is.na(FileName), nzchar(str_trim(FileName)))
-      map_dfr(seq_along(KUBIOS_BLOCKS), function(i) {
-        metric <- function(name) {
-          col <- paste0("S", i, "_", name)
-          if (col %in% names(raw)) to_num(raw[[col]]) else rep(NA_real_, nrow(raw))
-        }
-        tibble(pid = pid_of(raw$FileName), file = basename(f), acq_file = raw$FileName,
-               block = KUBIOS_BLOCKS[i], mean_hr_bpm = metric("Mean HR (bpm)"),
-               rmssd_ms = metric("RMSSD (ms)"), sdnn_ms = metric("SDNN (ms)"),
-               mtime = file.mtime(f))
-      })
-    })
-  )
+  summary_long <- kubios_read_summaries(summary_files) |>
+    filter(stream == "ecg") |> select(-stream) |> rename(acq_file = input_file)
   # A KubiosHRVresults batch file can cover several participants, so these rows are
   # filtered by pid rather than by filename.
   summary_long <- drop_excluded(summary_long, "pid")
@@ -949,30 +1035,7 @@ kubios_html <- tryCatch({
     group_by(pid) |> slice_max(mtime, n = 1, with_ties = TRUE) |>   # newest batch file wins
     group_by(pid, block) |> slice_tail(n = 1) |> ungroup()          # then its last row
 
-  # _hrv file: Kubios text report. Each value row is "label:, v1, , v2, ..." (blank spacer columns)
-  hrv_values <- function(lines, label) {
-    i <- which(str_detect(lines, fixed(label)))[1]
-    if (is.na(i)) return(character(0))
-    drop_blank(str_trim(str_split(lines[i], ",")[[1]][-1]))
-  }
-  hrv_long <- bind_rows(
-    tibble(pid = character(), file = character(), block = character(), n_beats = numeric(),
-           mean_hr_bpm = numeric(), rmssd_ms = numeric(), sdnn_ms = numeric(),
-           mtime = as.POSIXct(character())),
-    map_dfr(hrv_files, function(f) {
-      lines  <- read_lines(f)
-      head_i <- which(str_detect(lines, fixed("RR Interval Samples Selected for Analysis")))[1]
-      if (is.na(head_i)) return(tibble())
-      labels <- drop_blank(str_trim(str_split(lines[head_i + 1], ",")[[1]][-1]))
-      n      <- length(labels)
-      if (n == 0) return(tibble())
-      values <- function(label) { x <- to_num(hrv_values(lines, label)); length(x) <- n; x }
-      tibble(pid = pid_of(f), file = basename(f), block = norm_block(labels),
-             n_beats = values("Beats total:"), mean_hr_bpm = values("Mean HR (beats/min):"),
-             rmssd_ms = values("RMSSD (ms):"), sdnn_ms = values("SDNN (ms):"),
-             mtime = file.mtime(f))
-    })
-  )
+  hrv_long <- kubios_read_reports(hrv_files) |> select(-stream, -artefact_pct)
   hrv_files_per_pid <- hrv_long |> distinct(pid, file) |> count(pid, name = "n_hrv_files")
   hrv_long <- hrv_long |> drop_excluded("pid") |>
     group_by(pid) |> slice_max(mtime, n = 1, with_ties = TRUE) |> ungroup()
@@ -1437,32 +1500,44 @@ biometrics_online_note <- '<div class="note">Online = heart rate computed <stron
 # ── 6.0b Offline webcam heart rate (003_run_webcam_biometrics.py) ──────────────
 # The ONLINE biometrics above were computed live during the session (raw_psychopy).
 # The OFFLINE results are recomputed afterwards from the 1:1 lossless video by
-# analysis/video/003_run_webcam_biometrics.py, written to WEBCAM_HR_DIR
-# (default SERVER_ROOT/webcam_biometrics):
-#   <id>_webcam_hr_frames.csv  one row per frame
-#   <id>_webcam_hr_events.csv  one row per event: hr_fft_median, n_beats, beats_per_min, coverage
-#   <id>_webcam_beats.csv      one row per beat: block, time_s (ECG clock), rr_s, near_gap
-# plus SERVER_ROOT/ecg_video_offsets.csv (pid, offset_s). *_optimize*.csv variants are ignored.
-WEBCAM_HR_DIR_QC   <- get0("WEBCAM_HR_DIR", ifnotfound = file.path(SERVER_ROOT, "webcam_biometrics"))
+# analysis/video/003_run_webcam_biometrics.py, written to WEBCAM_HR_DIR (section 4.9), one set per
+# code version (--variant baseline / faceloss / optimized):
+#   <id>_webcam_hr_frames_<variant>.csv  one row per frame
+#   <id>_webcam_hr_events_<variant>.csv  one row per event: hr_fft_median, n_beats, beats_per_min, coverage
+#   <id>_webcam_beats_<variant>.csv      one row per beat: block, time_s (ECG clock), rr_s, time_video_s, near_gap
+# plus SERVER_ROOT/ecg_video_offsets.csv (pid, offset_s). The variants in WEBCAM_KUBIOS_VARIANTS are
+# required (they go through Kubios); block values below come from the first of them. Unlabelled
+# files from before 14 Oct 2026 (<id>_webcam_beats.csv, *_optimize.csv) and --test runs are not counted.
 ECG_OFFSETS_PATH   <- file.path(SERVER_ROOT, "ecg_video_offsets.csv")
 OFFLINE_BLOCKS     <- c("Baseline", "Negative Induction", "Negative Recovery",
                         "Positive Induction", "Positive Recovery")
 MIN_OFFLINE_COVERAGE <- 0.8   # 003 flags blocks below this ("low coverage")
+WEBCAM_FILE_RE <- "^([^_]+)_webcam_(hr_frames|hr_events|beats)_(.+)\\.csv$"
+
+# Every labelled 003 output in WEBCAM_HR_DIR: pid, kind (hr_frames / hr_events / beats), variant, path
+webcam_offline_files <- function() {
+  f <- keep_files(list.files(WEBCAM_HR_DIR_QC, pattern = "\\.csv$", full.names = TRUE, ignore.case = TRUE))
+  m <- str_match(str_to_lower(basename(f)), WEBCAM_FILE_RE)
+  tibble(pid = m[, 2], kind = m[, 3], variant = m[, 4], path = f) |>
+    filter(!is.na(pid), !str_starts(variant, "test30"), variant != "optimize",
+           !str_detect(variant, "_kubios"))   # Kubios reports of the beats, e.g. _beats_optimized_kubios_hrv.csv
+}
 
 biometrics_offline_html <- tryCatch({
 
   if (!dir.exists(WEBCAM_HR_DIR_QC))
     stop(paste0("NO_FILES: WEBCAM_HR_DIR does not exist: ", WEBCAM_HR_DIR_QC))
-  off_file <- function(suffix) {
-    f <- keep_files(list.files(WEBCAM_HR_DIR_QC, pattern = paste0("^[^_]+", suffix, "$"),
-                               full.names = TRUE, ignore.case = TRUE))
-    tibble(pid = pid_from_file(f), path = f)
-  }
-  frames_f <- off_file("_webcam_hr_frames\\.csv")
-  events_f <- off_file("_webcam_hr_events\\.csv")
-  beats_f  <- off_file("_webcam_beats\\.csv")
-  if (nrow(frames_f) + nrow(events_f) + nrow(beats_f) == 0)
-    stop("NO_FILES: No offline webcam heart-rate files (<id>_webcam_hr_events.csv etc.) in WEBCAM_HR_DIR.")
+  wf <- webcam_offline_files()
+  old_only <- setdiff(
+    pid_from_file(keep_files(list.files(WEBCAM_HR_DIR_QC,
+      pattern = "^[^_]+_webcam_(hr_frames|hr_events|beats)(_optimize)?\\.csv$", ignore.case = TRUE))),
+    wf$pid)
+  if (nrow(wf) == 0 && length(old_only) == 0)
+    stop("NO_FILES: No offline webcam heart-rate files (<id>_webcam_beats_<variant>.csv etc.) in WEBCAM_HR_DIR.")
+
+  main_variant <- WEBCAM_KUBIOS_VARIANTS[1]
+  req <- wf |> filter(variant %in% WEBCAM_KUBIOS_VARIANTS)
+  one <- function(k) req |> filter(kind == k, variant == main_variant)
 
   offsets <- if (file.exists(ECG_OFFSETS_PATH)) {
     o <- tryCatch(read_csv(ECG_OFFSETS_PATH, col_types = cols(.default = "c")), error = function(e) NULL)
@@ -1472,7 +1547,7 @@ biometrics_offline_html <- tryCatch({
     else tibble(pid = character(), offset_s = numeric())
   } else tibble(pid = character(), offset_s = numeric())
 
-  ev <- map_dfr(events_f$path, function(f) {
+  ev <- map_dfr(one("hr_events")$path, function(f) {
     x <- tryCatch(read_csv(f, col_types = cols(.default = "c")), error = function(e) NULL)
     if (is.null(x) || !"event" %in% names(x)) return(tibble())
     x |> filter(event %in% OFFLINE_BLOCKS) |>
@@ -1491,7 +1566,7 @@ biometrics_offline_html <- tryCatch({
     else tibble(pid = character(), n_blocks = integer(), min_cov = numeric(), low_cov = character(),
                 hr_min = numeric(), hr_max = numeric())
 
-  bt_sum <- map_dfr(beats_f$path, function(f) {
+  bt_sum <- map_dfr(one("beats")$path, function(f) {
     x <- tryCatch(read_csv(f, col_types = cols(.default = "c")), error = function(e) NULL)
     if (is.null(x)) return(tibble(pid = pid_from_file(f), n_beats = NA_integer_,
                                   pct_near_gap = NA_real_, has_ecg_time = NA))
@@ -1500,24 +1575,33 @@ biometrics_offline_html <- tryCatch({
                             round(100 * mean(x$near_gap == "1", na.rm = TRUE), 1) else NA_real_,
            has_ecg_time = "time_s" %in% names(x) && any(!is.na(x$time_s) & x$time_s != ""))
   })
+  bt_sum <- bind_rows(tibble(pid = character(), n_beats = integer(), pct_near_gap = numeric(),
+                             has_ecg_time = logical()), bt_sum)
 
-  ocov <- tibble(pid = sort(unique(c(frames_f$pid, events_f$pid, beats_f$pid)))) |>
-    mutate(has_frames = pid %in% frames_f$pid,
-           has_events = pid %in% events_f$pid,
-           has_beats  = pid %in% beats_f$pid,
+  # Required variants missing a file, per participant ("optimized: no events")
+  missing_req <- function(p) {
+    out <- unlist(map(WEBCAM_KUBIOS_VARIANTS, function(v) {
+      have <- req$kind[req$pid == p & req$variant == v]
+      miss <- setdiff(c("hr_frames", "hr_events", "beats"), have)
+      if (length(miss)) paste0(v, ": no ", paste(sub("^hr_", "", miss), collapse = "/")) else NULL
+    }))
+    paste(out, collapse = "; ")
+  }
+
+  ocov <- tibble(pid = sort(unique(c(wf$pid, old_only)))) |>
+    mutate(variants   = map_chr(pid, ~ paste(sort(unique(wf$variant[wf$pid == .x])), collapse = ", ")),
+           req_missing = map_chr(pid, missing_req),
            has_offset = pid %in% offsets$pid) |>
     left_join(ev_sum, by = "pid") |> left_join(bt_sum, by = "pid") |>
-    mutate(issues = pmap_chr(list(has_frames, has_events, has_beats, has_offset, n_blocks,
-                                  low_cov, hr_min, hr_max, has_ecg_time),
-      function(fr, e, b, o, nbl, lc, hmin, hmax, ecg) {
-        paste(c(if (!fr) "no frames CSV",
-                if (!e) "no events CSV (run 001, then 003)",
-                if (!b) "no beats CSV",
+    mutate(issues = pmap_chr(list(pid, req_missing, has_offset, n_blocks, low_cov, hr_min, hr_max, has_ecg_time),
+      function(p, rm, o, nbl, lc, hmin, hmax, ecg) {
+        paste(c(if (p %in% old_only) "only unlabelled files from before 14 Oct - rerun 003",
+                if (rm != "") rm,
                 if (!o) "no ECG->video offset",
-                if (e && !is.na(nbl) && nbl < length(OFFLINE_BLOCKS)) paste0(nbl, "/5 blocks"),
+                if (!is.na(nbl) && nbl < length(OFFLINE_BLOCKS)) paste0(nbl, "/5 blocks"),
                 if (!is.na(lc) && lc != "") paste0("coverage < ", MIN_OFFLINE_COVERAGE, ": ", lc),
                 if (!is.na(hmin) && (hmin < 40 || hmax > 120)) "block HR outside 40–120",
-                if (b && isFALSE(ecg)) "beats have no ECG-clock times"),
+                if (isFALSE(ecg)) "beats have no ECG-clock times"),
               collapse = "; ")
       }),
       status_html = status_cell(issues))
@@ -1527,7 +1611,8 @@ biometrics_offline_html <- tryCatch({
     arrange(issues == "", pid) |>
     mutate(html = paste0(
       "<tr><td class='mono'>", pid, "</td>",
-      yes_no_cell(has_frames), yes_no_cell(has_events), yes_no_cell(has_beats), yes_no_cell(has_offset),
+      "<td class='mono' style='font-size:.78rem'>", if_else(variants == "", "—", variants), "</td>",
+      yes_no_cell(req_missing == "" & !pid %in% old_only), yes_no_cell(has_offset),
       "<td>", if_else(is.na(n_blocks), "—", as.character(n_blocks)), "</td>",
       "<td>", fmt1(min_cov, 2), "</td>",
       "<td>", if_else(is.na(hr_min), "—", paste0(fmt1(hr_min), "–", fmt1(hr_max))), "</td>",
@@ -1537,9 +1622,10 @@ biometrics_offline_html <- tryCatch({
     ) |> pull(html) |> paste(collapse = "\n")
 
   n_off   <- nrow(ocov)
-  n_all3  <- sum(ocov$has_frames & ocov$has_events & ocov$has_beats)
+  n_all3  <- sum(ocov$req_missing == "" & !ocov$pid %in% old_only)
   n_offs  <- sum(ocov$has_offset)
   n_oiss  <- sum(ocov$issues != "")
+  req_txt <- paste0("<code>", WEBCAM_KUBIOS_VARIANTS, "</code>", collapse = ", ")
 
   paste0(
   '<div class="status-row">
@@ -1547,7 +1633,7 @@ biometrics_offline_html <- tryCatch({
       <div class="tile-label">Participants<br>analysed offline</div></div>
     <div class="tile ', if (n_all3 == n_off) "ok" else "warn", '">
       <div class="tile-value">', n_all3, '/', n_off, '</div>
-      <div class="tile-label">Frames, events<br>&amp; beats files</div></div>
+      <div class="tile-label">Frames, events &amp; beats<br>(', paste(WEBCAM_KUBIOS_VARIANTS, collapse = ", "), ')</div></div>
     <div class="tile ', if (n_offs == n_off) "ok" else "warn", '">
       <div class="tile-value">', n_offs, '/', n_off, '</div>
       <div class="tile-label">ECG→video<br>offset</div></div>
@@ -1562,15 +1648,17 @@ biometrics_offline_html <- tryCatch({
       <h2>003 outputs per participant</h2>
       <p>Recomputed after the session from the 1:1 lossless video by
          <code>analysis/video/003_run_webcam_biometrics.py</code>, in <code>', WEBCAM_HR_DIR_QC, '</code>:
-         <code>{pid}_webcam_hr_frames.csv</code>, <code>{pid}_webcam_hr_events.csv</code>,
-         <code>{pid}_webcam_beats.csv</code>, and the participant&#39;s row in
-         <code>ecg_video_offsets.csv</code>. Block values come from the events file (5 blocks);
-         coverage = share of captured frames with a heart rate (flag below ', MIN_OFFLINE_COVERAGE, ').
-         Near gap = beats within 1 s before / 3 s after a face-loss gap (flagged, not removed).
-         <code>*_optimize*.csv</code> runs are not counted.</p>
+         <code>{pid}_webcam_hr_frames_{variant}.csv</code>, <code>{pid}_webcam_hr_events_{variant}.csv</code>,
+         <code>{pid}_webcam_beats_{variant}.csv</code>, and the participant&#39;s row in
+         <code>ecg_video_offsets.csv</code>. Required code version(s): ', req_txt, ' (the ones run
+         through Kubios; set by <code>WEBCAM_KUBIOS_VARIANTS</code>). Block values come from the
+         <code>', main_variant, '</code> events file (5 blocks); coverage = share of captured frames
+         with a heart rate (flag below ', MIN_OFFLINE_COVERAGE, '). Near gap = beats within 1 s
+         before / 3 s after a face-loss gap (flagged, not removed). Unlabelled files from before
+         14 Oct 2026 and <code>--test</code> runs are not counted.</p>
     </div>
     <div class="table-wrap"><table>
-      <thead><tr><th>Participant</th><th>Frames</th><th>Events</th><th>Beats</th><th>Offset</th>
+      <thead><tr><th>Participant</th><th>Versions found</th><th>Required files</th><th>Offset</th>
         <th>Blocks</th><th>Min coverage</th><th>Block HR (bpm)</th><th>Beats</th>
         <th>Near gap</th><th>Status</th></tr></thead>
       <tbody>', off_rows_html, '</tbody>
@@ -1739,11 +1827,14 @@ video_html <- tryCatch({
 # ── 6.2 FaceReader ─────────────────────────────────────────────────────────────
 # FACEREADER_RESULTS_DIR: FaceReader exports per participant, as .txt or .xlsx
 #   <id>_detailed  <id>_heart beat log  <id>_state   (.xlsx needs the readxl package)
-# and <id>_hrv_per_block.csv from 03_compute_hrv_per_block_facereader.py.
+# FaceReader HRV now comes from Kubios on the heart beat log (Kubios video tab), so the old
+# <id>_hrv_per_block.csv (03_compute_hrv_per_block_facereader.py) is no longer checked.
+# The heart beat log header must name the video FaceReader analysed: main study = <id>_1to1_ffv1.avi
+# (an .mkv run gives far worse beats), old sessions = <id>_recording.avi.
 FACEREADER_FILES <- c(detailed       = "_detailed\\.(txt|xlsx)$",
                       heart_beat_log = "_heart beat log\\.(txt|xlsx)$",
-                      state          = "_state\\.(txt|xlsx)$",
-                      hrv_per_block  = "_hrv_per_block\\.csv$")
+                      state          = "_state\\.(txt|xlsx)$")
+FACEREADER_VIDEO_OK  <- "_1to1_ffv1\\.avi$|_recording\\.avi$"
 MIN_FACEREADER_BEATS <- 100
 
 facereader_html <- tryCatch({
@@ -1808,22 +1899,22 @@ facereader_html <- tryCatch({
     transmute(pid, video_file = str_extract(unlist(value), "[^\\\\/]+$"))
   video_fps  <- first_of("heart_beat_log", ~ header_value(.x, "Frame rate")) |>
     transmute(pid, video_fps = suppressWarnings(as.numeric(unlist(value))))
-  hrv_blocks <- first_of("hrv_per_block", count_blocks) |> transmute(pid, n_blocks = as.integer(unlist(value)))
 
   fcov <- tibble(pid = sort(unique(fr$pid)))
   for (k in names(FACEREADER_FILES)) fcov[[paste0("has_", k)]] <- fcov$pid %in% fr$pid[fr$kind == k]
   fcov <- fcov |>
     left_join(beats, by = "pid") |> left_join(video_name, by = "pid") |>
-    left_join(video_fps, by = "pid") |> left_join(hrv_blocks, by = "pid") |>
+    left_join(video_fps, by = "pid") |>
     mutate(
-      issues = pmap_chr(list(has_detailed, has_heart_beat_log, has_state, has_hrv_per_block, n_beats, n_blocks),
-        function(d, h, s, b, nb, nbl) {
+      video_ok = !is.na(video_file) & str_detect(str_to_lower(video_file), FACEREADER_VIDEO_OK),
+      issues = pmap_chr(list(has_detailed, has_heart_beat_log, has_state, n_beats, video_file, video_ok),
+        function(d, h, s, nb, vf, vok) {
           paste(c(if (!d) "no detailed log",
                   if (!h) "no heart beat log",
                   if (!s) "no state log",
-                  if (!b) "no hrv_per_block.csv",
                   if (h && !is.na(nb) && nb < MIN_FACEREADER_BEATS) paste0("only ", nb, " beats"),
-                  if (b && !is.na(nbl) && nbl < 5) paste0(nbl, "/5 HRV blocks")),
+                  if (h && !is.na(vf) && !vok) paste0("analysed ", vf, " - rerun on {id}_1to1_ffv1.avi"),
+                  if (h && is.na(vf)) "heart beat log names no video"),
                 collapse = "; ")
         }),
       status_html = status_cell(issues)
@@ -1834,17 +1925,16 @@ facereader_html <- tryCatch({
     mutate(html = paste0(
       "<tr><td class='mono'>", pid, "</td>",
       yes_no_cell(has_detailed), yes_no_cell(has_heart_beat_log),
-      yes_no_cell(has_state), yes_no_cell(has_hrv_per_block),
+      yes_no_cell(has_state),
       "<td>", if_else(is.na(n_beats), "—", as.character(n_beats)), "</td>",
-      "<td>", if_else(is.na(n_blocks), "—", as.character(n_blocks)), "</td>",
       "<td class='mono' style='font-size:.78rem'>", coalesce(video_file, "—"), "</td>",
       "<td>", if_else(is.na(video_fps), "—", sprintf("%.3f", video_fps)), "</td>",
       status_html, "</tr>")
     ) |> pull(html) |> paste(collapse = "\n")
 
   n_fr_pids   <- nrow(fcov)
-  n_all_files <- sum(fcov$has_detailed & fcov$has_heart_beat_log & fcov$has_state & fcov$has_hrv_per_block)
-  n_hrv5      <- sum(!is.na(fcov$n_blocks) & fcov$n_blocks >= 5)
+  n_all_files <- sum(fcov$has_detailed & fcov$has_heart_beat_log & fcov$has_state)
+  n_video_ok  <- sum(fcov$video_ok)
   n_fr_issue  <- sum(fcov$issues != "")
 
   paste0(
@@ -1853,10 +1943,10 @@ facereader_html <- tryCatch({
       <div class="tile-label">Participants with<br>FaceReader files</div></div>
     <div class="tile ', if (n_all_files == n_fr_pids) "ok" else "warn", '">
       <div class="tile-value">', n_all_files, '/', n_fr_pids, '</div>
-      <div class="tile-label">All four<br>files present</div></div>
-    <div class="tile ', if (n_hrv5 == n_fr_pids) "ok" else "warn", '">
-      <div class="tile-value">', n_hrv5, '/', n_fr_pids, '</div>
-      <div class="tile-label">HRV for<br>all 5 blocks</div></div>
+      <div class="tile-label">All three<br>files present</div></div>
+    <div class="tile ', if (n_video_ok == n_fr_pids) "ok" else "warn", '">
+      <div class="tile-value">', n_video_ok, '/', n_fr_pids, '</div>
+      <div class="tile-label">Analysed the<br>1to1_ffv1 / recording AVI</div></div>
     <div class="tile ', if (n_fr_issue == 0) "ok" else "warn", '">
       <div class="tile-value">', if (n_fr_issue == 0) "✓" else n_fr_issue, '</div>
       <div class="tile-label">Participants<br>with issues</div></div>
@@ -1867,14 +1957,16 @@ facereader_html <- tryCatch({
       <div class="section-label">FaceReader Exports</div>
       <h2>FaceReader files per participant</h2>
       <p>From <code>FACEREADER_RESULTS_DIR</code>: <code>{pid}_detailed</code>,
-         <code>{pid}_heart beat log</code>, <code>{pid}_state</code> (.txt or .xlsx) and
-         <code>{pid}_hrv_per_block.csv</code> (from 03_compute_hrv_per_block_facereader.py).
+         <code>{pid}_heart beat log</code> and <code>{pid}_state</code> (.txt or .xlsx).
          Beats = heartbeats in the heart beat log (flag below ', MIN_FACEREADER_BEATS, ').
-         Video and fps are read from the heart beat log header.</p>
+         Video and fps are read from the heart beat log header; the video must be
+         <code>{pid}_1to1_ffv1.avi</code> (old sessions: <code>{pid}_recording.avi</code>).
+         FaceReader HRV is computed by Kubios from the heart beat log: see the
+         <strong>Kubios video</strong> tab.</p>
     </div>
     <div class="table-wrap"><table>
       <thead><tr><th>Participant</th><th>Detailed</th><th>Heart beat log</th><th>State</th>
-        <th>HRV per block</th><th>Beats</th><th>HRV blocks</th><th>Analysed video</th>
+        <th>Beats</th><th>Analysed video</th>
         <th>Video fps</th><th>Status</th></tr></thead>
       <tbody>', fr_rows_html, '</tbody>
     </table></div>
@@ -1886,6 +1978,229 @@ facereader_html <- tryCatch({
     placeholder_section("FaceReader", sub("^NO_FILES: ", "", msg))
   } else {
     placeholder_section("FaceReader — load error", msg)
+  }
+})
+
+# ── 6.25 Kubios on the video heart beats (FaceReader + webcam) ──────────────────
+# Main-study plan (Oct 2026): FaceReader's and WebcamBiometrics' raw beats go through Kubios with
+# the same 5 blocks as the ECG, so all three are compared with the same HRV maths. Per participant
+# and stream (FaceReader; webcam for each variant in WEBCAM_KUBIOS_VARIANTS), every step is checked:
+#   raw beats      FaceReader {pid}_heart beat log.(txt|xlsx)   /  {pid}_webcam_beats_<variant>.csv
+#   Kubios input   {pid}_facereader_beats_kubios.txt            /  {pid}_webcam_beats_<variant>_kubios.txt
+#   samples row    that file's row in the folder's Kubios_Samples.csv, with all 5 windows
+#   Kubios results {input}_hrv.csv report and/or a row in a KubiosHRVresults*.csv batch summary
+# (inputs + samples: analysis/kubios/002_create_kubios_samples_video.py; results: Kubios itself).
+# Block HR is also compared with the participant's ECG Kubios results: a large difference means
+# the windows or the beats are off.
+MAX_VIDEO_ECG_HR_DIFF <- 5   # bpm, |block mean HR video - ECG|
+
+video_kubios_inv <- tryCatch({
+
+  streams <- c("facereader", paste0("webcam_", WEBCAM_KUBIOS_VARIANTS))
+  stream_dir <- function(s) if (s == "facereader") FACEREADER_RESULTS_DIR else WEBCAM_HR_DIR_QC
+  ls_dir <- function(d, pattern) if (dir.exists(d))
+    keep_files(list.files(d, pattern = pattern, full.names = TRUE, ignore.case = TRUE)) else character(0)
+
+  # raw beats + Kubios input files
+  fr_logs <- ls_dir(FACEREADER_RESULTS_DIR, "_heart beat log\\.(txt|xlsx)$")
+  fr_logs <- fr_logs[!startsWith(basename(fr_logs), "~$")]
+  files <- bind_rows(
+    tibble(pid = pid_from_file(fr_logs), stream = "facereader", kind = "raw", path = fr_logs),
+    { f <- ls_dir(WEBCAM_HR_DIR_QC, "_webcam_beats_.+\\.csv$")
+      f <- f[!str_detect(basename(f), regex("_kubios|_test30", ignore_case = TRUE))]
+      tibble(pid = pid_from_file(f), stream = kubios_stream(f), kind = "raw", path = f) },
+    { f <- c(ls_dir(FACEREADER_RESULTS_DIR, "_facereader_beats_kubios\\.txt$"),
+             ls_dir(WEBCAM_HR_DIR_QC, "_webcam_beats_.+_kubios\\.txt$"))
+      tibble(pid = pid_from_file(f), stream = kubios_stream(f), kind = "input", path = f) }
+  ) |> filter(stream %in% streams)
+
+  # samples rows (each folder's own Kubios_Samples.csv), only rows for the Kubios input files
+  samples <- map_dfr(unique(map_chr(streams, stream_dir)), function(d)
+    kubios_read_samples(file.path(d, "Kubios_Samples.csv"))) |>
+    filter(str_detect(input_file, "_kubios\\.txt$")) |>
+    mutate(pid = kub_pid(input_file), stream = kubios_stream(input_file)) |>
+    filter(stream %in% streams, !is_excluded(pid)) |>
+    group_by(pid, stream) |> summarise(n_windows = max(c(0L, n_windows)), .groups = "drop")
+
+  # Kubios results for the video streams (reports first, batch summary otherwise)
+  res_dirs <- unique(unlist(map(unique(map_chr(streams, stream_dir)), kubios_result_dirs)))
+  reports <- kubios_read_reports(unlist(map(res_dirs, ~ ls_dir(.x, "_hrv\\.csv$")))) |>
+    filter(stream %in% streams, block %in% KUBIOS_BLOCKS) |> drop_excluded("pid")
+  n_reports <- reports |> distinct(pid, stream, file) |> count(pid, stream, name = "n_reports")
+  reports <- reports |> group_by(pid, stream) |> slice_max(mtime, n = 1, with_ties = TRUE) |> ungroup()
+  summaries <- kubios_read_summaries(unlist(map(res_dirs, ~ list.files(.x,
+      pattern = "^KubiosHRVresults.*\\.csv$", full.names = TRUE, ignore.case = TRUE)))) |>
+    filter(stream %in% streams) |> drop_excluded("pid") |>
+    group_by(pid, stream) |> slice_max(mtime, n = 1, with_ties = TRUE) |>
+    group_by(pid, stream, block) |> slice_tail(n = 1) |> ungroup()
+  results <- bind_rows(
+    reports |> mutate(source = "_hrv report"),
+    summaries |> anti_join(distinct(reports, pid, stream), by = c("pid", "stream")) |>
+      mutate(source = "batch summary", n_beats = NA_real_, artefact_pct = NA_real_)
+  ) |> filter(!is.na(mean_hr_bpm))
+
+  # ECG Kubios results (same readers as the Kubios ECG tab) for the HR cross-check
+  ecg_rep <- kubios_read_reports(ls_dir(KUBIOS_RESULTS_DIR, "_hrv\\.csv$")) |>
+    filter(stream == "ecg", block %in% KUBIOS_BLOCKS) |>
+    group_by(pid) |> slice_max(mtime, n = 1, with_ties = TRUE) |> ungroup()
+  ecg_sum <- kubios_read_summaries(list.files(KUBIOS_RESULTS_DIR, pattern = "^KubiosHRVresults.*\\.csv$",
+                                              full.names = TRUE, ignore.case = TRUE)) |>
+    filter(stream == "ecg") |> group_by(pid) |> slice_max(mtime, n = 1, with_ties = TRUE) |>
+    group_by(pid, block) |> slice_tail(n = 1) |> ungroup()
+  ecg <- bind_rows(ecg_rep, ecg_sum |> filter(!pid %in% ecg_rep$pid)) |>
+    filter(!is.na(mean_hr_bpm)) |> select(pid, block, ecg_hr = mean_hr_bpm, ecg_rmssd = rmssd_ms) |>
+    drop_excluded("pid")
+
+  list(streams = streams, files = files, samples = samples, results = results,
+       n_reports = n_reports, ecg = ecg)
+}, error = function(e) e)
+
+video_kubios_html <- tryCatch({
+  if (inherits(video_kubios_inv, "error")) stop(conditionMessage(video_kubios_inv))
+  V <- video_kubios_inv
+  pids <- sort(unique(c(V$files$pid, V$samples$pid, V$results$pid)))
+  if (length(pids) == 0)
+    stop("NO_FILES: No FaceReader heart beat logs, webcam beats files or Kubios video results found.")
+
+  res_sum <- V$results |>
+    left_join(V$ecg, by = c("pid", "block")) |>
+    group_by(pid, stream) |>
+    summarise(n_blocks   = n_distinct(block),
+              source     = first(source),
+              hr_min     = min(mean_hr_bpm), hr_max = max(mean_hr_bpm),
+              rmssd_min  = suppressWarnings(min(rmssd_ms, na.rm = TRUE)),
+              rmssd_max  = suppressWarnings(max(rmssd_ms, na.rm = TRUE)),
+              max_dhr    = if (all(is.na(ecg_hr))) NA_real_ else max(abs(mean_hr_bpm - ecg_hr), na.rm = TRUE),
+              low_beats  = paste(block[!is.na(n_beats) & n_beats < MIN_KUBIOS_BLOCK_BEATS], collapse = ", "),
+              max_artef  = if (all(is.na(artefact_pct))) NA_real_ else max(artefact_pct, na.rm = TRUE),
+              .groups = "drop") |>
+    mutate(across(c(rmssd_min, rmssd_max), ~ ifelse(is.infinite(.x), NA, .x)))
+
+  grid <- tidyr::expand_grid(pid = pids, stream = V$streams) |>
+    mutate(has_raw   = paste(pid, stream) %in% paste(V$files$pid[V$files$kind == "raw"], V$files$stream[V$files$kind == "raw"]),
+           has_input = paste(pid, stream) %in% paste(V$files$pid[V$files$kind == "input"], V$files$stream[V$files$kind == "input"])) |>
+    left_join(V$samples, by = c("pid", "stream")) |>
+    left_join(res_sum, by = c("pid", "stream")) |>
+    left_join(V$n_reports, by = c("pid", "stream")) |>
+    mutate(n_windows = coalesce(n_windows, 0L), n_blocks = coalesce(n_blocks, 0L),
+           has_ecg = pid %in% V$ecg$pid,
+           issues = pmap_chr(list(stream, has_raw, has_input, n_windows, n_blocks, n_reports,
+                                  hr_min, hr_max, rmssd_min, rmssd_max, max_dhr, low_beats, has_ecg),
+             function(s, raw, inp, nw, nb, nr, hmin, hmax, rmin, rmax, dhr, lb, he) {
+               paste(c(if (!raw) (if (s == "facereader") "no heart beat log" else "no webcam beats CSV (run 003)"),
+                       if (raw && !inp) "no _kubios.txt (run 002_create_kubios_samples_video.py)",
+                       if (inp && nw == 0) "not in Kubios_Samples.csv",
+                       if (nw > 0 && nw < 5) paste0(nw, "/5 sample windows"),
+                       if (inp && nb == 0) "no Kubios results",
+                       if (nb > 0 && nb < 5) paste0(nb, "/5 blocks in Kubios results"),
+                       if (!is.na(nr) && nr > 1) paste0(nr, " Kubios reports (newest used)"),
+                       if (!is.na(hmin) && (hmin < 40 || hmax > 120)) "block HR outside 40–120",
+                       if (!is.na(rmin) && (rmin < 5 || rmax > 200)) "RMSSD outside 5–200",
+                       if (!is.na(dhr) && dhr > MAX_VIDEO_ECG_HR_DIFF)
+                         sprintf("block HR up to %.1f bpm from ECG", dhr),
+                       if (nb > 0 && !he) "no ECG Kubios results to compare",
+                       if (!is.na(lb) && lb != "") paste0("< ", MIN_KUBIOS_BLOCK_BEATS, " beats: ", lb)),
+                     collapse = "; ")
+             }),
+           status_html = status_cell(issues))
+
+  fmt1 <- function(x, d = 1) if_else(is.na(x), "—", formatC(x, format = "f", digits = d))
+  rng  <- function(a, b) if_else(is.na(a), "—", paste0(fmt1(a), "–", fmt1(b)))
+  show_artef <- any(!is.na(grid$max_artef))
+  rows_html <- grid |>
+    arrange(issues == "", pid, stream) |>
+    mutate(html = paste0(
+      "<tr><td class='mono'>", pid, "</td><td>", kubios_stream_label(stream), "</td>",
+      yes_no_cell(has_raw), yes_no_cell(has_input), yes_no_cell(n_windows >= 5),
+      yes_no_cell(n_blocks >= 5),
+      "<td>", if_else(is.na(source), "—", source), "</td>",
+      "<td>", rng(hr_min, hr_max), "</td>",
+      "<td>", rng(rmssd_min, rmssd_max), "</td>",
+      "<td>", fmt1(max_dhr), "</td>",
+      if (show_artef) paste0("<td>", fmt1(max_artef), "</td>") else "",
+      status_html, "</tr>")) |>
+    pull(html) |> paste(collapse = "\n")
+
+  # Block means across participants, ECG next to the video streams (participants with results)
+  by_block <- bind_rows(
+      V$ecg |> filter(pid %in% V$results$pid) |>
+        transmute(pid, stream = "ecg", block, mean_hr_bpm = ecg_hr, rmssd_ms = ecg_rmssd),
+      V$results |> select(pid, stream, block, mean_hr_bpm, rmssd_ms)) |>
+    group_by(stream, block) |>
+    summarise(n = n_distinct(pid), hr = mean(mean_hr_bpm, na.rm = TRUE),
+              rmssd = mean(rmssd_ms, na.rm = TRUE), .groups = "drop") |>
+    arrange(match(block, KUBIOS_BLOCKS), match(stream, c("ecg", V$streams)))
+  block_html <- if (nrow(by_block) == 0) "" else paste0(
+    '<section>
+      <div class="section-head">
+        <div class="section-label">Same Maths, Three Sources</div>
+        <h2>Kubios block means: ECG vs video</h2>
+        <p>Mean over participants of Kubios&#39; block mean HR (bpm) and RMSSD (ms). ECG rows use
+           only participants with video Kubios results. A QC overview, not the analysis.</p>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Block</th><th>Source</th><th>N</th><th>Mean HR (bpm)</th><th>Mean RMSSD (ms)</th></tr></thead>
+        <tbody>',
+    by_block |> mutate(html = paste0("<tr><td class='mono'>", block, "</td><td>", kubios_stream_label(stream),
+                                     "</td><td>", n, "</td><td>", fmt1(hr), "</td><td>", fmt1(rmssd), "</td></tr>")) |>
+      pull(html) |> paste(collapse = "\n"),
+    '</tbody></table></div></section>')
+
+  n_rows   <- nrow(grid)
+  n_input  <- sum(grid$has_input & grid$n_windows >= 5)
+  n_done   <- sum(grid$n_blocks >= 5)
+  n_iss    <- sum(grid$issues != "")
+
+  paste0(
+  '<div class="status-row">
+    <div class="tile blue"><div class="tile-value">', length(pids), '</div>
+      <div class="tile-label">Participants with<br>video heart beats</div></div>
+    <div class="tile ', if (n_input == n_rows) "ok" else "warn", '">
+      <div class="tile-value">', n_input, '/', n_rows, '</div>
+      <div class="tile-label">Kubios input +<br>5 sample windows</div></div>
+    <div class="tile ', if (n_done == n_rows) "ok" else "warn", '">
+      <div class="tile-value">', n_done, '/', n_rows, '</div>
+      <div class="tile-label">Kubios results<br>for 5 blocks</div></div>
+    <div class="tile ', if (n_iss == 0) "ok" else "warn", '">
+      <div class="tile-value">', if (n_iss == 0) "✓" else n_iss, '</div>
+      <div class="tile-label">Participant × source<br>rows with issues</div></div>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <div class="section-label">Kubios on Video Heart Beats</div>
+      <h2>FaceReader and webcam beats through Kubios, per participant</h2>
+      <p>One row per participant and source: FaceReader, and webcam code version(s) ',
+         paste0("<code>", WEBCAM_KUBIOS_VARIANTS, "</code>", collapse = ", "), '. Each step:
+         <strong>Raw beats</strong> (<code>{pid}_heart beat log</code> in <code>', FACEREADER_RESULTS_DIR,
+         '</code> / <code>{pid}_webcam_beats_{variant}.csv</code> in <code>', WEBCAM_HR_DIR_QC, '</code>);
+         <strong>Kubios input</strong> (<code>{pid}_facereader_beats_kubios.txt</code> /
+         <code>{pid}_webcam_beats_{variant}_kubios.txt</code>, beat times in seconds);
+         <strong>Samples</strong> (that file&#39;s row in the folder&#39;s <code>Kubios_Samples.csv</code>
+         with all 5 windows) &mdash; both from <code>analysis/kubios/002_create_kubios_samples_video.py</code>;
+         <strong>Kubios results</strong> (<code>{input}_hrv.csv</code> report, or a row in a
+         <code>KubiosHRVresults*.csv</code> batch summary, in that folder, its <code>kubios/</code>
+         subfolder or <code>KUBIOS_RESULTS_DIR</code>; 5 blocks). Flags: block HR outside 40–120 bpm,
+         RMSSD outside 5–200 ms, block HR more than ', MAX_VIDEO_ECG_HR_DIFF, ' bpm from the
+         participant&#39;s ECG Kubios result, fewer than ', MIN_KUBIOS_BLOCK_BEATS, ' beats in a block.',
+         if (show_artef) ' Artefacts = highest share of beats Kubios corrected in any block (%).' else '', '</p>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Participant</th><th>Source</th><th>Raw beats</th><th>Kubios input</th>
+        <th>Samples</th><th>Kubios results</th><th>From</th><th>Block HR (bpm)</th>
+        <th>RMSSD (ms)</th><th>Max |ΔHR| vs ECG</th>', if (show_artef) '<th>Artefacts (%)</th>' else '',
+        '<th>Status</th></tr></thead>
+      <tbody>', rows_html, '</tbody>
+    </table></div>
+  </section>
+  ', block_html)
+
+}, error = function(e) {
+  msg <- conditionMessage(e)
+  if (startsWith(msg, "NO_FILES:")) {
+    placeholder_section("Kubios on video heart beats", sub("^NO_FILES: ", "", msg))
+  } else {
+    placeholder_section("Kubios on video heart beats — load error", msg)
   }
 })
 
@@ -2351,9 +2666,26 @@ completeness_html <- tryCatch({
   # participant having been run at all.
   ids_physiology <- get_ids(ids_of_files(PHYSIOLOGY_SESSION_DIR, "_physiology\\.acq$"))
 
-  ids_webcam_offline <- get_ids(ids_of_files(WEBCAM_HR_DIR_QC, "^[^_]+_webcam_hr_events\\.csv$"))
-  ids_facereader <- get_ids(ids_of_files(FACEREADER_RESULTS_DIR,
-                                         "_detailed\\.(txt|xlsx)$|_heart beat log\\.(txt|xlsx)$|_state\\.(txt|xlsx)$|_hrv_per_block\\.csv$"))
+  # Webcam HR offline: all three 003 files for every required variant (WEBCAM_KUBIOS_VARIANTS)
+  ids_webcam_offline <- get_ids(tryCatch({
+    wf <- webcam_offline_files() |> filter(variant %in% WEBCAM_KUBIOS_VARIANTS)
+    n_need <- 3 * length(WEBCAM_KUBIOS_VARIANTS)
+    wf |> distinct(pid, kind, variant) |> count(pid) |> filter(n == n_need) |> pull(pid)
+  }, error = function(e) character(0)))
+  # FaceReader: the heart beat log is what everything else needs
+  ids_facereader <- get_ids(ids_of_files(FACEREADER_RESULTS_DIR, "_heart beat log\\.(txt|xlsx)$"))
+
+  # Kubios on the video beats (section 6.25): Kubios results for all 5 blocks. FaceReader, and the
+  # webcam for every required variant. Main report only: the pilots were not run this way.
+  kub_done <- function(want) {
+    if (inherits(video_kubios_inv, "error")) return(character(0))
+    r <- video_kubios_inv$results |> filter(stream %in% want) |>
+      distinct(pid, stream, block) |> count(pid, stream) |> filter(n >= 5) |>
+      count(pid) |> filter(n == length(want))
+    get_ids(r$pid)
+  }
+  ids_kubios_fr <- kub_done("facereader")
+  ids_kubios_wc <- kub_done(paste0("webcam_", WEBCAM_KUBIOS_VARIANTS))
 
   # PsychoPy, questionnaires and biometrics come from the RAW Box folders (section 7.4).
   # A questionnaire counts when there is a complete response; a partial-only response is
@@ -2369,6 +2701,8 @@ completeness_html <- tryCatch({
     `Webcam HR offline` = ids_webcam_offline,
     FaceReader     = ids_facereader
   )
+  if (QC_MODE == "main")
+    sources <- c(sources, list(`Kubios FaceReader` = ids_kubios_fr, `Kubios webcam` = ids_kubios_wc))
   partial <- list(Questionnaires = ids_raw_q_partial, Video = ids_video_partial)
   partial_note <- function(nm, pid)
     if (nm == "Video") video_missing(pid) else "incomplete Qualtrics response only"
@@ -2464,8 +2798,10 @@ completeness_html <- tryCatch({
          (<code>raw_psychopy</code>, subfolders included, and every Qualtrics export in
          <code>raw_questionnaire</code>), so this tab does not depend on re-knitting 01 or 04.
          Whether the combined CSVs have caught up is on the <strong>Combined datasets</strong> tab.
-         The other sources: BIOPAC session recordings, Ledalab (EDA), Kubios (HRV), the Box video
-         folder and FaceReader exports. IDs are compared case-insensitively and whitespace-trimmed.
+         The other sources: BIOPAC session recordings, Ledalab (EDA), Kubios (HRV) on the ECG, the Box
+         video folder, offline webcam heart rate (003, ', paste(WEBCAM_KUBIOS_VARIANTS, collapse = ", "), '),
+         the FaceReader heart beat log', if (QC_MODE == "main") ', and Kubios results for all 5 blocks
+         on the FaceReader and webcam beats (<strong>Kubios video</strong> tab)' else '', '. IDs are compared case-insensitively and whitespace-trimmed.
          <strong>Video</strong> counts only when <code>{id}_frames.zip</code>, <code>{id}_1to1_ffv1.avi</code>
          and <code>{id}_frame_timestamps.csv</code> are all there (old sessions recorded straight to AVI:
          <code>{id}_recording.avi</code> + timestamps); with only some of them it shows as partial
@@ -2837,7 +3173,8 @@ html_out <- paste0(
     <button class="tab-btn" data-tab="combined">Combined datasets</button>
     <button class="tab-btn" data-tab="psychopy">PsychoPy</button>
     <button class="tab-btn" data-tab="ledalab">Ledalab (EDA)</button>
-    <button class="tab-btn" data-tab="kubios">Kubios (HRV)</button>
+    <button class="tab-btn" data-tab="kubios">Kubios ECG</button>
+    <button class="tab-btn" data-tab="kubios-video">Kubios video</button>
     <button class="tab-btn" data-tab="biometrics">Webcam HR (online)</button>
     <button class="tab-btn" data-tab="biometrics-offline">Webcam HR (offline)</button>
     <button class="tab-btn" data-tab="video">Video</button>
@@ -2851,6 +3188,7 @@ html_out <- paste0(
   <div id="tab-psychopy" class="tab-content">',          psychopy_html, '</div>
   <div id="tab-ledalab"  class="tab-content">',          ledalab_html,  '</div>
   <div id="tab-kubios"   class="tab-content">',          kubios_html,   '</div>
+  <div id="tab-kubios-video" class="tab-content">',      video_kubios_html, '</div>
   <div id="tab-biometrics" class="tab-content">',        biometrics_online_note, biometrics_html, '</div>
   <div id="tab-biometrics-offline" class="tab-content">', biometrics_offline_html, '</div>
   <div id="tab-video"    class="tab-content">',          video_html,    '</div>
