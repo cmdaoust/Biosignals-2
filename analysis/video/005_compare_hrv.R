@@ -5,10 +5,14 @@
 # Compares heart rate variability (HRV) per block from three sources:
 #
 #   ECG         Kubios HRV report (the ground truth)
-#   webcam      WebcamBiometrics beats (003_run_webcam_biometrics.py output)
-#   webcam_optimize  the same video through the optimised beat detector (003 --optimize; linear-phase
-#               FIR filter + sub-sample peak timing - WebcamBiometrics docs/beat-timing.md). Optional:
-#               used when <id>_webcam_beats_optimize.csv exists, so current and optimised sit side by side.
+#   webcam      WebcamBiometrics beats (003_run_webcam_biometrics.py output), up to three code versions,
+#               each a separate source, labelled by the file it comes from:
+#                 webcam_baseline   <id>_webcam_beats_baseline.csv   original WebcamBiometrics code
+#                 webcam_faceloss   <id>_webcam_beats_faceloss.csv   original + face-loss gap fix
+#                 webcam_optimized  <id>_webcam_beats_optimized.csv  gap fix + FIR filter + heart-rate-guided beats
+#               (003 --variant, default all three). Whichever exist are compared side by side. Older
+#               unlabelled files (<id>_webcam_beats.csv, *_optimize.csv) are NOT read: their code version
+#               isn't recorded reliably - rerun 003.
 #   FaceReader  FaceReader "heart beat log" (if one exists for the participant)
 #
 # and works out WHY each webcam source differs from the ECG.
@@ -26,8 +30,8 @@
 #   Only base R is used - nothing to install.
 #
 # WHAT IT NEEDS (per participant)
-#   3_Data/webcam_biometrics/<id>_webcam_beats.csv     from 003_run_webcam_biometrics.py
-#   optional: <id>_webcam_beats_optimize.csv           from 003_run_webcam_biometrics.py --optimize
+#   3_Data/webcam_biometrics/<id>_webcam_beats_<variant>.csv   from 003_run_webcam_biometrics.py
+#             (variant = baseline / faceloss / optimized; at least one)
 #   3_Data/ecg_video_offsets.csv                       written by 003 (ECG -> video clock offset)
 #   Kubios HRV report  <id>_*hrv*.csv                  in 3_Data/kubios or next to the trimmed .acq
 #   optional: <id>_*heart beat log.txt                 FaceReader export (D:/Biosignals2_video,
@@ -128,9 +132,12 @@ SETTINGS <- list(
 
 BLOCKS <- c("baseline", "negative_induction", "negative_recovery",
             "positive_induction", "positive_recovery")
-SOURCES <- c("webcam", "webcam_optimize", "facereader")
-COLS <- c(ecg = "black", kubios = "grey55", webcam = "#1f6fb4", webcam_optimize = "#2a9d4b", facereader = "#d95f02")
-SOURCE_LABELS <- c(webcam = "Webcam", webcam_optimize = "Webcam opt.", facereader = "FaceReader")
+WEBCAM_VARIANTS <- c("baseline", "faceloss", "optimized")   # 003 --variant; file suffix _<variant>
+SOURCES <- c(paste0("webcam_", WEBCAM_VARIANTS), "facereader")
+COLS <- c(ecg = "black", kubios = "grey55", webcam_baseline = "#9aa5b1", webcam_faceloss = "#1f6fb4",
+          webcam_optimized = "#2a9d4b", facereader = "#d95f02")
+SOURCE_LABELS <- c(webcam_baseline = "Webcam (baseline)", webcam_faceloss = "Webcam (faceloss)",
+                   webcam_optimized = "Webcam (optimized)", facereader = "FaceReader")
 
 # ---- paths -------------------------------------------------------------------
 script_dir <- function() {
@@ -275,11 +282,11 @@ read_offset <- function(pid) {
 }
 
 # webcam beats -> data.frame(t = ECG clock, rr = as reported, segment, near_gap)
-# suffix "_optimize": the optimised beat detector (003 --optimize -> <id>_webcam_beats_optimize.csv).
-read_webcam <- function(pid, offset, suffix = "") {
-  p <- file.path(WEBCAM_HR_DIR, paste0(pid, "_webcam_beats", suffix, ".csv"))
+# variant: baseline / faceloss / optimized -> <id>_webcam_beats_<variant>.csv (003 --variant).
+read_webcam <- function(pid, offset, variant) {
+  p <- file.path(WEBCAM_HR_DIR, paste0(pid, "_webcam_beats_", variant, ".csv"))
   if (!file.exists(p)) {
-    say("  webcam%s: no %s%s", suffix, p, if (nzchar(suffix)) " (run 003_run_webcam_biometrics.py --optimize to make it)" else "")
+    say("  webcam_%s: no %s (run 003_run_webcam_biometrics.py %s --variant %s)", variant, basename(p), pid, variant)
     return(NULL)
   }
   d <- read.csv(p)
@@ -809,8 +816,9 @@ plot_summary <- function(pid, tab) {
   par(mfrow = c(3, 1), mar = c(3, 4.5, 2.5, 1))
   bl <- BLOCKS[BLOCKS %in% tab$block]
   keys <- list(c("ecg", "kubios_report", "kubios", 4), c("ecg", "as_is", "ecg", 16),
-               c("webcam", "as_is", "webcam", 1), c("webcam", "cleaned", "webcam", 16),
-               c("webcam_optimize", "as_is", "webcam_optimize", 1), c("webcam_optimize", "cleaned", "webcam_optimize", 16),
+               c("webcam_baseline", "as_is", "webcam_baseline", 1), c("webcam_baseline", "cleaned", "webcam_baseline", 16),
+               c("webcam_faceloss", "as_is", "webcam_faceloss", 1), c("webcam_faceloss", "cleaned", "webcam_faceloss", 16),
+               c("webcam_optimized", "as_is", "webcam_optimized", 1), c("webcam_optimized", "cleaned", "webcam_optimized", 16),
                c("facereader", "as_is", "facereader", 1), c("facereader", "cleaned", "facereader", 16),
                c("facereader", "facereader_own", "facereader", 17))
   for (m in c("rmssd_ms", "sdnn_ms", "mean_hr")) {
@@ -822,14 +830,16 @@ plot_summary <- function(pid, tab) {
     axis(1, at = seq_along(bl), labels = gsub("_", " ", bl), cex.axis = 0.8)
     for (k in seq_along(keys)) {
       ky <- keys[[k]]; r <- tab[tab$source == ky[1] & tab$version == ky[2], ]
-      x <- match(r$block, bl) + (k - 5) * 0.07
+      x <- match(r$block, bl) + (k - (length(keys) + 1) / 2) * 0.06
       points(x, r[[m]], pch = as.integer(ky[4]), col = COLS[ky[3]], cex = 1.2)
     }
-    if (m == "rmssd_ms") legend("topleft", c("Kubios report", "ECG (this script)", "webcam as is", "webcam cleaned",
-                                             "webcam opt. as is", "webcam opt. cleaned",
-                                             "FaceReader as is", "FaceReader cleaned", "FaceReader's own HRV"), bty = "n", cex = 0.7, ncol = 5,
-                                pch = c(4, 16, 1, 16, 1, 16, 1, 16, 17),
-                                col = COLS[c("kubios", "ecg", "webcam", "webcam", "webcam_optimize", "webcam_optimize", "facereader", "facereader", "facereader")])
+    if (m == "rmssd_ms") legend("topleft", c("Kubios report", "ECG (this script)",
+                                             "baseline as is", "baseline cleaned", "faceloss as is", "faceloss cleaned",
+                                             "optimized as is", "optimized cleaned",
+                                             "FaceReader as is", "FaceReader cleaned", "FaceReader's own HRV"), bty = "n", cex = 0.65, ncol = 6,
+                                pch = c(4, 16, 1, 16, 1, 16, 1, 16, 1, 16, 17),
+                                col = COLS[c("kubios", "ecg", "webcam_baseline", "webcam_baseline", "webcam_faceloss", "webcam_faceloss",
+                                             "webcam_optimized", "webcam_optimized", "facereader", "facereader", "facereader")])
   }
   par(mfrow = c(1, 1))
 }
@@ -843,8 +853,9 @@ run_pid <- function(pid) {
   offset <- read_offset(pid)
   clock <- read_frame_clock(pid)
   say("  Kubios: %s | ECG->video offset %.3f s", basename(kp), offset)
-  srcs <- Filter(Negate(is.null), list(webcam = read_webcam(pid, offset),
-                                       webcam_optimize = read_webcam(pid, offset, "_optimize"),
+  srcs <- Filter(Negate(is.null), list(webcam_baseline = read_webcam(pid, offset, "baseline"),
+                                       webcam_faceloss = read_webcam(pid, offset, "faceloss"),
+                                       webcam_optimized = read_webcam(pid, offset, "optimized"),
                                        facereader = read_facereader(pid, offset, clock)))
   if (!length(srcs)) { say("  nothing to compare."); return(NULL) }
   own <- read_facereader_own(pid, offset, clock)
@@ -1010,8 +1021,8 @@ main <- function() {
   GROUP_LABEL <<- if (!PS_OK) "all participants (participant_status.csv not read)" else if (INCLUDE_PILOTS) "main study + pilots" else "main study"
   pids <- if (length(args)) args else PIDS
   if (identical(pids, "--all")) {
-    f <- list.files(WEBCAM_HR_DIR, pattern = "_webcam_beats\\.csv$")
-    pids <- sub("_webcam_beats\\.csv$", "", f)
+    f <- list.files(WEBCAM_HR_DIR, pattern = "_webcam_beats_(baseline|faceloss|optimized)\\.csv$")
+    pids <- unique(sub("_webcam_beats_.*$", "", f))
     dropped <- participants_dropped(pids, INCLUDE_PILOTS)
     if (nrow(dropped)) {
       say("Left out (participant_status.csv, INCLUDE_PILOTS = %s): %s", INCLUDE_PILOTS,
