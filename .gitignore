@@ -7,6 +7,8 @@ config.yaml
 # ── Raw data (lives in Box, not tracked by git) ───────────────────────────────
 **/*.acq
 analysis/data/
+analysis/followup_schedule.csv
+analysis/questionniare_followup_dates.R
 
 # ── R artifacts ───────────────────────────────────────────────────────────────
 .Rhistory
