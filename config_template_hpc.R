@@ -1,10 +1,9 @@
 # config_template_hpc.R
-# ======================
+# =====================
 # HPC (CISC2 cluster) version of config.R.
 # Copy this file to config.R on the HPC and verify paths as needed.
-# config.R is gitignored — never commit it.
-#
-# All R scripts in analysis/ load this automatically.
+# config.R is gitignored: never commit it.
+# Same variables as config_template.py (plus a few R-only ones at the end).
 
 # The GitHub repo is cloned directly into Biosignals2/; data lives in
 # Biosignals2/data/ with the same subfolder structure as the Box 3_Data folder
@@ -21,19 +20,36 @@ PHYSIOLOGY_TRIMMED_DIR <- file.path(PHYSIOLOGY_ROOT, "experimental_protocol_dura
 PHYSIOLOGY_EXPORTS_DIR <- file.path(PHYSIOLOGY_ROOT, "exports")                         # .mat for Ledalab
 
 # What analyses should use.
-RAW_PHYSIOLOGY_DIR     <- PHYSIOLOGY_TRIMMED_DIR
+RAW_PHYSIOLOGY_DIR        <- PHYSIOLOGY_TRIMMED_DIR
 PSYCHOPY_DATA_DIR         <- file.path(SERVER_ROOT, "raw_psychopy")
 RAW_QUESTIONNAIRE_DIR     <- file.path(SERVER_ROOT, "raw_questionnaire")
-QUESTIONNAIRE_DIR         <- RAW_QUESTIONNAIRE_DIR   # used by 04 and the QC report
-
 COMBINED_DATA_DIR         <- file.path(SERVER_ROOT, "clean_combined_data")
 COMBINED_PSYCHO_DIR       <- file.path(COMBINED_DATA_DIR, "psychopy")
 COMBINED_QUEST_DIR        <- file.path(COMBINED_DATA_DIR, "questionnaires")
 COMBINED_PSYCHO_QUEST_DIR <- file.path(COMBINED_DATA_DIR, "psychopy_questionnaire")
-
 PROCESSED_PHYSIO_DIR      <- file.path(SERVER_ROOT, "pspm", "preprocessed")
-
 BLOCK_ONSETS_DIR          <- file.path(SERVER_ROOT, "event_onsets", "blocks")
 VIDEO_ONSETS_DIR          <- file.path(SERVER_ROOT, "event_onsets", "stimulus_videos")
+FACEREADER_ONSETS_DIR     <- file.path(SERVER_ROOT, "event_onsets", "facereader_video")  # events in FaceReader AVI time
+FACEREADER_RESULTS_DIR    <- file.path(SERVER_ROOT, "facereader")  # FaceReader exports
 
+# Webcam (<id>_frames/, <id>_frame_timestamps.csv, <id>_facereader.avi)
+WEBCAM_PNG_EXTERNAL_DIR   <- ""  # not on the HPC; fill in if copied there; external hard drive: <id>_frames/ + <id>_frame_timestamps.csv
+# Where the video analyses SAVE and READ the video files (1to1 .mkv, realtime / 1to1-facereader AVIs,
+# plus a copy of each <id>_frame_timestamps.csv): the external hard drive. The PNG originals are
+# archived on Box; these videos are working copies that can be rebuilt from them.
+VIDEO_EXTERNAL_DIR        <- ""  # not on the HPC; fill in if copied there; external hard drive (not Box)
+# WebcamBiometrics code (used by 002_run_webcam_biometrics.py)
+WEBCAM_BIOMETRICS_REPO    <- ""  # not on the HPC; fill in if cloned there
+# Webcam, older sessions recorded straight to AVI (<id>_frame_timestamps.csv, <id>_recording.avi)
+VIDEO_BOX_DIR             <- file.path(SERVER_ROOT, "video")   # Box
+LEDALAB_RESULTS_DIR       <- file.path(SERVER_ROOT, "ledalab")
+# Ledalab input: EDA-only .mat files prepared for Ledalab
+LEDALAB_INPUT_DIR         <- file.path(SERVER_ROOT, "ledalab", "input")
+
+# ── R only ────────────────────────────────────────────────────────────────────
+QUESTIONNAIRE_DIR         <- RAW_QUESTIONNAIRE_DIR   # used by 04 and the QC report
+KUBIOS_RESULTS_DIR        <- file.path(SERVER_ROOT, "kubios")      # Kubios HRV reports (QC report, 003_compare_hrv.R)
+KUBIOS_DIR                <- KUBIOS_RESULTS_DIR                    # old name, pilot HR-comparison Rmds
+FACEREADER_DIR            <- file.path(SERVER_ROOT, "video")       # pilot HR-comparison Rmds
 SF_STATS_DIR              <- file.path(SERVER_ROOT, "pspm", "outputs")
