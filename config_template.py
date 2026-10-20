@@ -33,6 +33,7 @@ PROCESSED_PHYSIO_DIR  = os.path.join(SERVER_ROOT, "pspm", "preprocessed")
 BLOCK_ONSETS_DIR = os.path.join(SERVER_ROOT, "event_onsets", "blocks")
 VIDEO_ONSETS_DIR = os.path.join(SERVER_ROOT, "event_onsets", "stimulus_videos")
 FACEREADER_ONSETS_DIR = os.path.join(SERVER_ROOT, "event_onsets", "facereader_video")  # events in FaceReader AVI time
+FACEREADER_RESULTS_DIR = os.path.join(SERVER_ROOT, "facereader")  # FaceReader exports (same folder as in config.R)
 
 # Webcam (<id>_frames/, <id>_frame_timestamps.csv, <id>_facereader.avi)
 WEBCAM_PNG_EXTERNAL_DIR = r""  # e.g. r"D:\Biosignals2_png_data"   # external hard drive: <id>_frames\ + <id>_frame_timestamps.csv
