@@ -1,0 +1,28 @@
+# config.R
+# =======
+# Project paths for Biosignals2 R analysis scripts.
+# Mirrors ledalab/config.py — update SERVER_ROOT if Box is mounted elsewhere.
+
+SERVER_ROOT <- "C:/Users/carme/Box/Project_Biosignals_study_2/3_Data"
+
+BLOCK_ONSETS_DIR    <- file.path(SERVER_ROOT, "event_onsets", "blocks")
+LEDALAB_RESULTS_DIR <- file.path(SERVER_ROOT, "ledalab")
+LEDALAB_INPUT_DIR   <- file.path(SERVER_ROOT, "ledalab", "input")
+KUBIOS_RESULTS_DIR  <- file.path(SERVER_ROOT, "kubios")
+PSYCHOPY_DATA_DIR   <- file.path(SERVER_ROOT, "raw_psychopy")
+COMBINED_DATA_DIR    <- file.path(SERVER_ROOT, "clean_combined_data")
+COMBINED_PSYCHO_DIR  <- file.path(COMBINED_DATA_DIR, "psychopy")
+QUESTIONNAIRE_DIR    <- file.path(SERVER_ROOT, "raw_questionnaire")
+# ── Physiology ────────────────────────────────────────────────────────────────
+# The BIOPAC recordings live in three stages. Analyses run on the TRIMMED
+# recordings (cut to the experimental protocol), because event onsets are
+# measured from the start of the file and must match the data being analysed.
+PHYSIOLOGY_ROOT        <- file.path(SERVER_ROOT, "raw_physiology")
+PHYSIOLOGY_SESSION_DIR <- file.path(PHYSIOLOGY_ROOT, "entire_session_duration")         # as recorded
+PHYSIOLOGY_TRIMMED_DIR <- file.path(PHYSIOLOGY_ROOT, "experimental_protocol_duration")  # cut to protocol
+PHYSIOLOGY_EXPORTS_DIR <- file.path(PHYSIOLOGY_ROOT, "exports")                         # .mat for Ledalab
+
+# What analyses should use.
+RAW_PHYSIOLOGY_DIR     <- PHYSIOLOGY_TRIMMED_DIR
+VIDEO_BOX_DIR              <- file.path(SERVER_ROOT, "video")       # Box: webcam recordings + frame timestamps
+FACEREADER_RESULTS_DIR <- file.path(SERVER_ROOT, "facereader")  # FaceReader exports

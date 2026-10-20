@@ -170,14 +170,14 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
   </nav>
 
   <div id="tab-completeness" class="tab-content active"><div class="note"><strong>Main study:</strong> pilot participants (<span class="mono">E5510, E9967, G2313, N2026, P7259, S0943</span>) are left out; they are in <code>biosignals2_qc_pilot.html</code>.<br>Left out of both reports: <span class='mono'>I4155</span> (excluded: participant repositioned their chair outside camera FOV); <span class='mono'>S0723</span> (excluded: Session error: inductions only); <span class='mono'>001</span> (test: Early pilot; pre-dates the emotion label question); <span class='mono'>002</span> (test: Early pilot; pre-dates the emotion label question); <span class='mono'>003</span> (test: Test session); <span class='mono'>123</span> (test: questionnaire test run); <span class='mono'>1234</span> (test: questionnaire test run); <span class='mono'>234</span> (test: questionnaire test run); <span class='mono'>CARMEN</span> (test: Carmen's own test sessions); <span class='mono'>P1234</span> (test: questionnaire test run). <br>Edit <code>analysis/participant_status.csv</code> to change who is pilot, test or excluded. Files are untouched on disk.</div><div class="status-row">
-    <div class="tile blue"><div class="tile-value">7</div>
+    <div class="tile blue"><div class="tile-value">8</div>
       <div class="tile-label">Unique participant<br>IDs observed</div></div>
     <div class="tile warn">
-      <div class="tile-value">0/7</div>
+      <div class="tile-value">0/8</div>
       <div class="tile-label">Participants with<br>complete dataset</div></div>
-    <div class="tile blue"><div class="tile-value">7/5/3/5</div>
+    <div class="tile blue"><div class="tile-value">8/5/3/6</div>
       <div class="tile-label">PsychoPy / Quest. /<br>Ledalab / Kubios IDs</div></div>
-    <div class="tile blue"><div class="tile-value">3/7/5</div>
+    <div class="tile blue"><div class="tile-value">3/8/6</div>
       <div class="tile-label">Video / Biometrics /<br>FaceReader IDs</div></div>
   </div>
 
@@ -191,7 +191,7 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
          <code>raw_questionnaire</code>), so this tab does not depend on re-knitting 01 or 04.
          Whether the combined CSVs have caught up is on the <strong>Combined datasets</strong> tab.
          The other sources: BIOPAC session recordings, Ledalab (EDA), Kubios (HRV) on the ECG, the Box
-         video folder, offline webcam heart rate (003, optimized),
+         video folder, offline webcam heart rate (002, optimized),
          the FaceReader heart beat log, and Kubios results for all 5 blocks
          on the FaceReader and webcam beats (<strong>Kubios video</strong> tab). IDs are compared case-insensitively and whitespace-trimmed.
          <strong>Video</strong> counts only when <code>{id}_frames.zip</code>, <code>{id}_1to1_ffv1.avi</code>
@@ -199,9 +199,10 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
          <code>{id}_recording.avi</code> + timestamps); with only some of them it shows as partial
          (hover for what is missing).</p>
     </div>
-    <div class="note"><strong>7 participant(s) missing data from at least one source:</strong>
-           <ul style="margin-top:.5rem;margin-left:1.2rem;line-height:1.8;"><li><span class='mono'>K6294</span> &mdash; missing: Questionnaires, Ledalab, Kubios, Video (no frames.zip), Webcam HR offline, Kubios FaceReader, Kubios webcam</li>
-<li><span class='mono'>M9351</span> &mdash; missing: Questionnaires, Ledalab, Kubios, Video (no frames.zip), Webcam HR offline, FaceReader, Kubios FaceReader, Kubios webcam</li>
+    <div class="note"><strong>8 participant(s) missing data from at least one source:</strong>
+           <ul style="margin-top:.5rem;margin-left:1.2rem;line-height:1.8;"><li><span class='mono'>H9149</span> &mdash; missing: Questionnaires, Ledalab, Kubios, Video, Webcam HR offline, FaceReader, Kubios FaceReader, Kubios webcam</li>
+<li><span class='mono'>K6294</span> &mdash; missing: Questionnaires, Ledalab, Kubios, Video (no frames.zip), Webcam HR offline, Kubios FaceReader, Kubios webcam</li>
+<li><span class='mono'>M9351</span> &mdash; missing: Questionnaires, Ledalab, Video (no frames.zip), Webcam HR offline, Kubios FaceReader, Kubios webcam</li>
 <li><span class='mono'>O8244</span> &mdash; missing: Ledalab, Webcam HR offline, Kubios webcam</li>
 <li><span class='mono'>R2433</span> &mdash; missing: Webcam HR offline, Kubios webcam</li>
 <li><span class='mono'>R4755</span> &mdash; missing: Video (no 1to1_ffv1.avi), Webcam HR offline, FaceReader, Kubios FaceReader, Kubios webcam</li>
@@ -209,8 +210,9 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
 <li><span class='mono'>S9686</span> &mdash; missing: Ledalab, Webcam HR offline, Kubios webcam</li></ul></div>
     <div class="table-wrap" style="margin-top:1rem;"><table>
       <thead><tr><th>Participant</th><th>PsychoPy</th><th>Questionnaires</th><th>Physiology</th><th>Ledalab</th><th>Kubios</th><th>Video</th><th>Webcam HR online</th><th>Webcam HR offline</th><th>FaceReader</th><th>Kubios FaceReader</th><th>Kubios webcam</th><th>Sources</th><th>Status</th></tr></thead>
-      <tbody><tr><td class='mono'>K6294</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center' title='no frames.zip'>&#9680; partial</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>4/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
-<tr><td class='mono'>M9351</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center' title='no frames.zip'>&#9680; partial</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>3/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
+      <tbody><tr><td class='mono'>H9149</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>3/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>K6294</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center' title='no frames.zip'>&#9680; partial</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>4/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>M9351</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center' title='no frames.zip'>&#9680; partial</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>5/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
 <tr><td class='mono'>O8244</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>8/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
 <tr><td class='mono'>R2433</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>9/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
 <tr><td class='mono'>R4755</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center' title='no 1to1_ffv1.avi'>&#9680; partial</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>6/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
@@ -219,13 +221,13 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     </table></div>
   </section></div>
   <div id="tab-combined" class="tab-content"><div class="status-row">
-    <div class="tile blue"><div class="tile-value">7/5</div>
+    <div class="tile blue"><div class="tile-value">8/5</div>
       <div class="tile-label">PsychoPy IDs<br>raw / combined</div></div>
-    <div class="tile blue"><div class="tile-value">7/0</div>
+    <div class="tile blue"><div class="tile-value">8/0</div>
       <div class="tile-label">Biometrics IDs<br>raw / combined</div></div>
     <div class="tile blue"><div class="tile-value">5/5</div>
       <div class="tile-label">Questionnaire IDs<br>raw / combined</div></div>
-    <div class="tile warn"><div class="tile-value">7</div>
+    <div class="tile warn"><div class="tile-value">8</div>
       <div class="tile-label">Participants<br>out of sync</div></div>
   </div>
 
@@ -238,8 +240,8 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     </div>
     <div class="table-wrap"><table>
       <thead><tr><th>Dataset</th><th>File</th><th>Written</th><th>Newest raw file</th><th>IDs</th><th>Status</th></tr></thead>
-      <tbody><tr><td>Self-report ratings</td><td class='mono'>biosignals2_selfreport_ratings.csv</td><td>13 Oct 2026 14:45</td><td>15 Oct 2026 14:54</td><td>5</td><td class='status-warn'>&#10227; older than newest raw file &mdash; re-knit <code>01_data_cleaning.Rmd</code></td></tr>
-<tr><td>Webcam biometrics</td><td class='mono'>biosignals2_webcambiometrics.csv</td><td>13 Oct 2026 14:45</td><td>15 Oct 2026 14:54</td><td>0</td><td class='status-warn'>&#10227; older than newest raw file &mdash; re-knit <code>01_data_cleaning.Rmd</code></td></tr>
+      <tbody><tr><td>Self-report ratings</td><td class='mono'>biosignals2_selfreport_ratings.csv</td><td>13 Oct 2026 14:45</td><td>20 Oct 2026 13:19</td><td>5</td><td class='status-warn'>&#10227; older than newest raw file &mdash; re-knit <code>01_data_cleaning.Rmd</code></td></tr>
+<tr><td>Webcam biometrics</td><td class='mono'>biosignals2_webcambiometrics.csv</td><td>13 Oct 2026 14:45</td><td>20 Oct 2026 13:19</td><td>0</td><td class='status-warn'>&#10227; older than newest raw file &mdash; re-knit <code>01_data_cleaning.Rmd</code></td></tr>
 <tr><td>Scored questionnaires</td><td class='mono'>biosignals2_questionnaires_scored.csv</td><td>13 Oct 2026 14:39</td><td>13 Oct 2026 13:18</td><td>5</td><td class='status-ok'>&#10003; up to date</td></tr></tbody>
     </table></div>
   </section>
@@ -256,7 +258,8 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
       <thead><tr><th>Participant</th><th>PsychoPy raw</th><th>Self-report CSV</th>
         <th>Biometrics raw</th><th>Biometrics CSV</th><th>Quest. raw</th><th>Scored quest. CSV</th>
         <th>Status</th></tr></thead>
-      <tbody><tr><td class='mono'>K6294</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td style='text-align:center;color:var(--text-3)'>&mdash;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
+      <tbody><tr><td class='mono'>H9149</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td style='text-align:center;color:var(--text-3)'>&mdash;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
+<tr><td class='mono'>K6294</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td style='text-align:center;color:var(--text-3)'>&mdash;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
 <tr><td class='mono'>M9351</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td style='text-align:center;color:var(--text-3)'>&mdash;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
 <tr><td class='mono'>O8244</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
 <tr><td class='mono'>R2433</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
@@ -602,13 +605,13 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     </table></div>
   </section></div>
   <div id="tab-kubios"   class="tab-content"><div class="status-row">
-    <div class="tile blue"><div class="tile-value">5</div>
+    <div class="tile blue"><div class="tile-value">6</div>
       <div class="tile-label">Participants<br>with Kubios files</div></div>
     <div class="tile ok">
-      <div class="tile-value">5/5</div>
+      <div class="tile-value">6/6</div>
       <div class="tile-label">In batch summary<br>and _hrv files</div></div>
     <div class="tile ok">
-      <div class="tile-value">5/5</div>
+      <div class="tile-value">6/6</div>
       <div class="tile-label">Complete<br>block sets</div></div>
     <div class="tile ok">
       <div class="tile-value">✓</div>
@@ -628,7 +631,8 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     <div class="table-wrap"><table>
       <thead><tr><th>Participant</th><th>Batch summary</th><th>_hrv file</th>
         <th>Files found</th><th>Metrics from</th><th>Blocks</th><th>Status</th></tr></thead>
-      <tbody><tr><td class='mono'>o8244</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr>
+      <tbody><tr><td class='mono'>m9351</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>o8244</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>r2433</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>r4755</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>s1250</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr>
@@ -645,18 +649,18 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     <div class="table-wrap"><table>
       <thead><tr><th>Block</th><th>N participants</th><th>Mean HR (bpm)</th>
         <th>Mean RMSSD (ms)</th><th>Mean SDNN (ms)</th></tr></thead>
-      <tbody><tr><td class='mono'>baseline</td><td>5</td><td>80.9</td><td>24.7</td><td>30.4</td></tr>
-<tr><td class='mono'>negative_induction</td><td>5</td><td>82.4</td><td>24.8</td><td>28.4</td></tr>
-<tr><td class='mono'>negative_recovery</td><td>5</td><td>82.9</td><td>24.4</td><td>32.1</td></tr>
-<tr><td class='mono'>positive_induction</td><td>5</td><td>80.8</td><td>21.5</td><td>28.6</td></tr>
-<tr><td class='mono'>positive_recovery</td><td>5</td><td>82.1</td><td>20.5</td><td>30.4</td></tr></tbody>
+      <tbody><tr><td class='mono'>baseline</td><td>6</td><td>80.1</td><td>28.6</td><td>35.4</td></tr>
+<tr><td class='mono'>negative_induction</td><td>6</td><td>80.8</td><td>29.1</td><td>32.1</td></tr>
+<tr><td class='mono'>negative_recovery</td><td>6</td><td>81.2</td><td>29.3</td><td>37.5</td></tr>
+<tr><td class='mono'>positive_induction</td><td>6</td><td>80.2</td><td>25.1</td><td>31.1</td></tr>
+<tr><td class='mono'>positive_recovery</td><td>6</td><td>81.1</td><td>25.3</td><td>34.6</td></tr></tbody>
     </table></div>
     <div class="table-wrap" style="margin-top:1rem;"><table>
       <thead><tr><th>Metric</th><th>N values</th><th>Min</th><th>Max</th>
         <th>Expected range</th><th>Anomalies</th></tr></thead>
       <tbody>
-        <tr><td class="mono">mean_hr_bpm</td><td>25</td><td>62.5</td><td>101</td><td>40–120 bpm</td><td class='status-ok'>✓ none</td></tr>
-        <tr><td class="mono">rmssd_ms</td><td>25</td><td>13.2</td><td>40.7</td><td>5–200 ms</td><td class='status-ok'>✓ none</td></tr>
+        <tr><td class="mono">mean_hr_bpm</td><td>30</td><td>62.5</td><td>101</td><td>40–120 bpm</td><td class='status-ok'>✓ none</td></tr>
+        <tr><td class="mono">rmssd_ms</td><td>30</td><td>13.2</td><td>54</td><td>5–200 ms</td><td class='status-ok'>✓ none</td></tr>
       </tbody>
     </table></div>
   </section>
@@ -670,7 +674,12 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
         <div class="table-wrap"><table>
           <thead><tr><th>Participant</th><th>Block</th>
             <th>N beats</th><th>Status</th></tr></thead>
-          <tbody><tr><td class='mono'>o8244</td><td class='mono'>baseline</td><td>234</td><td class='status-ok'>✓</td></tr>
+          <tbody><tr><td class='mono'>m9351</td><td class='mono'>baseline</td><td>229</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>m9351</td><td class='mono'>negative_induction</td><td>217</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>m9351</td><td class='mono'>negative_recovery</td><td>219</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>m9351</td><td class='mono'>positive_induction</td><td>239</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>m9351</td><td class='mono'>positive_recovery</td><td>226</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>o8244</td><td class='mono'>baseline</td><td>234</td><td class='status-ok'>✓</td></tr>
 <tr><td class='mono'>o8244</td><td class='mono'>negative_induction</td><td>221</td><td class='status-ok'>✓</td></tr>
 <tr><td class='mono'>o8244</td><td class='mono'>negative_recovery</td><td>234</td><td class='status-ok'>✓</td></tr>
 <tr><td class='mono'>o8244</td><td class='mono'>positive_induction</td><td>229</td><td class='status-ok'>✓</td></tr>
@@ -698,16 +707,16 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
         </table></div>
       </section></div>
   <div id="tab-kubios-video" class="tab-content"><div class="status-row">
-    <div class="tile blue"><div class="tile-value">5</div>
+    <div class="tile blue"><div class="tile-value">6</div>
       <div class="tile-label">Participants with<br>video heart beats</div></div>
     <div class="tile warn">
-      <div class="tile-value">4/10</div>
+      <div class="tile-value">4/12</div>
       <div class="tile-label">Kubios input +<br>5 sample windows</div></div>
     <div class="tile warn">
-      <div class="tile-value">4/10</div>
+      <div class="tile-value">4/12</div>
       <div class="tile-label">Kubios results<br>for 5 blocks</div></div>
     <div class="tile warn">
-      <div class="tile-value">7</div>
+      <div class="tile-value">9</div>
       <div class="tile-label">Participant × source<br>rows with issues</div></div>
   </div>
 
@@ -731,13 +740,15 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
       <thead><tr><th>Participant</th><th>Source</th><th>Raw beats</th><th>Kubios input</th>
         <th>Samples</th><th>Kubios results</th><th>From</th><th>Block HR (bpm)</th>
         <th>RMSSD (ms)</th><th>Max |ΔHR| vs ECG</th><th>Artefacts (%)</th><th>Status</th></tr></thead>
-      <tbody><tr><td class='mono'>k6294</td><td>FaceReader</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no _kubios.txt (run 002_create_kubios_samples_video.py)</td></tr>
-<tr><td class='mono'>k6294</td><td>Webcam (optimized)</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no _kubios.txt (run 002_create_kubios_samples_video.py)</td></tr>
-<tr><td class='mono'>o8244</td><td>Webcam (optimized)</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no webcam beats CSV (run 003)</td></tr>
-<tr><td class='mono'>r2433</td><td>Webcam (optimized)</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no webcam beats CSV (run 003)</td></tr>
+      <tbody><tr><td class='mono'>k6294</td><td>FaceReader</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no _kubios.txt (run C:\Users\carme\Documents\Biosignals-2\analysis\kubios\002_create_kubios_samples_video.py)</td></tr>
+<tr><td class='mono'>k6294</td><td>Webcam (optimized)</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no _kubios.txt (run C:\Users\carme\Documents\Biosignals-2\analysis\kubios\002_create_kubios_samples_video.py)</td></tr>
+<tr><td class='mono'>m9351</td><td>FaceReader</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no _kubios.txt (run C:\Users\carme\Documents\Biosignals-2\analysis\kubios\002_create_kubios_samples_video.py)</td></tr>
+<tr><td class='mono'>m9351</td><td>Webcam (optimized)</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no webcam beats CSV (run C:\Users\carme\Documents\Biosignals-2\analysis\video\002_run_webcam_biometrics.py)</td></tr>
+<tr><td class='mono'>o8244</td><td>Webcam (optimized)</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no webcam beats CSV (run C:\Users\carme\Documents\Biosignals-2\analysis\video\002_run_webcam_biometrics.py)</td></tr>
+<tr><td class='mono'>r2433</td><td>Webcam (optimized)</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no webcam beats CSV (run C:\Users\carme\Documents\Biosignals-2\analysis\video\002_run_webcam_biometrics.py)</td></tr>
 <tr><td class='mono'>s1250</td><td>FaceReader</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>_hrv report</td><td>85.6–91.4</td><td>20.4–35.9</td><td>11.0</td><td>20.0</td><td class='status-warn'>⚠ block HR up to 11.0 bpm from ECG</td></tr>
-<tr><td class='mono'>s1250</td><td>Webcam (optimized)</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no webcam beats CSV (run 003)</td></tr>
-<tr><td class='mono'>s9686</td><td>Webcam (optimized)</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no webcam beats CSV (run 003)</td></tr>
+<tr><td class='mono'>s1250</td><td>Webcam (optimized)</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no webcam beats CSV (run C:\Users\carme\Documents\Biosignals-2\analysis\video\002_run_webcam_biometrics.py)</td></tr>
+<tr><td class='mono'>s9686</td><td>Webcam (optimized)</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no webcam beats CSV (run C:\Users\carme\Documents\Biosignals-2\analysis\video\002_run_webcam_biometrics.py)</td></tr>
 <tr><td class='mono'>o8244</td><td>FaceReader</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>_hrv report</td><td>74.0–78.0</td><td>33.2–36.5</td><td>0.1</td><td>3.8</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>r2433</td><td>FaceReader</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>_hrv report</td><td>61.9–68.9</td><td>50.6–65.1</td><td>2.7</td><td>2.2</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>s9686</td><td>FaceReader</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>_hrv report</td><td>84.8–87.1</td><td>38.9–51.5</td><td>2.9</td><td>2.9</td><td class='status-ok'>✓ OK</td></tr></tbody>
@@ -764,17 +775,17 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
 <tr><td class='mono'>positive_recovery</td><td>FaceReader</td><td>4</td><td>79.8</td><td>42.1</td></tr></tbody></table></div></section></div>
   <div id="tab-biometrics" class="tab-content"><div class="note">Online = heart rate computed <strong>live during the
   session</strong> and saved by PsychoPy in <code>raw_psychopy</code>. The heart rate recomputed afterwards
-  from the video (003) is in the <strong>Webcam HR (offline)</strong> tab.</div><div class="status-row">
-    <div class="tile blue"><div class="tile-value">7</div>
+  from the video (002) is in the <strong>Webcam HR (offline)</strong> tab.</div><div class="status-row">
+    <div class="tile blue"><div class="tile-value">8</div>
       <div class="tile-label">Sessions in<br>raw_psychopy</div></div>
     <div class="tile ok">
-      <div class="tile-value">7/7</div>
+      <div class="tile-value">8/8</div>
       <div class="tile-label">With<br>_biometrics.csv</div></div>
     <div class="tile ok">
-      <div class="tile-value">7/7</div>
+      <div class="tile-value">8/8</div>
       <div class="tile-label">With<br>_clocksync.json</div></div>
     <div class="tile warn">
-      <div class="tile-value">7</div>
+      <div class="tile-value">8</div>
       <div class="tile-label">Sessions<br>with issues</div></div>
   </div>
 
@@ -791,7 +802,8 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     <div class="table-wrap"><table>
       <thead><tr><th>Participant</th><th>_biometrics.csv</th><th>Size (MB)</th>
         <th>_clocksync.json</th><th>In combined</th><th>Status</th></tr></thead>
-      <tbody><tr><td class='mono'>k6294</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>41.4</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ not in combined file</td></tr>
+      <tbody><tr><td class='mono'>h9149</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>50.9</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ not in combined file</td></tr>
+<tr><td class='mono'>k6294</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>41.4</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ not in combined file</td></tr>
 <tr><td class='mono'>m9351</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>51.8</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ not in combined file</td></tr>
 <tr><td class='mono'>o8244</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>0.0</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ _biometrics.csv only 1 KB (almost no frames); not in combined file</td></tr>
 <tr><td class='mono'>r2433</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>0.0</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ _biometrics.csv only 1 KB (almost no frames); not in combined file</td></tr>
@@ -846,9 +858,9 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
   <section>
     <div class="section-head">
       <div class="section-label">Offline Webcam Heart Rate</div>
-      <h2>003 outputs per participant</h2>
+      <h2>002 outputs per participant</h2>
       <p>Recomputed after the session from the 1:1 lossless video by
-         <code>analysis/video/003_run_webcam_biometrics.py</code>, in <code>C:/Users/carme/Box/Project_Biosignals_study_2/3_Data/webcam_biometrics</code>:
+         <code>analysis/video/002_run_webcam_biometrics.py</code>, in <code>C:/Users/carme/Box/Project_Biosignals_study_2/3_Data/webcam_biometrics</code>:
          <code>{pid}_webcam_hr_frames_{variant}.csv</code>, <code>{pid}_webcam_hr_events_{variant}.csv</code>,
          <code>{pid}_webcam_beats_{variant}.csv</code>, and the participant&#39;s row in
          <code>ecg_video_offsets.csv</code>. Required code version(s): <code>optimized</code> (the ones run
@@ -863,10 +875,10 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
         <th>Blocks</th><th>Min coverage</th><th>Block HR (bpm)</th><th>Beats</th>
         <th>Near gap</th><th>Status</th></tr></thead>
       <tbody><tr><td class='mono'>k6294</td><td class='mono' style='font-size:.78rem'>baseline, faceloss, optimized</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>1729</td><td>0.2%</td><td class='status-warn'>⚠ optimized: no events; no ECG->video offset; beats have no ECG-clock times</td></tr>
-<tr><td class='mono'>o8244</td><td class='mono' style='font-size:.78rem'>—</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ only unlabelled files from before 14 Oct - rerun 003; optimized: no frames/events/beats</td></tr>
-<tr><td class='mono'>r2433</td><td class='mono' style='font-size:.78rem'>—</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ only unlabelled files from before 14 Oct - rerun 003; optimized: no frames/events/beats</td></tr>
-<tr><td class='mono'>s1250</td><td class='mono' style='font-size:.78rem'>—</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ only unlabelled files from before 14 Oct - rerun 003; optimized: no frames/events/beats</td></tr>
-<tr><td class='mono'>s9686</td><td class='mono' style='font-size:.78rem'>—</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ only unlabelled files from before 14 Oct - rerun 003; optimized: no frames/events/beats</td></tr></tbody>
+<tr><td class='mono'>o8244</td><td class='mono' style='font-size:.78rem'>—</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ only unlabelled files from before 14 Oct - rerun C:\Users\carme\Documents\Biosignals-2\analysis\video\002_run_webcam_biometrics.py; optimized: no frames/events/beats</td></tr>
+<tr><td class='mono'>r2433</td><td class='mono' style='font-size:.78rem'>—</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ only unlabelled files from before 14 Oct - rerun C:\Users\carme\Documents\Biosignals-2\analysis\video\002_run_webcam_biometrics.py; optimized: no frames/events/beats</td></tr>
+<tr><td class='mono'>s1250</td><td class='mono' style='font-size:.78rem'>—</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ only unlabelled files from before 14 Oct - rerun C:\Users\carme\Documents\Biosignals-2\analysis\video\002_run_webcam_biometrics.py; optimized: no frames/events/beats</td></tr>
+<tr><td class='mono'>s9686</td><td class='mono' style='font-size:.78rem'>—</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ only unlabelled files from before 14 Oct - rerun C:\Users\carme\Documents\Biosignals-2\analysis\video\002_run_webcam_biometrics.py; optimized: no frames/events/beats</td></tr></tbody>
     </table></div>
   </section></div>
   <div id="tab-video"    class="tab-content"><div class="status-row">
@@ -908,16 +920,16 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     </table></div>
   </section></div>
   <div id="tab-physiology" class="tab-content"><div class="status-row">
-    <div class="tile blue"><div class="tile-value">7</div>
+    <div class="tile blue"><div class="tile-value">8</div>
       <div class="tile-label">Participants with<br>physiology files</div></div>
     <div class="tile ok">
-      <div class="tile-value">7/7</div>
+      <div class="tile-value">8/8</div>
       <div class="tile-label">Session<br>recording</div></div>
     <div class="tile warn">
-      <div class="tile-value">6/7</div>
+      <div class="tile-value">7/8</div>
       <div class="tile-label">Trimmed to<br>protocol</div></div>
-    <div class="tile ok">
-      <div class="tile-value">7/7</div>
+    <div class="tile warn">
+      <div class="tile-value">7/8</div>
       <div class="tile-label">EDA .mat for<br>Ledalab</div></div>
   </div>
 
@@ -936,7 +948,8 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
       <thead><tr><th>Participant</th><th>Session .acq</th><th>Size (MB)</th>
         <th>Trimmed physiology</th><th>Trimmed EDA</th>
         <th>EDA .mat (Ledalab input)</th><th>Status</th></tr></thead>
-      <tbody><tr><td class='mono'>s1250</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>48.3</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn'>⚠ not trimmed (EDA)</td></tr>
+      <tbody><tr><td class='mono'>h9149</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>80.5</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ no EDA .mat in ledalab/input</td></tr>
+<tr><td class='mono'>s1250</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>48.3</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn'>⚠ not trimmed (EDA)</td></tr>
 <tr><td class='mono'>k6294</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>61.6</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>m9351</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>86.8</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>o8244</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>73.7</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok'>✓ OK</td></tr>
@@ -946,13 +959,13 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     </table></div>
   </section></div>
   <div id="tab-facereader" class="tab-content"><div class="status-row">
-    <div class="tile blue"><div class="tile-value">5</div>
+    <div class="tile blue"><div class="tile-value">6</div>
       <div class="tile-label">Participants with<br>FaceReader files</div></div>
     <div class="tile ok">
-      <div class="tile-value">5/5</div>
+      <div class="tile-value">6/6</div>
       <div class="tile-label">All three<br>files present</div></div>
     <div class="tile warn">
-      <div class="tile-value">4/5</div>
+      <div class="tile-value">5/6</div>
       <div class="tile-label">Analysed the<br>1to1_ffv1 / recording AVI</div></div>
     <div class="tile warn">
       <div class="tile-value">1</div>
@@ -977,6 +990,7 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
         <th>Video fps</th><th>Status</th></tr></thead>
       <tbody><tr><td class='mono'>r2433</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>1145</td><td class='mono' style='font-size:.78rem'>r2433_1to1.mkv</td><td>30.041</td><td class='status-warn'>⚠ analysed r2433_1to1.mkv - rerun on {id}_1to1_ffv1.avi</td></tr>
 <tr><td class='mono'>k6294</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>1643</td><td class='mono' style='font-size:.78rem'>K6294_1to1_ffv1.avi</td><td>30.017</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>m9351</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>1579</td><td class='mono' style='font-size:.78rem'>M9351_1to1_ffv1.avi</td><td>29.811</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>o8244</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>1654</td><td class='mono' style='font-size:.78rem'>o8244_1to1_ffv1.avi</td><td>30.029</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>s1250</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>1526</td><td class='mono' style='font-size:.78rem'>S1250_1to1_ffv1.avi</td><td>30.046</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>s9686</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>1427</td><td class='mono' style='font-size:.78rem'>s9686_1to1_ffv1.avi</td><td>29.917</td><td class='status-ok'>✓ OK</td></tr></tbody>
