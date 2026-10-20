@@ -40,7 +40,7 @@ WEBCAM_PNG_EXTERNAL_DIR = r""  # e.g. r"D:\Biosignals2_png_data"   # external ha
 # plus a copy of each <id>_frame_timestamps.csv): the external hard drive. The PNG originals are
 # archived on Box; these videos are working copies that can be rebuilt from them.
 VIDEO_EXTERNAL_DIR = r""  # e.g. r"D:\Biosignals2_video"   # external hard drive (not Box)
-# WebcamBiometrics code (used by 003_run_webcam_biometrics.py). Moved out of OneDrive on 7 Oct 2026.
+# WebcamBiometrics code (used by 002_run_webcam_biometrics.py). Moved out of OneDrive on 7 Oct 2026.
 WEBCAM_BIOMETRICS_REPO = r""  # e.g. r"C:\Users\you\Documents\WebcamBiometrics"
 # Webcam, older sessions recorded straight to AVI (<id>_frame_timestamps.csv, <id>_recording.avi)
 VIDEO_BOX_DIR = os.path.join(SERVER_ROOT, "video")   # Box (same folder as VIDEO_BOX_DIR in config.R)

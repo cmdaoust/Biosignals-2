@@ -60,6 +60,12 @@ find_project_root <- function() {
 }
 
 project_dir <- find_project_root()
+
+# Full path of a pipeline script, for "run ..." messages (backslashes on Windows)
+script_path <- function(...) {
+  p <- normalizePath(file.path(project_dir, "analysis", ...), winslash = "/", mustWork = FALSE)
+  if (.Platform$OS.type == "windows") gsub("/", "\\\\", p) else p
+}
 message("Project root: ", project_dir)
 source(file.path(project_dir, "config.R"))
 
@@ -896,7 +902,7 @@ ledalab_html <- paste0(qc_notes_html("ledalab"), ledalab_html)
 # stream is told apart by the input file name. Results are looked for in the stream's folder, its
 # kubios/ subfolder and KUBIOS_RESULTS_DIR.
 WEBCAM_HR_DIR_QC <- get0("WEBCAM_HR_DIR", ifnotfound = file.path(SERVER_ROOT, "webcam_biometrics"))
-# Webcam code versions (003 --variant) that must be run through Kubios. Other versions found are
+# Webcam code versions (002 --variant) that must be run through Kubios. Other versions found are
 # listed but not required.
 WEBCAM_KUBIOS_VARIANTS <- c("optimized")
 KUBIOS_BLOCKS <- c("baseline", "negative_induction", "negative_recovery",
@@ -1495,12 +1501,12 @@ biometrics_combined_html <- tryCatch({
 biometrics_html <- paste0(biometrics_raw_html, biometrics_combined_html)
 biometrics_online_note <- '<div class="note">Online = heart rate computed <strong>live during the
   session</strong> and saved by PsychoPy in <code>raw_psychopy</code>. The heart rate recomputed afterwards
-  from the video (003) is in the <strong>Webcam HR (offline)</strong> tab.</div>'
+  from the video (002) is in the <strong>Webcam HR (offline)</strong> tab.</div>'
 
-# ── 6.0b Offline webcam heart rate (003_run_webcam_biometrics.py) ──────────────
+# ── 6.0b Offline webcam heart rate (002_run_webcam_biometrics.py) ──────────────
 # The ONLINE biometrics above were computed live during the session (raw_psychopy).
 # The OFFLINE results are recomputed afterwards from the 1:1 lossless video by
-# analysis/video/003_run_webcam_biometrics.py, written to WEBCAM_HR_DIR (section 4.9), one set per
+# analysis/video/002_run_webcam_biometrics.py, written to WEBCAM_HR_DIR (section 4.9), one set per
 # code version (--variant baseline / faceloss / optimized):
 #   <id>_webcam_hr_frames_<variant>.csv  one row per frame
 #   <id>_webcam_hr_events_<variant>.csv  one row per event: hr_fft_median, n_beats, beats_per_min, coverage
@@ -1511,10 +1517,10 @@ biometrics_online_note <- '<div class="note">Online = heart rate computed <stron
 ECG_OFFSETS_PATH   <- file.path(SERVER_ROOT, "ecg_video_offsets.csv")
 OFFLINE_BLOCKS     <- c("Baseline", "Negative Induction", "Negative Recovery",
                         "Positive Induction", "Positive Recovery")
-MIN_OFFLINE_COVERAGE <- 0.8   # 003 flags blocks below this ("low coverage")
+MIN_OFFLINE_COVERAGE <- 0.8   # 002 flags blocks below this ("low coverage")
 WEBCAM_FILE_RE <- "^([^_]+)_webcam_(hr_frames|hr_events|beats)_(.+)\\.csv$"
 
-# Every labelled 003 output in WEBCAM_HR_DIR: pid, kind (hr_frames / hr_events / beats), variant, path
+# Every labelled 002 output in WEBCAM_HR_DIR: pid, kind (hr_frames / hr_events / beats), variant, path
 webcam_offline_files <- function() {
   f <- keep_files(list.files(WEBCAM_HR_DIR_QC, pattern = "\\.csv$", full.names = TRUE, ignore.case = TRUE))
   m <- str_match(str_to_lower(basename(f)), WEBCAM_FILE_RE)
@@ -1595,7 +1601,7 @@ biometrics_offline_html <- tryCatch({
     left_join(ev_sum, by = "pid") |> left_join(bt_sum, by = "pid") |>
     mutate(issues = pmap_chr(list(pid, req_missing, has_offset, n_blocks, low_cov, hr_min, hr_max, has_ecg_time),
       function(p, rm, o, nbl, lc, hmin, hmax, ecg) {
-        paste(c(if (p %in% old_only) "only unlabelled files from before 14 Oct - rerun 003",
+        paste(c(if (p %in% old_only) paste("only unlabelled files from before 14 Oct - rerun", script_path("video", "002_run_webcam_biometrics.py")),
                 if (rm != "") rm,
                 if (!o) "no ECG->video offset",
                 if (!is.na(nbl) && nbl < length(OFFLINE_BLOCKS)) paste0(nbl, "/5 blocks"),
@@ -1645,9 +1651,9 @@ biometrics_offline_html <- tryCatch({
   <section>
     <div class="section-head">
       <div class="section-label">Offline Webcam Heart Rate</div>
-      <h2>003 outputs per participant</h2>
+      <h2>002 outputs per participant</h2>
       <p>Recomputed after the session from the 1:1 lossless video by
-         <code>analysis/video/003_run_webcam_biometrics.py</code>, in <code>', WEBCAM_HR_DIR_QC, '</code>:
+         <code>analysis/video/002_run_webcam_biometrics.py</code>, in <code>', WEBCAM_HR_DIR_QC, '</code>:
          <code>{pid}_webcam_hr_frames_{variant}.csv</code>, <code>{pid}_webcam_hr_events_{variant}.csv</code>,
          <code>{pid}_webcam_beats_{variant}.csv</code>, and the participant&#39;s row in
          <code>ecg_video_offsets.csv</code>. Required code version(s): ', req_txt, ' (the ones run
@@ -1744,7 +1750,7 @@ video_html <- tryCatch({
       issues = pmap_chr(list(old_session, n_zip, n_avi, n_ts, n_old_avi, n_mkv, fps),
                         function(old, nz, na, nt, no, nm, fp) {
         paste(c(if (!old && nz == 0) "no frames zip",
-                if (!old && na == 0 && nm > 0) "no 1to1_ffv1.avi (only _1to1.mkv: run 004)",
+                if (!old && na == 0 && nm > 0) paste0("no 1to1_ffv1.avi (only _1to1.mkv: run ", script_path("video", "archive", "oneoff_convert_old_mkv_to_avi_pre_7oct2026.py"), ")"),
                 if (!old && na == 0 && nm == 0) "no 1to1_ffv1.avi",
                 if (nt == 0) "no frame timestamps",
                 if (nz > 1) paste0(nz, " frames zips"),
@@ -2087,8 +2093,8 @@ video_kubios_html <- tryCatch({
            issues = pmap_chr(list(stream, has_raw, has_input, n_windows, n_blocks, n_reports,
                                   hr_min, hr_max, rmssd_min, rmssd_max, max_dhr, low_beats, has_ecg),
              function(s, raw, inp, nw, nb, nr, hmin, hmax, rmin, rmax, dhr, lb, he) {
-               paste(c(if (!raw) (if (s == "facereader") "no heart beat log" else "no webcam beats CSV (run 003)"),
-                       if (raw && !inp) "no _kubios.txt (run 002_create_kubios_samples_video.py)",
+               paste(c(if (!raw) (if (s == "facereader") "no heart beat log" else paste0("no webcam beats CSV (run ", script_path("video", "002_run_webcam_biometrics.py"), ")")),
+                       if (raw && !inp) paste0("no _kubios.txt (run ", script_path("kubios", "002_create_kubios_samples_video.py"), ")"),
                        if (inp && nw == 0) "not in Kubios_Samples.csv",
                        if (nw > 0 && nw < 5) paste0(nw, "/5 sample windows"),
                        if (inp && nb == 0) "no Kubios results",
@@ -2666,7 +2672,7 @@ completeness_html <- tryCatch({
   # participant having been run at all.
   ids_physiology <- get_ids(ids_of_files(PHYSIOLOGY_SESSION_DIR, "_physiology\\.acq$"))
 
-  # Webcam HR offline: all three 003 files for every required variant (WEBCAM_KUBIOS_VARIANTS)
+  # Webcam HR offline: all three 002 files for every required variant (WEBCAM_KUBIOS_VARIANTS)
   ids_webcam_offline <- get_ids(tryCatch({
     wf <- webcam_offline_files() |> filter(variant %in% WEBCAM_KUBIOS_VARIANTS)
     n_need <- 3 * length(WEBCAM_KUBIOS_VARIANTS)
@@ -2799,7 +2805,7 @@ completeness_html <- tryCatch({
          <code>raw_questionnaire</code>), so this tab does not depend on re-knitting 01 or 04.
          Whether the combined CSVs have caught up is on the <strong>Combined datasets</strong> tab.
          The other sources: BIOPAC session recordings, Ledalab (EDA), Kubios (HRV) on the ECG, the Box
-         video folder, offline webcam heart rate (003, ', paste(WEBCAM_KUBIOS_VARIANTS, collapse = ", "), '),
+         video folder, offline webcam heart rate (002, ', paste(WEBCAM_KUBIOS_VARIANTS, collapse = ", "), '),
          the FaceReader heart beat log', if (QC_MODE == "main") ', and Kubios results for all 5 blocks
          on the FaceReader and webcam beats (<strong>Kubios video</strong> tab)' else '', '. IDs are compared case-insensitively and whitespace-trimmed.
          <strong>Video</strong> counts only when <code>{id}_frames.zip</code>, <code>{id}_1to1_ffv1.avi</code>

@@ -1,5 +1,5 @@
 r"""
-003_run_webcam_biometrics.py
+002_run_webcam_biometrics.py
 ============================
 One script to get WebcamBiometrics heart rate (rPPG) for each participant, as CSVs you can load in R.
 No ECG or FaceReader comparison here - that is the separate eval (eval/run_sussex_all.py).
@@ -8,7 +8,7 @@ For each participant it runs, skipping any step whose output already exists:
   1. VIDEO    PNG frames -> VIDEO_EXTERNAL_DIR (D:\Biosignals2_video)\<id>_1to1_ffv1.avi (+ <id>_frame_timestamps.csv)
               via 000_convert_png_to_avi.py --method 1to1 (every PNG once, lossless). This is the
               same file FaceReader analyses. An older <id>_1to1.mkv is still used if there is no .avi
-              (identical pixels); turn it into the .avi with 004_convert_mkv_to_avi.py --delete-mkv.
+              (identical pixels); turn it into the .avi with archive/oneoff_convert_old_mkv_to_avi_pre_7oct2026.py --delete-mkv.
               Older sessions without PNGs use VIDEO_BOX_DIR (3_Data\video)\<id>_recording.avi.
   2. EXTRACT  video -> skin-colour (RGB) series, WITH the real frame timestamps
               (WebcamBiometrics eval/ts/extract/extractRGB.ts - slow, runs MediaPipe in Chromium;
@@ -24,7 +24,7 @@ For each participant it runs, skipping any step whose output already exists:
   time_s          beat time on the ECG / Kubios clock (trimmed .acq) = time_video_s + offset. The
                   offset is read from 3_Data\ecg_video_offsets.csv, or - if the participant isn't in
                   it yet - estimated here automatically (WebcamBiometrics eval/py/estimate_offsets.py:
-                  needs <id>_video_events.csv from 001 and <id>_events_biopac.csv from 002) and saved
+                  needs <id>_video_events.csv and <id>_events_biopac.csv, both from 001) and saved
                   there. Blank if it can't be estimated or the events disagree (the reason is printed).
   rr_s            interval since the previous detected beat (s) - compare with Kubios rr_s. Blank for
                   the first beat after a face-loss gap (> 0.5 s without a face): never measured
@@ -59,7 +59,7 @@ CODE VERSIONS (--variant) - every output file is labelled with the code that mad
   predictions (eval/cache/<id>/full.predictions_<variant>.json), so nothing overwrites another
   version. Re-running a variant overwrites only that variant's files (same code -> same result).
   Files from earlier runs without a variant label (<id>_webcam_beats.csv, *_optimize.csv) are left
-  untouched; they are not read by 005 any more (their code version is not recorded reliably).
+  untouched; they are not read by 003 any more (their code version is not recorded reliably).
   All three are exported the same way (e.g. no interval is ever measured across a face-loss gap),
   so differences between them come from the WebcamBiometrics code only.
   The beats CSV has a 'variant' column too.
@@ -97,15 +97,15 @@ OUTPUT COLUMNS
 
 Usage (from anywhere; paths come from config.py at the repo root)
 -----
-  python 003_run_webcam_biometrics.py i4155                 # one participant
-  python 003_run_webcam_biometrics.py i4155 r4755           # several
-  python 003_run_webcam_biometrics.py --all                 # every main-study participant with a video
-  python 003_run_webcam_biometrics.py --all --pilots        # ... plus pilots (participant_status.csv)
-  python 003_run_webcam_biometrics.py i4155 --test          # first 30 s only: quick check, frames CSV only
-  python 003_run_webcam_biometrics.py i4155 --redo          # re-run extract + analyse (slow)
-  python 003_run_webcam_biometrics.py --all --reanalyse     # re-run analyse only (fast), e.g. after a src/ change
-  python 003_run_webcam_biometrics.py --all --variant optimized          # one code version only
-  python 003_run_webcam_biometrics.py r2433 --variant optimized --live-delay-ms 733   # shorter live delay
+  python 002_run_webcam_biometrics.py i4155                 # one participant
+  python 002_run_webcam_biometrics.py i4155 r4755           # several
+  python 002_run_webcam_biometrics.py --all                 # every main-study participant with a video
+  python 002_run_webcam_biometrics.py --all --pilots        # ... plus pilots (participant_status.csv)
+  python 002_run_webcam_biometrics.py i4155 --test          # first 30 s only: quick check, frames CSV only
+  python 002_run_webcam_biometrics.py i4155 --redo          # re-run extract + analyse (slow)
+  python 002_run_webcam_biometrics.py --all --reanalyse     # re-run analyse only (fast), e.g. after a src/ change
+  python 002_run_webcam_biometrics.py --all --variant optimized          # one code version only
+  python 002_run_webcam_biometrics.py r2433 --variant optimized --live-delay-ms 733   # shorter live delay
 
 config.py variables used: SERVER_ROOT, WEBCAM_PNG_EXTERNAL_DIR, VIDEO_EXTERNAL_DIR, VIDEO_BOX_DIR, FACEREADER_ONSETS_DIR, and optionally
 WEBCAM_BIOMETRICS_REPO (default C:\Users\carme\OneDrive\Documents\GitHub\WebcamBiometrics)
@@ -129,6 +129,10 @@ import time
 from statistics import mean, median
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# Full paths of the other pipeline scripts (named in warnings so people run them in order)
+EVENT_ONSETS_SCRIPT  = os.path.join(HERE, "001_generate_event_onsets.py")
+BIOPAC_EVENTS_SCRIPT = EVENT_ONSETS_SCRIPT   # 001 now writes both event files (old 002 is in archive/)
+MKV_TO_AVI_SCRIPT    = os.path.join(HERE, "archive", "oneoff_convert_old_mkv_to_avi_pre_7oct2026.py")
 DEFAULT_REPO = r"C:\Users\carme\OneDrive\Documents\GitHub\WebcamBiometrics"
 TEST_SECONDS = 30
 
@@ -236,7 +240,7 @@ def find_ci(folder, name):
 
 
 def find_all_participants(P, converter, include_pilots=False):
-    """--all: every participant with a video anywhere 003 can read one, filtered by
+    """--all: every participant with a video anywhere 002 can read one, filtered by
     analysis/participant_status.csv (test sessions and excluded participants left out; pilots only
     with --pilots). Prints who was found where and who was left out, so nothing is dropped silently.
 
@@ -295,8 +299,8 @@ def step_video(pid, P, converter):
         if video and ts:
             print(f"  video: {video} (exists)")
             if video.lower().endswith(".mkv"):
-                print("         (older .mkv - same pixels as the .avi; for FaceReader run 004_convert_mkv_to_avi.py "
-                      f"{pid} --delete-mkv to replace it with {pid}_1to1_ffv1.avi)")
+                print("         (older .mkv - same pixels as the .avi; for FaceReader run "
+                      f"{MKV_TO_AVI_SCRIPT} {pid} --delete-mkv to replace it with {pid}_1to1_ffv1.avi)")
             return video, ts
     sessions, _ = converter.find_sessions(P["webcam_png_external_dir"]) if os.path.isdir(P["webcam_png_external_dir"]) else ({}, [])
     match = {k.lower(): v for k, v in sessions.items()}.get(pid)
@@ -541,11 +545,11 @@ def step_export(pid, preds, ts, P, test, label):
     print(f"  beats  : {beats_csv}  ({n} beats; {n_gaps} face-loss gap(s) > {MAX_GAP_S} s, "
           f"{n_near} beats flagged near_gap; "
           + (f"ECG clock via offset {offset:.3f} s)" if offset is not None else
-             f"no ECG-clock times: needs {pid}_video_events.csv (001) and {pid}_events_biopac.csv (002) - "
-             f"run those, then this script again)"))
+             f"no ECG-clock times: needs {pid}_video_events.csv and {pid}_events_biopac.csv - "
+             f"run {EVENT_ONSETS_SCRIPT}, then this script again)"))
     if not events:
         print(f"  events : skipped - no {pid}_video_events.csv in {P['events_dir']} "
-              f"(run 001_generate_event_onsets.py, then this script again)")
+              f"(run {EVENT_ONSETS_SCRIPT}, then this script again)")
         return
     events_csv = os.path.join(P["out_dir"], f"{pid}_webcam_hr_events{tag}.csv")
     summary = summarise_events(rows, beats, load_frame_times(ts), events, events_csv)

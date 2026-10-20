@@ -15,7 +15,7 @@ with times on that file's own clock ("video time"):
                time (the camera's real frame times vary); it drifts from real time by up to ~1.4 s
                over a session. So block times are converted to FaceReader time through the real
                frame timestamps: real onset -> frame number -> frame / Frame rate (exactly the
-               inverse of what 005_compare_hrv.R does with FaceReader's beats).
+               inverse of what 003_compare_hrv.R does with FaceReader's beats).
                Real-time AVIs (*_realtime*, *_facereader.avi): FaceReader time = real time.
   Webcam       time_video_s in <id>_webcam_beats_<variant>.csv = real seconds since the webcam
                recording started = onset_s / offset_s in <id>_video_events.csv (001), unchanged.
@@ -59,6 +59,9 @@ Checks (warnings, listed again at the end):
   - FaceReader time from the timestamps differs > 1 frame from 001's frame columns
   - block starts before the first beat / ends after the last beat, or has < 30 beats
   - frame timestamps not found for a 1:1 / recording video (FaceReader rows skipped)
+  - each block's duration vs the ECG Kubios_Samples.csv and 001's event files (block_duration_check.py,
+    run at the end; also warns if 001_create_kubios_samples.py or video/001_generate_event_onsets.py
+    hasn't been run yet)
 """
 
 import argparse
@@ -93,6 +96,9 @@ import config as C  # noqa: E402
 
 SERVER_ROOT = str(C.SERVER_ROOT)
 EVENTS_DIR = str(getattr(C, "FACEREADER_ONSETS_DIR", os.path.join(SERVER_ROOT, "event_onsets", "facereader_video")))
+# Full path of the script that writes <pid>_video_events.csv (named in warnings)
+EVENT_ONSETS_SCRIPT = os.path.normpath(os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "video", "001_generate_event_onsets.py"))
 FACEREADER_DIR = str(getattr(C, "FACEREADER_RESULTS_DIR", os.path.join(SERVER_ROOT, "facereader")))
 WEBCAM_DIR = str(getattr(C, "WEBCAM_HR_DIR", os.path.join(SERVER_ROOT, "webcam_biometrics")))
 TIMESTAMP_DIRS = [str(d) for d in (getattr(C, "VIDEO_EXTERNAL_DIR", None),
@@ -134,7 +140,7 @@ def load_windows(pid):
     """{sample: (onset_s, offset_s)} on the webcam clock, plus the events table (for checks)."""
     path = find_ci([EVENTS_DIR], f"{pid}_video_events.csv")
     if path is None:
-        return None, None, f"no {pid}_video_events.csv in {EVENTS_DIR} (run video/001_generate_event_onsets.py)"
+        return None, None, f"no {pid}_video_events.csv in {EVENTS_DIR} (run {EVENT_ONSETS_SCRIPT})"
     ev = pd.read_csv(path)
     wins = {}
     for sample, event in SAMPLES.items():
@@ -145,7 +151,7 @@ def load_windows(pid):
 
 
 def read_frame_clock(pid):
-    """Real time (s since recording start) of every frame of the 1:1 video, as 005 reads it."""
+    """Real time (s since recording start) of every frame of the 1:1 video, as 003 reads it."""
     path = find_ci(TIMESTAMP_DIRS, f"{pid}_frame_timestamps.csv")
     if path is None:
         return None, None
@@ -377,6 +383,28 @@ def participants(named, include_pilots):
     return keep
 
 
+def run_block_duration_check(pids=None):
+    """Kubios blocks must last the same for ECG, FaceReader and webcam, or their HRV isn't comparable.
+    Shared check (block_duration_check.py, next to this script), also run by
+    video/001_generate_event_onsets.py, so whichever script runs last catches a mismatch.
+    Only warns; warns too if one of the other scripts hasn't been run yet."""
+    import importlib.util
+    try:
+        here = os.path.dirname(os.path.abspath(__file__))
+    except NameError:
+        here = os.path.abspath(".")
+    path = os.path.join(here, "block_duration_check.py")
+    if not os.path.isfile(path):
+        print(f"\nWARNING: {path} not found - block duration check (ECG vs FaceReader vs webcam) not run.")
+        return {}
+    spec = importlib.util.spec_from_file_location("block_duration_check", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    import config as cfg
+    warnings, _ = module.check_block_durations(cfg, pids)
+    return warnings
+
+
 def main():
     ap = argparse.ArgumentParser(description="Kubios_Samples.csv for FaceReader and webcam beats (video time).")
     ap.add_argument("pids", nargs="*", help="participant IDs (default: everyone with beats)")
@@ -425,6 +453,7 @@ def main():
         for pid, ws in flagged.items():
             for w in ws:
                 print(f"  {pid}: {w}")
+    run_block_duration_check(pids)
 
 
 if __name__ == "__main__":

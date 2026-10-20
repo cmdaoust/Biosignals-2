@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # =============================================================================
-# 006_compare_facereader_runs.R
+# 004_compare_facereader_runs.R
 # =============================================================================
 # Compares two FaceReader runs of the SAME participant frame by frame, e.g. the run on the
 # 1:1 .mkv (which showed the "frame rate / bit rate / resolution is too low" warning) against
@@ -9,7 +9,7 @@
 # Question it answers: did the warning change FaceReader's output, or was it only a message?
 #
 # HOW TO RUN
-#   Rscript 006_compare_facereader_runs.R r2433 <folder A> <folder B>
+#   Rscript 004_compare_facereader_runs.R r2433 <folder A> <folder B>
 #   defaults: folder A = 3_Data/facereader, folder B = 3_Data/facereader/test_ffv1_avi
 #   RStudio: set PID / DIR_A / DIR_B below and click Source.
 #   Needs readxl for .xlsx exports (install.packages("readxl")); .txt exports need nothing.
@@ -30,7 +30,7 @@
 #   5. Heart beat log: number of beats, beats at the same time (within half a frame), interval differences.
 #   6. Verdict, plus a CSV of the per-column numbers and a PDF of HR / RMSSD / SDNN over time.
 #   7. WHICH RUN IS CLOSER TO THE ECG: both runs scored per block against the Kubios report,
-#      with the same readers/maths as 005_compare_hrv.R (needs 005 in the same folder, the Kubios
+#      with the same readers/maths as 003_compare_hrv.R (needs 003 in the same folder, the Kubios
 #      report in 3_Data/kubios, 3_Data/ecg_video_offsets.csv and <pid>_frame_timestamps.csv):
 #        - FaceReader's own HR and HRV (value at block end; block median) vs Kubios
 #        - RMSSD / SDNN / HR computed from each run's heart beat log (as is, cleaned) vs Kubios
@@ -252,13 +252,13 @@ if (vit_same && face_same) {
 # ---- 7. which run is closer to the ECG ------------------------------------------------
 kub <- NULL
 say("\n7. WHICH RUN IS CLOSER TO THE ECG (Kubios)")
-f005 <- file.path(HERE, "005_compare_hrv.R")
-if (!file.exists(f005)) {
-  say("  skipped: needs 005_compare_hrv.R in %s", HERE)
+f003 <- file.path(HERE, "003_compare_hrv.R")
+if (!file.exists(f003)) {
+  say("  skipped: needs 003_compare_hrv.R in %s", HERE)
 } else {
-  E5 <- new.env()                                 # 005's readers + maths, kept apart from this script's objects
+  E5 <- new.env()                                 # 003's readers + maths, kept apart from this script's objects
   assign("HRV_NO_MAIN", TRUE, envir = E5)
-  sys.source(f005, envir = E5, keep.source = FALSE)
+  sys.source(f003, envir = E5, keep.source = FALSE)
   for (v in c("PID", "A", "B", "BA", "BB")) assign(v, get(v), envir = E5)
   fmt <- E5$fmt
   kub <- evalq(tryCatch({

@@ -1,16 +1,18 @@
 r"""
-004_convert_mkv_to_avi.py
-=========================
+oneoff_convert_old_mkv_to_avi_pre_7oct2026.py
+=============================================
+(In analysis/video/archive/: not part of the run order. Was 004_convert_mkv_to_avi.py, then
+003_..., until 20 Oct 2026. Only for OLD / pilot videos - see below; new participants never need it.)
 ONE-OFF for participants converted before 7 Oct 2026, whose 1:1 video is an <id>_1to1.mkv.
 Since then 000 (--method 1to1) writes <id>_1to1_ffv1.avi directly, and that single file is used by
-BOTH WebcamBiometrics (003) and FaceReader. This script turns an old .mkv into that .avi, and with
+BOTH WebcamBiometrics (002) and FaceReader. This script turns an old .mkv into that .avi, and with
 --delete-mkv removes the .mkv afterwards so there is only one video per participant:
 
-  python 004_convert_mkv_to_avi.py --all --delete-mkv
+  python archive\oneoff_convert_old_mkv_to_avi_pre_7oct2026.py --all --delete-mkv   (from analysis\video)
 
 --delete-mkv only deletes after checking EVERY frame of the .avi is pixel-identical to the .mkv
 (decodes both once; a few minutes per participant). If the .avi already exists it is checked the
-same way. Nothing in 003's cached extraction needs redoing: the pixels are the same.
+same way. Nothing in 002's cached extraction needs redoing: the pixels are the same.
 
   --method 1to1-ffv1avi  ->  <id>_1to1_ffv1.avi      <- USE THIS FOR FACEREADER (default)
       The SAME compressed FFV1 pictures as the .mkv, just re-packed into an .avi with a constant
@@ -51,16 +53,16 @@ Never overwrites: a participant whose output already exists is skipped.
 
 Usage (paths from config.py at the repo root: VIDEO_EXTERNAL_DIR, i.e. D:\)
 -----
-  python 004_convert_mkv_to_avi.py r2433                               # FFV1 .avi for FaceReader (default)
-  python 004_convert_mkv_to_avi.py --all                               # every <id>_1to1.mkv in VIDEO_EXTERNAL_DIR
-  python 004_convert_mkv_to_avi.py --all --output-dir C:\fr_temp       # faster if on a different drive
-  python 004_convert_mkv_to_avi.py r2433 --method 1to1-facereader
-  python 004_convert_mkv_to_avi.py r2433 i4155 --method realtime
+  python oneoff_convert_old_mkv_to_avi_pre_7oct2026.py r2433                               # FFV1 .avi for FaceReader (default)
+  python oneoff_convert_old_mkv_to_avi_pre_7oct2026.py --all                               # every <id>_1to1.mkv in VIDEO_EXTERNAL_DIR
+  python oneoff_convert_old_mkv_to_avi_pre_7oct2026.py --all --output-dir C:\fr_temp       # faster if on a different drive
+  python oneoff_convert_old_mkv_to_avi_pre_7oct2026.py r2433 --method 1to1-facereader
+  python oneoff_convert_old_mkv_to_avi_pre_7oct2026.py r2433 i4155 --method realtime
 Options: --video-dir DIR (where the .mkv + timestamps are), --output-dir DIR (where to write;
 default the same folder), --fps 30 (realtime only).
 
 Needs ffmpeg + ffprobe on PATH (winget install ffmpeg). Uses 000_convert_png_to_avi.py from the
-same folder for the shared rules (timestamp checks, realtime picture choice, file names).
+parent folder (analysis/video) for the shared rules (timestamp checks, realtime picture choice, file names).
 """
 
 import argparse
@@ -81,7 +83,7 @@ def out_name(pid, method, fps):
 
 
 def load_converter():
-    spec = importlib.util.spec_from_file_location("convert_png", os.path.join(HERE, "000_convert_png_to_avi.py"))
+    spec = importlib.util.spec_from_file_location("convert_png", os.path.join(os.path.dirname(HERE), "000_convert_png_to_avi.py"))
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -237,7 +239,7 @@ def delete_mkv_if_identical(pid, video_external_dir, output_dir):
         return
     if os.path.normcase(os.path.dirname(os.path.abspath(avi))) != os.path.normcase(os.path.abspath(video_external_dir)):
         print(f"  NOT deleting the .mkv: the .avi is in {output_dir}, not next to the .mkv in {video_external_dir} "
-              f"(003 and FaceReader look in {video_external_dir}). Move the .avi there first.")
+              f"(002 and FaceReader look in {video_external_dir}). Move the .avi there first.")
         return
     print("  checking every frame of the .avi against the .mkv before deleting it...")
     same, na, nb = all_frames_identical(mkv, avi)

@@ -13,19 +13,19 @@ can never be mixed up.
       NOT FOR rPPG: repeated/skipped frames distort the pulse signal, and frame k is not PNG k.
 
   --method 1to1       ->  <id>_1to1_ffv1.avi  (+ a copy of <id>_frame_timestamps.csv next to it)
-      THE ONE VIDEO FOR BOTH HEART-RATE ANALYSES: WebcamBiometrics (003) AND FaceReader read this
+      THE ONE VIDEO FOR BOTH HEART-RATE ANALYSES: WebcamBiometrics (002) AND FaceReader read this
       same file, so they analyse exactly the same frames. Every PNG exactly once, in order,
       nothing repeated or dropped, so video frame i == PNG frame i == row i of the timestamps CSV.
       Stored LOSSLESSLY as FFV1 (pixels bit-identical to the PNGs, RGB, no chroma subsampling)
       at a constant nominal frame rate = the measured average fps (~5.5 GB for ~19 min).
       WebcamBiometrics extracts it WITH --timestamps <id>_frame_timestamps.csv, so the real
       capture time of every frame is used; FaceReader reports times as frame / nominal fps and
-      the HRV scripts (005/006) map them back through the same timestamps CSV.
+      the HRV scripts (003/004) map them back through the same timestamps CSV.
       Why .avi and not .mkv (what this method made until 7 Oct 2026): FaceReader can't read a bit
       rate from an .mkv, warns "frame rate / bit rate / resolution is too low" on every frame and
       processes it worse (r2433: 24-43% of ECG R-peaks found vs 85-99% for the same frames as
       .avi). WebcamBiometrics gets identical pixels from either. Existing <id>_1to1.mkv files can
-      be turned into this .avi with 004_convert_mkv_to_avi.py (no re-encoding).
+      be turned into this .avi with archive/oneoff_convert_old_mkv_to_avi_pre_7oct2026.py (no re-encoding).
 
   --method 1to1-facereader  ->  <id>_1to1_facereader.avi  (+ copy of <id>_frame_timestamps.csv)
       FALLBACK ONLY: the same 1:1 frames uncompressed (rawvideo bgr24, ~30 GB for ~19 min), in

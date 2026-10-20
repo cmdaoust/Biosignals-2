@@ -24,6 +24,11 @@ Usage
 import os
 import glob
 import pandas as pd
+
+# Full paths of the scripts that make the two event files (named in warnings)
+_HERE = os.path.dirname(os.path.abspath(__file__))
+BIOPAC_EVENTS_SCRIPT   = os.path.join(_HERE, '01_create_ledalab_events_biopac.py')
+PSYCHOPY_EVENTS_SCRIPT = os.path.join(_HERE, '02_create_ledalab_events_psychopy.py')
 import sys as _sys, os as _os
 # config.py lives at the repo root (two folders up from this script)
 _sys.path.insert(0, _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', '..')))
@@ -90,9 +95,9 @@ def main():
         p_exists = os.path.exists(p_path)
 
         if not b_exists:
-            print(f'  ⚠  BIOPAC file missing — run 01_create_ledalab_events_biopac.py')
+            print(f'  ⚠  BIOPAC file missing — run {BIOPAC_EVENTS_SCRIPT}')
         if not p_exists:
-            print(f'  ⚠  PsychoPy file missing — run 02_create_ledalab_events_psychopy.py')
+            print(f'  ⚠  PsychoPy file missing — run {PSYCHOPY_EVENTS_SCRIPT}')
         if not b_exists or not p_exists:
             continue
 

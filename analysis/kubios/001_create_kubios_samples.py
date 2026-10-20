@@ -26,14 +26,17 @@ Pstim2_trig = P02. Which video of a pair is shown first is counterbalanced, so
 each induction sample runs from the earliest start to the latest end of its
 two channels.
 
-Files without trigger channels (e.g. *_eda_trimmed.acq, which only hold EDA)
-are skipped.
+<pid>_eda_trimmed.acq files (EDA only) are skipped by name, without being
+opened. Any other file without trigger channels is skipped too.
 
 Checks (printed as warnings, listed again in the summary):
   - trigger channel missing, with no pulse, or with more than one pulse
   - trigger still HIGH at the end of the recording (sample END cut short)
   - baseline / recovery not about 180 s long
   - samples overlapping or out of order
+  - each block's duration vs the video events / FaceReader / webcam samples (block_duration_check.py,
+    run at the end; also warns if video/001_generate_event_onsets.py or 002_create_kubios_samples_video.py
+    hasn't been run yet)
 
 Usage
 -----
@@ -102,6 +105,9 @@ SAMPLES = {
     'pos_recovery':  ['Precovery'],
 }
 TRIGGER_CHANNELS = {ch for channels in SAMPLES.values() for ch in channels}
+
+# Files whose name ends with this are EDA-only exports (<pid>_eda_trimmed.acq): never processed
+SKIP_SUFFIX = '_eda_trimmed.acq'
 
 
 # ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -191,12 +197,19 @@ def wants_redo(acq_name, redo):
 
 def main(acq_dir=RAW_PHYSIOLOGY_DIR, output_path=None, redo_all=False, redo=()):
     output_path = output_path or os.path.join(acq_dir, 'Kubios_Samples.csv')
-    acq_files = sorted(glob.glob(os.path.join(acq_dir, '*.acq')))
+    all_acq = sorted(glob.glob(os.path.join(acq_dir, '*.acq')))
+    eda_trimmed = [a for a in all_acq if os.path.basename(a).lower().endswith(SKIP_SUFFIX)]
+    acq_files = [a for a in all_acq if a not in eda_trimmed]
     if not acq_files:
         raise FileNotFoundError(f'No .acq files found in: {acq_dir}')
-    print(f'Found {len(acq_files)} .acq file(s) in: {acq_dir}\n')
+    print(f'Found {len(acq_files)} .acq file(s) in: {acq_dir}')
+    if eda_trimmed:
+        print(f'Ignoring {len(eda_trimmed)} *{SKIP_SUFFIX} file(s): '
+              f'{", ".join(os.path.basename(a) for a in eda_trimmed)}')
+    print()
 
     existing = {} if redo_all else read_existing_rows(output_path)
+    existing = {k: v for k, v in existing.items() if not k.lower().endswith(SKIP_SUFFIX)}
     unmatched = [r for r in redo if not any(wants_redo(os.path.basename(a), [r]) for a in acq_files)]
     if unmatched:
         print(f'WARNING: --redo matched no .acq file: {", ".join(unmatched)}\n')
@@ -274,6 +287,28 @@ def main(acq_dir=RAW_PHYSIOLOGY_DIR, output_path=None, redo_all=False, redo=()):
     return rows
 
 
+def run_block_duration_check(pids=None):
+    """Kubios blocks must last the same for ECG, FaceReader and webcam, or their HRV isn't comparable.
+    Shared check (block_duration_check.py, next to this script), also run by
+    video/001_generate_event_onsets.py, so whichever script runs last catches a mismatch.
+    Only warns; warns too if one of the other scripts hasn't been run yet."""
+    import importlib.util
+    try:
+        here = os.path.dirname(os.path.abspath(__file__))
+    except NameError:
+        here = os.path.abspath('.')
+    path = os.path.join(here, 'block_duration_check.py')
+    if not os.path.isfile(path):
+        print(f'\nWARNING: {path} not found - block duration check (ECG vs FaceReader vs webcam) not run.')
+        return {}
+    spec = importlib.util.spec_from_file_location('block_duration_check', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    import config as cfg
+    warnings, _ = module.check_block_durations(cfg, pids)
+    return warnings
+
+
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description='Write Kubios_Samples.csv (samples S1-S5) for the BIOPAC .acq files.')
     ap.add_argument('--all', action='store_true', help='redo every recording, not just new ones')
@@ -281,3 +316,4 @@ if __name__ == '__main__':
                     help='redo these recordings (participant ID, e.g. r2433, or file name)')
     args = ap.parse_args()
     main(redo_all=args.all, redo=args.redo)
+    run_block_duration_check()
