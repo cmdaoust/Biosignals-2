@@ -1,27 +1,27 @@
 #!/usr/bin/env Rscript
 # =============================================================================
-# 005_compare_hrv.R
+# 003_compare_hrv.R
 # =============================================================================
 # Compares heart rate variability (HRV) per block from three sources:
 #
 #   ECG         Kubios HRV report (the ground truth)
-#   webcam      WebcamBiometrics beats (003_run_webcam_biometrics.py output), up to three code versions,
+#   webcam      WebcamBiometrics beats (002_run_webcam_biometrics.py output), up to three code versions,
 #               each a separate source, labelled by the file it comes from:
 #                 webcam_baseline   <id>_webcam_beats_baseline.csv   original WebcamBiometrics code
 #                 webcam_faceloss   <id>_webcam_beats_faceloss.csv   original + face-loss gap fix
 #                 webcam_optimized  <id>_webcam_beats_optimized.csv  gap fix + FIR filter + heart-rate-guided beats
-#               (003 --variant, default all three). Whichever exist are compared side by side. Older
+#               (002 --variant, default all three). Whichever exist are compared side by side. Older
 #               unlabelled files (<id>_webcam_beats.csv, *_optimize.csv) are NOT read: their code version
-#               isn't recorded reliably - rerun 003.
+#               isn't recorded reliably - rerun 002.
 #   FaceReader  FaceReader "heart beat log" (if one exists for the participant)
 #
 # and works out WHY each webcam source differs from the ECG.
 #
 # HOW TO RUN
 #   From a terminal, in this folder:
-#     Rscript 005_compare_hrv.R r2433 s0723      (named participants)
-#     Rscript 005_compare_hrv.R --all            (everyone with webcam beats + a Kubios report)
-#     Rscript 005_compare_hrv.R --all --pilots   (... including pilot participants)
+#     Rscript 003_compare_hrv.R r2433 s0723      (named participants)
+#     Rscript 003_compare_hrv.R --all            (everyone with webcam beats + a Kubios report)
+#     Rscript 003_compare_hrv.R --all --pilots   (... including pilot participants)
 #   Pilots: INCLUDE_PILOTS below (or --pilots / --no-pilots on the command line) decides whether
 #   pilot participants (analysis/participant_status.csv) are in --all and in the pooled all_*
 #   files and agreement plots. Test sessions and rejected participants are always left out of
@@ -30,9 +30,9 @@
 #   Only base R is used - nothing to install.
 #
 # WHAT IT NEEDS (per participant)
-#   3_Data/webcam_biometrics/<id>_webcam_beats_<variant>.csv   from 003_run_webcam_biometrics.py
+#   3_Data/webcam_biometrics/<id>_webcam_beats_<variant>.csv   from 002_run_webcam_biometrics.py
 #             (variant = baseline / faceloss / optimized; at least one)
-#   3_Data/ecg_video_offsets.csv                       written by 003 (ECG -> video clock offset)
+#   3_Data/ecg_video_offsets.csv                       written by 002 (ECG -> video clock offset)
 #   Kubios HRV report  <id>_*hrv*.csv                  in 3_Data/kubios or next to the trimmed .acq
 #   optional: <id>_*heart beat log.txt                 FaceReader export (D:/Biosignals2_video,
 #             + <id>_frame_timestamps.csv               3_Data/facereader or 3_Data/video)
@@ -132,7 +132,7 @@ SETTINGS <- list(
 
 BLOCKS <- c("baseline", "negative_induction", "negative_recovery",
             "positive_induction", "positive_recovery")
-WEBCAM_VARIANTS <- c("baseline", "faceloss", "optimized")   # 003 --variant; file suffix _<variant>
+WEBCAM_VARIANTS <- c("baseline", "faceloss", "optimized")   # 002 --variant; file suffix _<variant>
 SOURCES <- c(paste0("webcam_", WEBCAM_VARIANTS), "facereader")
 COLS <- c(ecg = "black", kubios = "grey55", webcam_baseline = "#9aa5b1", webcam_faceloss = "#1f6fb4",
           webcam_optimized = "#2a9d4b", facereader = "#d95f02")
@@ -156,12 +156,16 @@ script_dir <- function() {
 }
 
 HERE <- script_dir()
+# Full path of 002 (named in messages so people run things in the right order)
+WEBCAM_SCRIPT <- normalizePath(file.path(HERE, "002_run_webcam_biometrics.py"),
+                               winslash = .Platform$file.sep, mustWork = FALSE)
+if (.Platform$OS.type == "windows") WEBCAM_SCRIPT <- gsub("/", "\\\\", WEBCAM_SCRIPT)
 cfg <- Filter(file.exists, file.path(c(HERE, dirname(HERE), dirname(dirname(HERE))), "config.R"))  # repo root is 2 up
 if (length(cfg)) source(cfg[1])
 if (!exists("SERVER_ROOT")) SERVER_ROOT <- "C:/Users/carme/Box/Project_Biosignals_study_2/3_Data"
 
 # Participant status (pilot / test / excluded) from analysis/participant_status.csv.
-# If it can't be read, everyone is kept and a warning is printed (so 006 etc. still work).
+# If it can't be read, everyone is kept and a warning is printed (so 004 etc. still work).
 ps_helper <- file.path(dirname(HERE), "participant_status.R")
 PS_OK <- file.exists(ps_helper) && !inherits(tryCatch({
   PARTICIPANT_STATUS_PATH <- file.path(dirname(HERE), "participant_status.csv")
@@ -273,20 +277,20 @@ read_kubios <- function(path) {
 }
 
 read_offset <- function(pid) {
-  if (!file.exists(OFFSETS_FILE)) stop("No ", OFFSETS_FILE, " - run 003_run_webcam_biometrics.py first.")
+  if (!file.exists(OFFSETS_FILE)) stop("No ", OFFSETS_FILE, " - run ", WEBCAM_SCRIPT, " first.")
   o <- read.csv(OFFSETS_FILE, colClasses = "character", strip.white = TRUE)
   v <- num(o$offset_s[tolower(o$pid) == tolower(pid)])
   if (!length(v) || is.na(v[1]))
-    stop(pid, ": no offset in ", OFFSETS_FILE, " - run 003_run_webcam_biometrics.py ", pid, " (it estimates it).")
+    stop(pid, ": no offset in ", OFFSETS_FILE, " - run ", WEBCAM_SCRIPT, " ", pid, " (it estimates it).")
   v[1]
 }
 
 # webcam beats -> data.frame(t = ECG clock, rr = as reported, segment, near_gap)
-# variant: baseline / faceloss / optimized -> <id>_webcam_beats_<variant>.csv (003 --variant).
+# variant: baseline / faceloss / optimized -> <id>_webcam_beats_<variant>.csv (002 --variant).
 read_webcam <- function(pid, offset, variant) {
   p <- file.path(WEBCAM_HR_DIR, paste0(pid, "_webcam_beats_", variant, ".csv"))
   if (!file.exists(p)) {
-    say("  webcam_%s: no %s (run 003_run_webcam_biometrics.py %s --variant %s)", variant, basename(p), pid, variant)
+    say("  webcam_%s: no %s (run %s %s --variant %s)", variant, basename(p), WEBCAM_SCRIPT, pid, variant)
     return(NULL)
   }
   d <- read.csv(p)
@@ -294,12 +298,12 @@ read_webcam <- function(pid, offset, variant) {
   if ("time_s" %in% names(d) && any(!is.na(d$time_s))) {
     dd <- median(d$time_s - t, na.rm = TRUE)
     if (abs(dd) > 0.005)
-      say("  WARNING: %s was made with a different ECG->video offset (%+.3f s from the offsets file).\n           Using the offsets file. Rerun 003 %s to refresh the CSV.", basename(p), dd, pid)
+      say("  WARNING: %s was made with a different ECG->video offset (%+.3f s from the offsets file).\n           Using the offsets file. Rerun %s %s to refresh the CSV.", basename(p), dd, WEBCAM_SCRIPT, pid)
   }
   w <- data.frame(t = t, rr = d$rr_s, t_video = d$time_video_s,
                   segment = if ("segment" %in% names(d)) d$segment else NA,
                   near_gap = if ("near_gap" %in% names(d)) d$near_gap %in% 1 else FALSE)
-  if (!"segment" %in% names(d)) say("  note: %s has no segment/near_gap columns (made before the gap fix) - rerun 003 %s.", basename(p), pid)
+  if (!"segment" %in% names(d)) say("  note: %s has no segment/near_gap columns (made before the gap fix) - rerun %s %s.", basename(p), WEBCAM_SCRIPT, pid)
   w <- w[order(w$t), ]
   attr(w, "file") <- p
   w
@@ -1036,7 +1040,7 @@ main <- function() {
     if (length(named_out)) say("Note: %s run individually but left out of the pooled all_* files (INCLUDE_PILOTS = %s; use --pilots to pool them).",
                                paste(named_out, collapse = ", "), INCLUDE_PILOTS)
   }
-  if (!length(pids)) stop("Give participant IDs: Rscript 005_compare_hrv.R r2433 s0723   (or --all)")
+  if (!length(pids)) stop("Give participant IDs: Rscript 003_compare_hrv.R r2433 s0723   (or --all)")
   say("pooled outputs: %s", GROUP_LABEL)
   say("data: %s\nwebcam beats: %s\noutput: %s", SERVER_ROOT, WEBCAM_HR_DIR, OUT_DIR)
   for (p in pids) tryCatch(run_pid(p), error = function(e) say("  %s FAILED: %s", p, conditionMessage(e)))
@@ -1051,4 +1055,4 @@ main <- function() {
   }
 }
 
-if (!isTRUE(get0("HRV_NO_MAIN"))) main()   # 006_compare_facereader_runs.R sources this file for its readers
+if (!isTRUE(get0("HRV_NO_MAIN"))) main()   # 004_compare_facereader_runs.R sources this file for its readers

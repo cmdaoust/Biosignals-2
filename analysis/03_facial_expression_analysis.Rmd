@@ -25,7 +25,8 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
 > 1. the **FaceReader detailed log** (`.xlsx` or `.txt` export),
 > 2. the **webcam-biometrics log** (`*_biometrics.csv`, MediaPipe/ARKit blendshapes),
 > 3. the **PsychoPy data file** (`.csv`) — epoch timings *and* the video ratings,
-> 4. for older sessions, the webcam **frame timestamps** (`<id>_frame_timestamps.csv`),
+> 4. the webcam **frame timestamps** (`<id>_frame_timestamps.csv`) whenever FaceReader's
+>    video time is not real time (1:1 videos and older sessions),
 >
 > puts everything on one clock (seconds since webcam recording start), cuts it
 > into baseline / video / recovery epochs, and then tests
@@ -35,11 +36,18 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
 >
 > Both recording formats are handled:
 >
-> * **current** (`png2avi`, e.g. i4155, r4755): FaceReader ran on `<id>_facereader.avi`,
->   rebuilt so that video time = time since recording start;
+> * **current** (`png2avi`) sessions, FaceReader run on either
+>   * `<id>_1to1_ffv1.avi` (the standard since Oct 2026: the SAME frames as the heart-rate
+>     analyses, every PNG exactly once). Its video time = frame / average fps, which drifts
+>     from real time, so each frame is mapped to its real capture time with the
+>     frame-timestamps file; or
+>   * `<id>_realtime_30fps.avi` / `<id>_facereader.avi` (older runs, e.g. i4155, r4755),
+>     rebuilt so that video time = time since recording start - used as is;
 > * **older** (`legacy`, e.g. e5510, g2313, n2026, p7259, s0943): FaceReader ran on
->   `<id>_recording.avi`, whose video time drifts from real time — each FaceReader
->   frame is mapped back to its real capture time with the frame-timestamps file.
+>   `<id>_recording.avi`, whose video time drifts from real time — mapped back through
+>   the frame-timestamps file, like the 1:1 videos.
+>
+> Which applies is read from each FaceReader log's `Filename` row (the video it analysed).
 >
 > Pilot-sized N: the inferential tests are a scaffold. Read them as descriptive
 > until the full sample is in.
@@ -87,7 +95,9 @@ file, like the other analysis Rmds). Variables used:
 |---|---|---|
 | `PSYCHOPY_DATA_DIR` | PsychoPy `.csv`, `*_biometrics.csv`, `*_clocksync.json` | required |
 | `FACEREADER_RESULTS_DIR` | FaceReader detailed logs (`.xlsx`/`.txt`) | required |
-| `VIDEO_BOX_DIR` | older sessions: `<id>_frame_timestamps.csv` | older sessions are dropped |
+| `VIDEO_BOX_DIR` | older sessions: `<id>_frame_timestamps.csv` | not searched |
+| `VIDEO_EXTERNAL_DIR` | 1:1 videos: the `<id>_frame_timestamps.csv` copy next to the video | `D:/Biosignals2_video` |
+| `WEBCAM_PNG_EXTERNAL_DIR` | current sessions: the original `<id>_frame_timestamps.csv` | `D:/Biosignals2_png_data` |
 | `FACIAL_EXPRESSION_DIR` | outputs of this analysis | `SERVER_ROOT/facial_expression` |
 | `AU_LOOKUP_PATH` | `blendshapes_au_lookup.xlsx` | `analysis/video/`, then `analysis/` |
 
@@ -128,6 +138,11 @@ if (length(missing_vars)) stop("config.R does not define: ", paste(missing_vars,
 psychopy_dir   <- PSYCHOPY_DATA_DIR
 facereader_dir <- FACEREADER_RESULTS_DIR
 legacy_dir     <- if (exists("VIDEO_BOX_DIR")) VIDEO_BOX_DIR else NA_character_
+# Folders searched (in this order) for <id>_frame_timestamps.csv - same as video/003_compare_hrv.R
+timestamp_dirs <- c(get0("VIDEO_EXTERNAL_DIR", ifnotfound = "D:/Biosignals2_video"),
+                    get0("WEBCAM_PNG_EXTERNAL_DIR", ifnotfound = "D:/Biosignals2_png_data"),
+                    legacy_dir)
+timestamp_dirs <- unique(timestamp_dirs[!is.na(timestamp_dirs)])
 output_dir     <- if (exists("FACIAL_EXPRESSION_DIR")) FACIAL_EXPRESSION_DIR else
                     file.path(SERVER_ROOT, "facial_expression")
 au_lookup_path <- if (exists("AU_LOOKUP_PATH")) AU_LOOKUP_PATH else {
@@ -135,9 +150,9 @@ au_lookup_path <- if (exists("AU_LOOKUP_PATH")) AU_LOOKUP_PATH else {
   cands[file.exists(cands)][1]
 }
 
-tibble(setting = c("config.R", "psychopy_dir", "facereader_dir", "legacy frame timestamps (VIDEO_BOX_DIR)",
-                   "output_dir", "au_lookup"),
-       path    = c(file.path(project_dir, "config.R"), psychopy_dir, facereader_dir, legacy_dir,
+tibble(setting = c("config.R", "psychopy_dir", "facereader_dir",
+                   paste("frame timestamps", seq_along(timestamp_dirs)), "output_dir", "au_lookup"),
+       path    = c(file.path(project_dir, "config.R"), psychopy_dir, facereader_dir, timestamp_dirs,
                    output_dir, au_lookup_path),
        exists  = file.exists(path)) |>
   kable()
@@ -455,11 +470,17 @@ session_format <- function(raw) {
   else NA_character_
 }
 
+# <id>_frame_timestamps.csv: first folder in timestamp_dirs that has one (the copy next to a
+# 1:1 video is identical to the original; 000_convert_png_to_avi.py warns if it isn't).
 find_frames <- function(pid) {
-  if (is.na(legacy_dir) || !dir.exists(legacy_dir)) return(NA_character_)
-  hits <- list.files(legacy_dir, pattern = "frame_timestamps\\.csv$", full.names = TRUE)
-  hits <- hits[pid_from_file(hits) == pid]
-  if (length(hits) == 1) hits else NA_character_
+  for (d in timestamp_dirs) {
+    if (!dir.exists(d)) next
+    hits <- list.files(d, pattern = "frame_timestamps\\.csv$", full.names = TRUE, ignore.case = TRUE)
+    hits <- hits[pid_from_file(hits) == pid]
+    if (length(hits) == 1) return(hits)
+    if (length(hits) > 1) { warning(pid, ": several frame-timestamps files in ", d, " - none used"); return(NA_character_) }
+  }
+  NA_character_
 }
 
 all_sessions <- tibble(psy_path = psy_files) |>
@@ -486,7 +507,7 @@ sessions <- usable |>
     sync_path   = file.path(psychopy_dir, paste0(session_stem, "_clocksync.json")),
     has_bio     = file.exists(bio_path) & file.size(bio_path) > 0,
     has_sync    = file.exists(sync_path),
-    frames_path = if_else(format == "legacy", map_chr(participant_id, find_frames), NA_character_)
+    frames_path = map_chr(participant_id, find_frames)   # needed for 1:1 and older videos
   )
 
 # Status of every participant found, filled in as data is loaded (shown in §3.7)
@@ -706,13 +727,19 @@ ratings |> kable(caption = "Stimulus ratings")
 
 ### 3.5 FaceReader
 
-For **current** sessions FaceReader's `Video Time` already is time since
-recording start. For **older** sessions it is `frame / stored AVI frame rate`,
-which drifts from real time (the camera's real rate differs from the rate
-written into the AVI). Each FaceReader row is therefore mapped to its frame
-number and then to that frame's real capture time in `<id>_frame_timestamps.csv`.
-The stored frame rate is taken from the log itself (frames ÷ duration), so
-ffprobe is not needed.
+FaceReader's `Video Time` is real time (time since recording start) only for
+the **real-time** videos (`*_realtime_*fps.avi`, older `*_facereader.avi`). For
+**1:1 videos** (`*_1to1*`) and **older sessions** (`*_recording.avi`) it is
+`frame / the video's nominal frame rate`, which drifts from real time (up to
+~1.4 s over a session), because the camera's real frame times vary. Each
+FaceReader row is then mapped to its frame number and on to that frame's real
+capture time in `<id>_frame_timestamps.csv` (video frame k = row k).
+
+The video kind comes from the log's `Filename` row. The frame rate is the log's
+`Frame rate` row (exactly the rate FaceReader used) when it is a video rate;
+for a log exported every frame without that row, frames ÷ duration. A log
+exported at a lower rate (e.g. `Frame rate` 1 = one row per second) can't be
+mapped to frames and is dropped with a message: re-export it with every frame.
 
 ```{r load-facereader}
 # The FaceReader folder also holds other exports (e.g. heart beat logs), so each
@@ -745,36 +772,79 @@ fr_index <- fr_index |>
   filter(participant_id %in% sessions$participant_id, !participant_id %in% fr_dupes)
 if (nrow(fr_index) == 0) stop("No FaceReader detailed logs match a usable session in: ", facereader_dir)
 
-# Older sessions: FaceReader video time -> real time since recording start
-legacy_to_rec <- function(fr_p, frames_path) {
+# Which kind of video FaceReader analysed (from the log's Filename row):
+#   "frames"   1:1 (*1to1*) or older *_recording.avi: video time = frame / nominal fps -> remap
+#   "realtime" *_realtime_*fps.avi / older *_facereader.avi: video time is already real time
+# Unknown names fall back on the session format (older -> "frames", current -> "realtime"),
+# which is what this document assumed before 1:1 videos existed.
+fr_video_kind <- function(source_video, format) {
+  v <- tolower(coalesce(source_video, ""))
+  if (str_detect(v, "1to1|_recording")) "frames"
+  else if (str_detect(v, "realtime|_facereader")) "realtime"
+  else if (format == "legacy") "frames" else "realtime"
+}
+
+MIN_VIDEO_FPS <- 5   # a 'Frame rate' below this is the export rate (e.g. 1 row/s), not the video's
+
+# FaceReader video time -> real time since recording start, through the frame timestamps.
+# Returns NULL with a reason (attr "why") if it can't be done.
+frames_to_rec <- function(fr_p, frames_path, fps_header) {
   ts  <- read_csv(frames_path, show_col_types = FALSE, progress = FALSE)
-  fps_video <- (nrow(fr_p) - 1) / max(fr_p$rec_time)
-  k   <- round(fr_p$rec_time * fps_video)                 # AVI frame number, from 0
-  fr_p$rec_time <- ts$time_since_recording_start[if_else(k + 1 <= nrow(ts), k + 1, NA_real_)]
-  attr(fr_p, "legacy") <- tibble(
-    avi_fps = fps_video,
-    camera_fps = (nrow(ts) - 1) / diff(range(ts$time_since_recording_start)),
-    max_drift_s = max(abs(k / fps_video - fr_p$rec_time), na.rm = TRUE),
-    frames_fr = nrow(fr_p), frames_ts = nrow(ts))
+  t_ts <- ts$time_since_recording_start
+  if (!is.na(fps_header) && fps_header >= MIN_VIDEO_FPS) {
+    fps_video <- fps_header; fps_from <- "log Frame rate row"
+  } else if (abs(nrow(fr_p) - nrow(ts)) <= 2) {
+    fps_video <- (nrow(fr_p) - 1) / max(fr_p$rec_time); fps_from <- "frames / duration"
+  } else {
+    return(structure(list(), why = sprintf(
+      "log has %d rows for %d video frames (Frame rate %s) - exported below the video's frame rate, so rows can't be matched to frames; re-export the detailed log with every frame",
+      nrow(fr_p), nrow(ts), ifelse(is.na(fps_header), "not given", format(fps_header)))))
+  }
+  k <- round(fr_p$rec_time * fps_video)                   # video frame number, from 0
+  video_time <- fr_p$rec_time
+  fr_p$rec_time <- t_ts[if_else(k + 1 <= length(t_ts), k + 1, NA_real_)]
+  attr(fr_p, "remap") <- tibble(
+    video_fps = fps_video, fps_from = fps_from,
+    camera_fps = (length(t_ts) - 1) / diff(range(t_ts)),
+    max_drift_s = max(abs(video_time - fr_p$rec_time), na.rm = TRUE),
+    frames_fr = nrow(fr_p), frames_ts = length(t_ts))
   fr_p
 }
 
+fr_dropped <- list()   # participant -> why their FaceReader log wasn't used (shown in §3.7)
 fr_list <- pmap(fr_index |> select(path, participant_id), function(path, participant_id) {
   d  <- read_facereader(path)
   d$participant_id <- participant_id
   s  <- sessions |> filter(participant_id == !!participant_id)
-  if (s$format == "legacy") {
-    if (is.na(s$frames_path)) return(NULL)
-    d <- legacy_to_rec(d, s$frames_path)
+  m  <- attr(d, "meta")
+  kind <- fr_video_kind(m$source_video, s$format)
+  if (kind == "frames") {
+    if (is.na(s$frames_path)) {
+      fr_dropped[[participant_id]] <<- paste0(
+        "dropped: FaceReader ran on ", basename(gsub("\\\\", "/", coalesce(m$source_video, "?"))),
+        " (video time is not real time) but no ", participant_id, "_frame_timestamps.csv in ",
+        paste(timestamp_dirs, collapse = " / "))
+      return(NULL)
+    }
+    d2 <- frames_to_rec(d, s$frames_path, m$frame_rate)
+    if (!is.null(attr(d2, "why"))) {
+      fr_dropped[[participant_id]] <<- paste("dropped:", attr(d2, "why"))
+      return(NULL)
+    }
+    attr(d2, "meta") <- m
+    d <- d2
   }
+  attr(d, "video_kind") <- kind
   d
 })
 names(fr_list) <- fr_index$participant_id
 fr_list <- compact(fr_list)
+for (pid in names(fr_dropped)) message(pid, ": ", fr_dropped[[pid]])
 
 fr_meta <- imap(fr_list, \(d, pid) {
-  m <- attr(d, "meta") |> mutate(participant_id = pid, source_video = basename(gsub("\\\\", "/", source_video)))
-  if (!is.null(attr(d, "legacy"))) m <- bind_cols(m, attr(d, "legacy"))
+  m <- attr(d, "meta") |> mutate(participant_id = pid, source_video = basename(gsub("\\\\", "/", source_video)),
+                                 time_mapping = if (attr(d, "video_kind") == "frames") "via frame timestamps" else "as is (real-time video)")
+  if (!is.null(attr(d, "remap"))) m <- bind_cols(m, attr(d, "remap"))
   m
 }) |>
   list_rbind()
@@ -787,14 +857,14 @@ fr_meta |>
               summarise(n_frames = n(), end_s = max(rec_time), prop_face_found = mean(fr_valid)),
             by = "participant_id") |>
   select(-any_of(c("face_model", "calibration"))) |>
-  kable(digits = 3, caption = "FaceReader logs (older sessions: avi_fps = rate stored in the AVI, camera_fps = real rate)")
+  kable(digits = 3, caption = "FaceReader logs (remapped: video_fps = rate FaceReader's times use, camera_fps = real average rate, max_drift_s = largest correction)")
 
 legacy_checks <- if ("frames_fr" %in% names(fr_meta)) fr_meta |> filter(!is.na(frames_fr)) else tibble()
 if (nrow(legacy_checks)) {
   mism <- legacy_checks |> filter(frames_fr != frames_ts)
   if (nrow(mism)) warning("FaceReader frame count ≠ timestamps rows for: ",
                           paste(mism$participant_id, collapse = ", "),
-                          " — frame-to-time mapping may be off.")
+                          " — frame-to-time mapping may be off (log not exported with every frame, or a different video?).")
 }
 ```
 
@@ -836,12 +906,13 @@ wc_raw |>
 Everyone found in the PsychoPy folder, and what happened to them.
 
 ```{r overview}
+fr_drop_vec <- unlist(fr_dropped)
+if (is.null(fr_drop_vec)) fr_drop_vec <- character()
 fr_status <- tibble(participant_id = sessions$participant_id) |>
   mutate(fr = case_when(
     participant_id %in% fr_dupes ~ "dropped: several FaceReader detailed logs",
     participant_id %in% names(fr_list) ~ "ok",
-    sessions$format == "legacy" & is.na(sessions$frames_path) ~
-      "dropped: older session without <id>_frame_timestamps.csv in VIDEO_BOX_DIR",
+    participant_id %in% names(fr_dropped) ~ unname(fr_drop_vec[participant_id]),
     TRUE ~ "dropped: no FaceReader detailed log"))
 
 overview <- overview |>

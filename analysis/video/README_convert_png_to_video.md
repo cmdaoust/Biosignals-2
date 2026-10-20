@@ -62,10 +62,10 @@ Using one `.avi` for both analyses also means there is only **one video per part
 **Participants converted before 7 October** still have an `.mkv`. Turn it into the `.avi` (no re-compression, takes about as long as copying the file) and remove the `.mkv` once every picture has been checked:
 
 ```powershell
-python C:\Users\carme\OneDrive\Documents\GitHub\Biosignals2\analysis\video\004_convert_mkv_to_avi.py --all --delete-mkv
+python C:\Users\carme\Documents\Biosignals-2\analysis\video\archive\oneoff_convert_old_mkv_to_avi_pre_7oct2026.py --all --delete-mkv
 ```
 
-Until then, `003_run_webcam_biometrics.py` still reads the `.mkv` without problems.
+Until then, `002_run_webcam_biometrics.py` still reads the `.mkv` without problems.
 
 ---
 
@@ -182,7 +182,7 @@ python C:\Users\carme\OneDrive\Documents\GitHub\Biosignals2\analysis\video\000_c
 python C:\Users\carme\OneDrive\Documents\GitHub\Biosignals2\analysis\video\000_convert_png_to_avi.py D:\Biosignals2_png_data\r2433_frames D:\Biosignals2_png_data\r2433_frame_timestamps.csv --method 1to1
 ```
 
-You normally don't need to run it yourself: `003_run_webcam_biometrics.py` runs it automatically for any participant who doesn't have a 1:1 video yet.
+You normally don't need to run it yourself: `002_run_webcam_biometrics.py` runs it automatically for any participant who doesn't have a 1:1 video yet.
 
 Things to know:
 

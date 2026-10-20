@@ -2,139 +2,141 @@
 # %%
 """
 001_generate_event_onsets.py
+============================
+One script for every experiment-event table the video analysis needs. It replaces the old
+001_generate_event_onsets.py and 002_create_webcam_events_biopac.py (now in archive/) and
+writes exactly the same output files, so 002_run_webcam_biometrics.py and
+WebcamBiometrics/eval (sussex.py, estimate_offsets.py) work unchanged.
 
-Extracts experiment event onsets/offsets from PsychoPy data files and gives
-them as frame numbers and times in each participant's webcam video, for
-lining up with FaceReader output.
+It runs four steps, in this order:
 
-Events written (one row each, in chronological order):
+  1. VIDEO   PsychoPy data -> event onsets/offsets on the WEBCAM clock
+             -> FACEREADER_ONSETS_DIR/<id>_video_events.csv  (+ all_participants_video_events.csv)
+  2. BIOPAC  trigger channels of the trimmed .acq -> the same events on the ECG (Kubios) clock
+             -> WEBCAM_EVENTS_DIR/<id>_events_biopac.csv
+  3. CHECK   pairs the two files by event name and checks they describe the same session
+             -> WEBCAM_EVENTS_DIR/all_participants_event_crosscheck.csv
+  4. DURATIONS checks each Kubios block (baseline, inductions, recoveries) lasts the same in the
+             ECG Kubios_Samples.csv, these event files, and the FaceReader / webcam Kubios_Samples.csv
+             (shared check in analysis/kubios/block_duration_check.py, also run by
+             kubios/001_create_kubios_samples.py and kubios/002_create_kubios_samples_video.py, so
+             whichever script runs last catches a mismatch). Warns if a file isn't made yet.
+
+Both files use the same event names, in chronological order:
   Baseline
   <Valence> Induction   first video onset -> last video offset of the block
-  <Valence> Video <n>   each video in the block (stimulus name in `stimulus`)
+  <Valence> Video <n>   each video of the block, numbered by onset time (stimulus name in `stimulus`)
   <Valence> Recovery
 
-TWO RECORDING FORMATS
----------------------
-The format of each PsychoPy data file is detected from its columns.
+STEP 1 - VIDEO (webcam clock)
+-----------------------------
+The recording format is detected from the PsychoPy data file's columns.
 
 1. Current sessions ("png2avi", e.g. i4155, r4755)
    The webcam saved PNG frames, turned into <id>_realtime_30fps.avi (older runs:
    <id>_facereader.avi) by 000_convert_png_to_avi.py --method realtime, which rebuilds the
    video on the real timeline.
-   PsychoPy logs stim_onset_since_rec_start (and ..._offset_...): seconds
-   since recording start, on the same clock as the webcam frames.
      onset       stim_onset_since_rec_start, logged at routine start
      offset      <routine>.stopped + clock_gap, where
-                 clock_gap = stim_onset_since_rec_start - <routine>.started
-                 (both logged at routine start, so this is the offset between
-                 the webcam clock and globalClock for that row).
-                 NOT stim_offset_since_rec_start: for videos it is logged in
-                 End Routine code, which runs after video.stop() has unloaded
-                 the movie (~3 s), so it is ~3 s after the video really ended.
-                 <routine>.stopped is stamped as soon as the routine ends.
-                 (Do not use video.stopped either - it is stamped on the next
-                 screen flip, i.e. when the NEXT routine starts.)
-   Because that AVI is built so that AVI time == time since recording start:
-       AVI frame  = round(onset_s * FPS)
-       video time = AVI frame / FPS
+                 clock_gap = stim_onset_since_rec_start - <routine>.started.
+                 NOT stim_offset_since_rec_start: for videos it is logged in End Routine
+                 code after video.stop() has unloaded the movie (~3 s late).
+                 (Not video.stopped either - it is stamped on the next routine's first flip.)
+     AVI frame = round(onset_s * FPS), video time = AVI frame / FPS
 
 2. Older sessions ("legacy_avi", e.g. e5510, g2313, n2026, p7259, s0943)
-   The recorder wrote frames straight into <id>_recording.avi, one AVI frame
-   per row of <id>_frame_timestamps.csv. The frame rate stored in the AVI
-   (e.g. 30.002) is NOT the rate the camera really ran at (e.g. 30.05), so
-   time in the video drifts away from real time (about 1.4 s by the last
-   recovery period for g2313). So for these sessions:
-     onset       time_since_recording_start, logged at routine start (same
-                 clock as the frame timestamps)
-     offset      onset + (<routine>.stopped - <routine>.started). Offsets were
-                 not logged; the duration comes from PsychoPy's globalClock,
-                 which runs at the same rate, so this is accurate to a few ms.
-     AVI frame   the row of the timestamps file captured closest to the event
-     video time  AVI frame / the frame rate stored in the AVI (read with ffprobe)
-                 - this is the time FaceReader reports for that frame
+   Frames were written straight into <id>_recording.avi, one AVI frame per row of
+   <id>_frame_timestamps.csv. The AVI's stored frame rate is NOT the camera's real rate, so
+   video time drifts from real time (~1.4 s by the last recovery for g2313).
+     onset       time_since_recording_start, logged at routine start
+     offset      onset + (<routine>.stopped - <routine>.started)
+     AVI frame   the timestamps row captured closest to the event
+     video time  AVI frame / the AVI's stored frame rate (read with ffprobe)
 
-FOR FACEREADER, ALWAYS USE THE VIDEO COLUMNS
---------------------------------------------
-  onset_avi_frame / offset_avi_frame          frame number in the video
-  onset_video_time_s / offset_video_time_s    time in the video, as FaceReader reports it
-  onset_video_hhmmss / offset_video_hhmmss    the same, as hh:mm:ss.sss
-onset_s / offset_s are real seconds since the recording started. For current
-sessions they match the video time; for older sessions they do not.
+Which columns to use:
+  FaceReader   onset_avi_frame / onset_video_time_s / onset_video_hhmmss (and offset_...)
+  rPPG / ECG   onset_s / offset_s - real seconds since recording start (the eval extracts from a
+               1:1 video WITH per-frame timestamps). The *_video_time_s / *_avi_frame columns
+               are FaceReader-AVI positions and are up to ~1.4 s off for older sessions.
+Other columns: onset/offset_webcam_frame, onset/offset_frame_diff_ms, recording_format, video_file.
 
-FOR rPPG (WebcamBiometrics eval), USE onset_s / offset_s - THE OPPOSITE RULE
------------------------------------------------------------------------------
-The rPPG eval extracts from a 1:1 video (000_convert_png_to_avi.py --method 1to1, or an older
-<id>_recording.avi) WITH the per-frame timestamps, so its time axis is real seconds since recording
-start = onset_s / offset_s. The *_video_time_s and *_avi_frame columns are positions in the
-FaceReader AVI and are wrong for rPPG (up to ~1.4 s off for older sessions). The eval reads this
-file directly (eval/py/datasets/sussex.py) and estimate_offsets.py matches its events by name to
-002_create_webcam_events_biopac.py's BIOPAC events.
+Each block's valence comes from conditionOrder and is cross-checked against the video file
+names (N... = negative, P... = positive).
 
-Other columns:
-  onset_webcam_frame / offset_webcam_frame      PNG frame number (current sessions)
-                                                or timestamps frame_index (older sessions)
-  onset_frame_diff_ms / offset_frame_diff_ms    how far from the event that frame was captured
-      (current sessions: the offset frame is looked up in <id>_frame_timestamps.csv;
-       it is left blank if that file is not available, because PsychoPy's logged
-       stim_offset_frame_idx belongs to the late logged offset)
-  recording_format, video_file
+STEP 2 - BIOPAC (ECG / Kubios clock)
+------------------------------------
+Times are seconds from the start of the TRIMMED recording (the .acq files Kubios is run on).
+Each of the 7 trigger channels (baseline_trig, Nstim1_trig, Nstim2_trig, Nrecovery_trig,
+Pstim1_trig, Pstim2_trig, Precovery) must hold exactly one HIGH pulse (> 1 V, >= 1 s):
+pulse start = onset, pulse end = offset. Videos are numbered by onset order (which clip comes
+first is counterbalanced), so they line up with step 1. Columns: event, channel, onset_s,
+offset_s, duration_s.
+In the PsychoPy script the trigger port is reset ('RR') when the routine ends, so a pulse's end
+should match <routine>.stopped, i.e. step 1's offset_s - step 3 checks this.
+A participant is skipped (nothing written) if a channel is missing, has 0 or >1 pulses, is still
+HIGH at the end of the file, or if Baseline is not the first event.
+RAW_PHYSIOLOGY_DIR must be the trimmed 'experimental_protocol_duration' folder; any other
+folder stops the script (--allow-untrimmed to override), because untrimmed times are on the
+wrong clock for Kubios.
 
-Do NOT use <routine>.started / .stopped directly as times in the video: they
-are on PsychoPy's globalClock, not the webcam clock. They are only used via
-durations (older sessions) or the per-row clock_gap (current sessions), and
-to check that the two clocks stay in step.
-
-Each block's valence comes from conditionOrder (neg_first / pos_first) and is
-cross-checked against the video file names (N... = negative, P... = positive).
+STEP 3 - CHECK (both files)
+---------------------------
+For every participant with both files:
+  * every event is present in both (a participant with only one file is reported)
+  * clock offset: (BIOPAC onset - video onset) should be the same for every event, apart from a
+    slow linear drift. Events more than ONSET_RESIDUAL_WARN_S from that line are flagged (late-
+    logged onset on one side, or a mismatched event). The drift itself is reported and flagged
+    above DRIFT_WARN_MS_PER_10MIN.
+  * durations agree within DURATION_DIFF_WARN_S (catches late offsets and swapped videos)
+  * Video 1 / Video 2 of a block are not swapped between the files
+  * the valence order (negative first or positive first) is the same in both files
+Output: one row per participant and event, with implied_offset_s, residual_ms, duration_diff_s
+and a `flags` column. estimate_offsets.py does the real offset estimation; this step is the
+early warning that it will be fed inconsistent events.
 
 HOW TO RUN
 ----------
-Paths are read from config.py, the nearest one in this folder or above it
-(the repo-root config.py, which is not tracked by git). It needs:
-  PSYCHOPY_DATA_DIR      PsychoPy data files     <id>_<expName>_<date>.csv
-  WEBCAM_PNG_EXTERNAL_DIR             current sessions        <id>_frame_timestamps.csv (optional, for checks)
-  VIDEO_EXTERNAL_DIR (optional)   <id>_realtime_30fps.avi   (optional, file name only; also looked for in
-                                                 WEBCAM_PNG_EXTERNAL_DIR and VIDEO_BOX_DIR)
-  VIDEO_BOX_DIR         older sessions          <id>_frame_timestamps.csv and <id>_recording.avi
-                                                 (both required)
-  FACEREADER_ONSETS_DIR  where results are written
-<id> is everything before the first "_" in the file name, ignoring upper/lower
-case (participant IDs are written in lower case). Then run the last cell. It
-writes, into FACEREADER_ONSETS_DIR:
-  <id>_video_events.csv                 one file per participant
-  all_participants_video_events.csv     everyone, with a `participant` column
+Paths come from the nearest config.py in this folder or above it (repo root, not in git):
+  PSYCHOPY_DATA_DIR, WEBCAM_PNG_EXTERNAL_DIR, VIDEO_BOX_DIR, FACEREADER_ONSETS_DIR   (step 1)
+  VIDEO_EXTERNAL_DIR                                                    (step 1, optional)
+  RAW_PHYSIOLOGY_DIR                                                    (step 2)
+  WEBCAM_EVENTS_DIR (else SERVER_ROOT/event_onsets/webcam_biometrics)   (steps 2, 3, 4)
+  FACEREADER_RESULTS_DIR, WEBCAM_HR_DIR (else under SERVER_ROOT)        (step 4)
 
-Participants that already have <id>_video_events.csv in FACEREADER_ONSETS_DIR
-are skipped, and their existing file is reused for the combined CSV - unless
-their PsychoPy data file or timestamps file (or, for older sessions, their
-AVI) was modified after it, in which case they are re-run automatically.
-Changes to THIS SCRIPT are not detected: after changing the timing logic,
-re-run everyone.
+  python 001_generate_event_onsets.py                       new / changed participants only
+  python 001_generate_event_onsets.py --rerun S9686 x1234   also redo these (any case)
+  python 001_generate_event_onsets.py --rerun-all           redo everyone
+  python 001_generate_event_onsets.py --steps video check   run only some steps (video biopac check durations)
+  python 001_generate_event_onsets.py --allow-untrimmed     don't stop on a non-trimmed .acq folder
+When running as cells, set STEPS / RERUN_ALL / RERUN_PARTICIPANTS in the last cell.
 
-  python 001_generate_event_onsets.py                      new participants only
-  python 001_generate_event_onsets.py --rerun S9686 x1234  also redo these (any case)
-  python 001_generate_event_onsets.py --rerun-all          redo everyone
-When running as cells instead, use RERUN_PARTICIPANTS / RERUN_ALL in the last cell.
+Participants whose output already exists are not re-run, unless one of their inputs (PsychoPy
+file, timestamps file, older sessions' AVI, .acq) was modified after it. Changes to THIS SCRIPT
+are not detected: after changing timing logic, use --rerun-all. Steps 3 and 4 always re-check
+everyone. One participant failing never stops the rest. The script ends with one summary table
+(video / biopac / check / durations per participant) and exits with code 1 if anything failed,
+was skipped or was flagged.
 
-Data files with neither set of timing columns (e.g. sessions without a
-camera) and empty files from aborted runs are ignored. A participant with more
-than one usable data file (e.g. a restarted session) is skipped and reported,
-so you can move the wrong file out and rerun. One participant failing does not
-stop the rest. A summary at the end lists who is OK, who has warnings, and who
-failed or was skipped.
-
-Older sessions need ffprobe (installed with ffmpeg) to read the AVI frame rate.
+Needs: pandas, numpy, bioread (step 2: pip install bioread), ffprobe (older sessions: ffmpeg).
 """
 
+import argparse
+import csv
 import glob
 import importlib.util
 import json
 import os
 import shutil
 import subprocess
+import sys
 
 import numpy as np
 import pandas as pd
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# STEP 1 - VIDEO: PsychoPy data -> events on the webcam clock
+# ══════════════════════════════════════════════════════════════════════════════
 
 ROUTINES = ['baseline', 'stimuli', 'stim_recovery']
 BASE_COLUMNS = ['conditionOrder', *[f'{r}.started' for r in ROUTINES]]
@@ -652,8 +654,8 @@ def run_all(data_dir, webcam_png_external_dir, video_box_dir, out_dir, fps=30.0,
             continue
         df.insert(0, 'participant', pid)
         all_events.append(df)
-        n_warnings = len(warnings) + (s['note'] is not None)
-        status = 'OK' if not n_warnings else f'{n_warnings} warning(s) - see log above'
+        all_warnings = ([s['note']] if s['note'] else []) + warnings
+        status = 'OK' if not all_warnings else f"{len(all_warnings)} warning(s): {'; '.join(all_warnings)}"
         summary.append((pid, f"{status} [{s['format']}]"))
 
     if all_events:
@@ -674,11 +676,421 @@ def run_all(data_dir, webcam_png_external_dir, video_box_dir, out_dir, fps=30.0,
     return summary, problems
 
 
-CONFIG_VARIABLES = ('PSYCHOPY_DATA_DIR', 'WEBCAM_PNG_EXTERNAL_DIR', 'VIDEO_BOX_DIR', 'FACEREADER_ONSETS_DIR')
+
+# ══════════════════════════════════════════════════════════════════════════════
+# STEP 2 - BIOPAC: trigger channels of the trimmed .acq -> events on the ECG clock
+# ══════════════════════════════════════════════════════════════════════════════
+
+TRIMMED_FOLDER_NAME = "experimental_protocol_duration"
+
+THRESHOLD = 1.0      # V — triggers are 0 V / 5 V (as 001_create_kubios_samples.py)
+MIN_PULSE_S = 1.0    # s — shorter HIGH periods are noise
+ACQ_SUFFIX = "_physiology_trimmed.acq"
+
+# channel -> (kind, valence)
+CHANNELS = {
+    "baseline_trig":  ("baseline", None),
+    "Nstim1_trig":    ("video", "Negative"),
+    "Nstim2_trig":    ("video", "Negative"),
+    "Nrecovery_trig": ("recovery", "Negative"),
+    "Pstim1_trig":    ("video", "Positive"),
+    "Pstim2_trig":    ("video", "Positive"),
+    "Precovery":      ("recovery", "Positive"),
+}
 
 
 def load_config():
-    """Load the nearest config.py in this script's folder or any folder above it."""
+    """Nearest config.py in this folder or above (the repo-root config.py)."""
+    folder = os.path.dirname(os.path.abspath(__file__))
+    while not os.path.isfile(os.path.join(folder, "config.py")):
+        parent = os.path.dirname(folder)
+        if parent == folder:
+            raise FileNotFoundError("No config.py found above " + os.path.dirname(os.path.abspath(__file__)))
+        folder = parent
+    spec = importlib.util.spec_from_file_location("webcam_events_config", os.path.join(folder, "config.py"))
+    cfg = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cfg)
+    return cfg
+
+
+def get_pulses(channel):
+    """[(start_s, end_s, still_high_at_end)] for every HIGH pulse >= MIN_PULSE_S."""
+    signal = np.asarray(channel.data, dtype=float)
+    sr = channel.samples_per_second
+    edges = np.diff(np.concatenate([[0], (signal > THRESHOLD).astype(np.int8), [0]]))
+    starts, ends = np.where(edges == 1)[0], np.where(edges == -1)[0]
+    return [(float(s / sr), float(e / sr), bool(e == len(signal)))
+            for s, e in zip(starts, ends) if (e - s) / sr >= MIN_PULSE_S]
+
+
+def events_for(acq):
+    """-> (events, problems). events = [(event, channel, onset_s, offset_s)] sorted by onset."""
+    by_name = {ch.name: ch for ch in acq.channels}
+    pulses, problems = {}, []
+    for name in CHANNELS:
+        if name not in by_name:
+            problems.append(f'channel "{name}" not found')
+            continue
+        found = get_pulses(by_name[name])
+        if len(found) != 1:
+            problems.append(f'"{name}": {len(found)} pulses (expected 1) '
+                            f'{[(round(s, 1), round(e, 1)) for s, e, _ in found]}')
+            continue
+        start, end, cut = found[0]
+        if cut:
+            problems.append(f'"{name}" still HIGH at the end of the recording (end cut short)')
+            continue
+        pulses[name] = (start, end)
+    if problems:
+        return [], problems
+
+    events = []
+    for valence in ("Negative", "Positive"):
+        vids = sorted((pulses[c], c) for c, (k, v) in CHANNELS.items() if k == "video" and v == valence)
+        for n, ((start, end), ch) in enumerate(vids, 1):
+            events.append((f"{valence} Video {n}", ch, start, end))
+        events.append((f"{valence} Induction", "+".join(c for _, c in vids), vids[0][0][0], vids[-1][0][1]))
+    for ch, (kind, valence) in CHANNELS.items():
+        if kind == "baseline":
+            events.append(("Baseline", ch, *pulses[ch]))
+        elif kind == "recovery":
+            events.append((f"{valence} Recovery", ch, *pulses[ch]))
+    events.sort(key=lambda e: (e[2], "Induction" not in e[0]))   # Induction before its Video 1
+
+    singles = [e for e in events if "Induction" not in e[0]]
+    if singles[0][0] != "Baseline":
+        problems.append(f"{singles[0][0]} ({singles[0][2]:.2f} s) comes before Baseline — untrimmed recording?")
+    if any(b[2] < a[3] for a, b in zip(singles, singles[1:])):
+        problems.append("events overlap or are out of order")
+    return (events if not problems else []), problems
+
+
+def up_to_date(out_path, acq_path):
+    """True if out_path exists, has at least one event row, and is newer than the .acq file."""
+    if not os.path.isfile(out_path) or os.path.getmtime(acq_path) > os.path.getmtime(out_path):
+        return False
+    with open(out_path, newline="") as f:
+        return sum(1 for _ in f) > 1   # header + events
+
+
+def count_short_pulses(channel, min_s=0.05):
+    """HIGH periods between min_s and MIN_PULSE_S - ignored as noise, but worth knowing about."""
+    signal = np.asarray(channel.data, dtype=float)
+    sr = channel.samples_per_second
+    edges = np.diff(np.concatenate([[0], (signal > THRESHOLD).astype(np.int8), [0]]))
+    lengths = (np.where(edges == -1)[0] - np.where(edges == 1)[0]) / sr
+    return int(((lengths >= min_s) & (lengths < MIN_PULSE_S)).sum())
+
+
+def biopac_extra_checks(acq):
+    """Non-fatal checks on the trigger channels. Returns warning strings."""
+    warnings = []
+    by_name = {ch.name: ch for ch in acq.channels}
+    for name in CHANNELS:
+        ch = by_name[name]
+        if ch.samples_per_second < 100:
+            warnings.append(f'"{name}" is sampled at only {ch.samples_per_second:g} Hz - event times '
+                            f'are only accurate to {1000 / ch.samples_per_second:.0f} ms')
+        n = count_short_pulses(ch)
+        if n:
+            warnings.append(f'"{name}" has {n} short HIGH blip(s) (< {MIN_PULSE_S:g} s) that were ignored - '
+                            f'check the trigger cable/port if this is unusual')
+    return warnings
+
+
+def run_biopac(acq_dir, out_dir, rerun_all=False, rerun=(), allow_untrimmed=False):
+    """Step 2 for every participant. Returns {pid: (level, message)}."""
+    if os.path.basename(os.path.normpath(acq_dir)) != TRIMMED_FOLDER_NAME:
+        msg = (f"RAW_PHYSIOLOGY_DIR = {acq_dir} is not the trimmed '{TRIMMED_FOLDER_NAME}' folder "
+               f"(the one Kubios is run on), so event times would be on the wrong clock.")
+        if not allow_untrimmed:
+            raise RuntimeError(msg + " Fix config.py, or use --allow-untrimmed if you are sure.")
+        print(f"[WARNING] {msg} Continuing because of --allow-untrimmed.")
+    if not os.path.isdir(acq_dir):
+        raise FileNotFoundError(f"RAW_PHYSIOLOGY_DIR '{acq_dir}' does not exist (drive not connected?)")
+    try:
+        import bioread
+    except ImportError:
+        raise RuntimeError("the 'bioread' package is not installed (pip install bioread)") from None
+    files = sorted(glob.glob(os.path.join(acq_dir, "*" + ACQ_SUFFIX)))
+    if not files:
+        raise FileNotFoundError(f"No *{ACQ_SUFFIX} in {acq_dir}")
+    os.makedirs(out_dir, exist_ok=True)
+
+    rerun = {participant_id(p) for p in rerun}
+    pids = [os.path.basename(p)[: -len(ACQ_SUFFIX)].lower() for p in files]
+    for pid in sorted(rerun - set(pids)):
+        print(f"[WARNING] --rerun lists '{pid}', but there is no {pid}{ACQ_SUFFIX} in {acq_dir}")
+
+    status, done = {}, []
+    for pid in sorted({p for p in pids if pids.count(p) > 1}):
+        status[pid] = ('skip', f"several .acq files for this participant (differing only in upper/lower case): "
+                               f"{names(p for p, q in zip(files, pids) if q == pid)}")
+        print(f"[SKIPPED] {pid}: {status[pid][1]}")
+    for path, pid in zip(files, pids):
+        if pid in status:
+            continue
+        out = os.path.join(out_dir, f"{pid}_events_biopac.csv")
+        if not rerun_all and pid not in rerun and up_to_date(out, path):
+            done.append(pid)
+            status[pid] = ('done', 'already done - kept existing file')
+            continue
+        print(f"\n{pid}  ({os.path.basename(path)})")
+        if os.path.isfile(out):
+            print("  [RE-RUN] " + ("listed in --rerun" if pid in rerun else
+                                   "--rerun-all" if rerun_all else
+                                   "existing file is empty or older than the .acq"))
+        stale = (f" The old {os.path.basename(out)} is still there and is probably out of date - "
+                 f"move it away so estimate_offsets.py does not use it." if os.path.isfile(out) else "")
+        try:
+            acq = bioread.read(path)
+            events, problems = events_for(acq)
+        except Exception as e:
+            print(f"  [ERROR] could not read {os.path.basename(path)}: {e}.{stale}")
+            status[pid] = ('fail', f"FAILED: {e}.{stale}")
+            continue
+        if problems:
+            for p in problems:
+                print(f"  [SKIPPED] {p}")
+            if stale:
+                print(f"  [WARNING]{stale}")
+            status[pid] = ('skip', '; '.join(problems) + stale)
+            continue
+        warnings = biopac_extra_checks(acq)
+        with open(out, "w", newline="") as f:
+            w = csv.writer(f)
+            w.writerow(["event", "channel", "onset_s", "offset_s", "duration_s"])
+            for name, ch, on, off in events:
+                w.writerow([name, ch, f"{on:.4f}", f"{off:.4f}", f"{off - on:.3f}"])
+                print(f"  {name:20s} {ch:26s} {on:9.3f} -> {off:9.3f}  ({off - on:6.1f} s)")
+        for x in warnings:
+            print(f"  [WARNING] {x}")
+        status[pid] = ('warn', '; '.join(warnings)) if warnings else ('ok', 'OK')
+
+    if done:
+        print(f"\nAlready done, not re-run ({len(done)}; use --rerun ID or --rerun-all to redo): {', '.join(done)}")
+    n_written = sum(level in ('ok', 'warn') for level, _ in status.values())
+    print(f"\nWritten {n_written} to {out_dir}")
+    return status
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# STEP 3 - CHECK: do the video and BIOPAC events describe the same session?
+# ══════════════════════════════════════════════════════════════════════════════
+
+EXPECTED_EVENTS = ['Baseline',
+                   'Negative Induction', 'Negative Video 1', 'Negative Video 2', 'Negative Recovery',
+                   'Positive Induction', 'Positive Video 1', 'Positive Video 2', 'Positive Recovery']
+ONSET_RESIDUAL_WARN_S = 0.10     # an event's clock offset this far from the others -> flagged
+DURATION_DIFF_WARN_S = 0.25      # video vs BIOPAC duration differing by more -> flagged
+DRIFT_WARN_MS_PER_10MIN = 100    # ECG vs webcam clock running apart faster than this -> flagged
+CROSSCHECK_FILE = 'all_participants_event_crosscheck.csv'
+
+
+def read_events_csv(path):
+    """An events CSV with event/onset_s/offset_s columns and at least one row, else None."""
+    try:
+        df = pd.read_csv(path)
+    except (pd.errors.EmptyDataError, pd.errors.ParserError, UnicodeDecodeError):
+        return None
+    if not {'event', 'onset_s', 'offset_s'} <= set(df.columns) or not len(df):
+        return None
+    return df
+
+
+def event_files(folder, suffix):
+    """participant ID -> [paths] for <id><suffix> in folder (combined all_participants files excluded)."""
+    found = {}
+    for path in sorted(glob.glob(os.path.join(folder, '*' + suffix))):
+        base = os.path.basename(path)
+        if base.lower().startswith('all_participants'):
+            continue
+        found.setdefault(base[: -len(suffix)].lower(), []).append(path)
+    return found
+
+
+def block_order(df):
+    """Valences in the order their first event starts, e.g. ['Negative', 'Positive']."""
+    first = {}
+    for event, onset in zip(df['event'], df['onset_s']):
+        for valence in ('Negative', 'Positive'):
+            if str(event).startswith(valence):
+                first[valence] = min(first.get(valence, np.inf), float(onset))
+    return sorted(first, key=first.get)
+
+
+def robust_line(x, y):
+    """(slope, intercept) of a line through (x, y) that one bad point can't drag: median of pairwise
+    slopes (Theil-Sen), intercept = median of y - slope * x."""
+    slopes = [(y[j] - y[i]) / (x[j] - x[i]) for i in range(len(x)) for j in range(i + 1, len(x)) if x[j] != x[i]]
+    slope = float(np.median(slopes)) if slopes else 0.0
+    return slope, float(np.median(y - slope * x))
+
+
+def crosscheck_participant(pid, video, biopac):
+    """Compare one participant's video and BIOPAC events. Returns (rows, warnings)."""
+    warnings, flags = [], {}
+
+    def flag(event, text):
+        flags.setdefault(event, []).append(text)
+
+    for label, df in (('video', video), ('BIOPAC', biopac)):
+        dup = sorted(df['event'][df['event'].duplicated()].unique())
+        if dup:
+            warnings.append(f"the {label} file lists {dup} more than once - can't pair events")
+        odd = [e for e in df['event'] if e not in EXPECTED_EVENTS]
+        if odd:
+            warnings.append(f"the {label} file has unexpected event names {odd}")
+    if any('more than once' in w for w in warnings):
+        return [], warnings
+
+    v, b = video.set_index('event'), biopac.set_index('event')
+    only_v = [e for e in EXPECTED_EVENTS if e in v.index and e not in b.index]
+    only_b = [e for e in EXPECTED_EVENTS if e in b.index and e not in v.index]
+    neither = [e for e in EXPECTED_EVENTS if e not in v.index and e not in b.index]
+    if only_v:
+        warnings.append(f"only in the video file (not in BIOPAC): {only_v}")
+    if only_b:
+        warnings.append(f"only in the BIOPAC file (not in video): {only_b}")
+    if neither:
+        warnings.append(f"missing from both files: {neither}")
+    order_v, order_b = block_order(video), block_order(biopac)
+    if order_v and order_b and order_v != order_b:
+        warnings.append(f"valence order differs: video file {order_v} (from conditionOrder), BIOPAC {order_b} "
+                        f"(from trigger channels) - wrong conditionOrder, or wrong .acq file?")
+
+    common = [e for e in EXPECTED_EVENTS if e in v.index and e in b.index]
+    singles = [e for e in common if 'Induction' not in e]
+    dur_v = {e: float(v.loc[e, 'offset_s'] - v.loc[e, 'onset_s']) for e in common}
+    dur_b = {e: float(b.loc[e, 'offset_s'] - b.loc[e, 'onset_s']) for e in common}
+    residual = {}
+
+    if len(singles) >= 2:
+        t_v = v.loc[singles, 'onset_s'].astype(float).to_numpy()
+        gap = b.loc[singles, 'onset_s'].astype(float).to_numpy() - t_v
+        slope, intercept = robust_line(t_v, gap) if len(singles) >= 3 else (0.0, float(np.median(gap)))
+        residual = dict(zip(singles, gap - (intercept + slope * t_v)))
+        drift = slope * 600 * 1000
+        print(f"  {pid}: ECG minus webcam clock = {np.median(gap):.3f} s, drift {drift:+.0f} ms per 10 min, "
+              f"onsets within {1000 * max(abs(r) for r in residual.values()):.0f} ms of that line "
+              f"({len(singles)} events)")
+        for e, r in residual.items():
+            if abs(r) > ONSET_RESIDUAL_WARN_S:
+                flag(e, f"onset is {1000 * r:+.0f} ms off the other events' clock offset")
+        if abs(drift) > DRIFT_WARN_MS_PER_10MIN:
+            warnings.append(f"the two clocks drift apart by {drift:+.0f} ms per 10 min (more than "
+                            f"{DRIFT_WARN_MS_PER_10MIN}) - check the webcam timestamps / wrong session?")
+    else:
+        warnings.append("fewer than 2 events in both files - can't check the clock offset")
+
+    for e in common:
+        diff = dur_b[e] - dur_v[e]
+        if abs(diff) > DURATION_DIFF_WARN_S:
+            flag(e, f"duration {dur_b[e]:.2f} s in BIOPAC vs {dur_v[e]:.2f} s in video ({diff:+.2f} s)")
+    for valence in ('Negative', 'Positive'):
+        e1, e2 = f'{valence} Video 1', f'{valence} Video 2'
+        if e1 in common and e2 in common:
+            straight = abs(dur_v[e1] - dur_b[e1]) + abs(dur_v[e2] - dur_b[e2])
+            crossed = abs(dur_v[e1] - dur_b[e2]) + abs(dur_v[e2] - dur_b[e1])
+            if crossed + DURATION_DIFF_WARN_S < straight:
+                for e in (e1, e2):
+                    flag(e, "durations fit the OTHER video of the block better - videos swapped or mis-numbered?")
+    for e, texts in flags.items():
+        warnings.append(f"{e}: {'; '.join(texts)}")
+
+    rows = []
+    for e in common:
+        rows.append({
+            'participant': pid, 'event': e,
+            'video_onset_s': round(float(v.loc[e, 'onset_s']), 4),
+            'biopac_onset_s': round(float(b.loc[e, 'onset_s']), 4),
+            'video_offset_s': round(float(v.loc[e, 'offset_s']), 4),
+            'biopac_offset_s': round(float(b.loc[e, 'offset_s']), 4),
+            'implied_offset_s': round(float(b.loc[e, 'onset_s'] - v.loc[e, 'onset_s']), 4),
+            'residual_ms': round(1000 * residual[e], 1) if e in residual else None,
+            'video_duration_s': round(dur_v[e], 3), 'biopac_duration_s': round(dur_b[e], 3),
+            'duration_diff_s': round(dur_b[e] - dur_v[e], 3),
+            'flags': '; '.join(flags.get(e, [])),
+        })
+    rows += [{'participant': pid, 'event': e, 'flags': 'only in the video file'} for e in only_v]
+    rows += [{'participant': pid, 'event': e, 'flags': 'only in the BIOPAC file'} for e in only_b]
+    return rows, warnings
+
+
+def run_crosscheck(video_dir, biopac_dir):
+    """Step 3 for every participant with an events file in either folder. Returns {pid: (level, message)}."""
+    for label, folder in (('FACEREADER_ONSETS_DIR', video_dir), ('WEBCAM_EVENTS_DIR', biopac_dir)):
+        if not os.path.isdir(folder):
+            raise FileNotFoundError(f"{label} '{folder}' does not exist (drive not connected?)")
+    vfiles = event_files(video_dir, '_video_events.csv')
+    bfiles = event_files(biopac_dir, '_events_biopac.csv')
+    status, rows = {}, []
+    for pid in sorted(set(vfiles) | set(bfiles)):
+        vp, bp = vfiles.get(pid, []), bfiles.get(pid, [])
+        if len(vp) > 1 or len(bp) > 1:
+            status[pid] = ('skip', f"several event files differing only in upper/lower case: {names(vp + bp)}")
+        elif not vp:
+            status[pid] = ('skip', f"no {pid}_video_events.csv in {video_dir} (only BIOPAC events)")
+        elif not bp:
+            status[pid] = ('skip', f"no {pid}_events_biopac.csv in {biopac_dir} (only video events)")
+        else:
+            video, biopac = read_events_csv(vp[0]), read_events_csv(bp[0])
+            if video is None or biopac is None:
+                status[pid] = ('fail', f"could not read {names(p for p, df in ((vp[0], video), (bp[0], biopac)) if df is None)} "
+                                       f"(empty, or missing event/onset_s/offset_s columns)")
+            else:
+                r, w = crosscheck_participant(pid, video, biopac)
+                rows += r
+                for x in w:
+                    print(f"  [WARNING] {pid}: {x}")
+                status[pid] = ('warn', '; '.join(w)) if w else ('ok', 'OK')
+        if status[pid][0] in ('skip', 'fail'):
+            print(f"  [{'SKIPPED' if status[pid][0] == 'skip' else 'ERROR'}] {pid}: {status[pid][1]}")
+    if rows:
+        out = os.path.join(biopac_dir, CROSSCHECK_FILE)
+        pd.DataFrame(rows).to_csv(out, index=False)
+        print(f"\nCross-check for {len({r['participant'] for r in rows})} participant(s) saved to {out}")
+    return status
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# RUN
+# ══════════════════════════════════════════════════════════════════════════════
+
+ALL_STEPS = ('video', 'biopac', 'check', 'durations')
+STEP_CONFIG = {
+    'video': ('PSYCHOPY_DATA_DIR', 'WEBCAM_PNG_EXTERNAL_DIR', 'VIDEO_BOX_DIR', 'FACEREADER_ONSETS_DIR'),
+    'biopac': ('RAW_PHYSIOLOGY_DIR',),
+    'check': ('FACEREADER_ONSETS_DIR',),
+    'durations': ('FACEREADER_ONSETS_DIR', 'RAW_PHYSIOLOGY_DIR'),
+}
+DURATION_CHECK_MODULE = os.path.join(os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd(),
+                                     '..', 'kubios', 'block_duration_check.py')
+
+
+def run_duration_check(cfg):
+    """Step 4: Kubios block durations, ECG vs video events vs FaceReader/webcam samples (shared with the
+    kubios scripts, see analysis/kubios/block_duration_check.py). Returns {pid: (level, message)}."""
+    path = os.path.normpath(DURATION_CHECK_MODULE)
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"{path} not found - it holds the duration check shared with the kubios scripts")
+    spec = importlib.util.spec_from_file_location('block_duration_check', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    warnings, global_notes = module.check_block_durations(cfg)
+    everyone = event_files(str(cfg.FACEREADER_ONSETS_DIR), '_video_events.csv')
+    everyone.update(event_files(webcam_events_dir(cfg), '_events_biopac.csv'))
+    # a source file that doesn't exist yet means the check is incomplete for everyone - don't call that OK
+    partial = [n.split(':', 1)[0] for n in global_notes]
+    status = {pid: ('warn', f"agree, but not checked against {', '.join(partial)} (not made yet - see above)")
+                   if partial else ('ok', 'OK') for pid in everyone}
+    status.update({pid: ('warn', '; '.join(w)) for pid, w in warnings.items()})
+    return status
+
+
+def load_config(steps):
+    """Load the nearest config.py in this script's folder or any folder above it, and check it has
+    every path the chosen steps need."""
     start = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
     folder = start
     while not os.path.isfile(os.path.join(folder, 'config.py')):
@@ -688,39 +1100,144 @@ def load_config():
         folder = parent
     path = os.path.join(folder, 'config.py')
     # Load by path, so a different `config` module imported earlier in this session can't be used by mistake
-    spec = importlib.util.spec_from_file_location('video_config', path)
+    spec = importlib.util.spec_from_file_location('event_onsets_config', path)
     config = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(config)
-    missing = [v for v in CONFIG_VARIABLES if not hasattr(config, v)]
+    needed = list(dict.fromkeys(v for s in steps for v in STEP_CONFIG[s]))
+    missing = [v for v in needed if not hasattr(config, v)]
+    if {'biopac', 'check'} & set(steps) and not (hasattr(config, 'WEBCAM_EVENTS_DIR') or hasattr(config, 'SERVER_ROOT')):
+        missing.append('WEBCAM_EVENTS_DIR (or SERVER_ROOT)')
     if missing:
-        raise AttributeError(f"{path} is missing {missing}. Add e.g.\n"
-                             f'  WEBCAM_PNG_EXTERNAL_DIR            = r"D:\\Biosignals2"\n'
-                             f'  VIDEO_BOX_DIR        = os.path.join(SERVER_ROOT, "video")\n'
-                             f'  FACEREADER_ONSETS_DIR = os.path.join(SERVER_ROOT, "event_onsets", "facereader_video")')
+        raise AttributeError(f"{path} is missing {missing}, needed for step(s) {list(steps)}")
     print(f"Paths from {path}:")
-    for v in CONFIG_VARIABLES:
-        print(f"  {v:22} = {getattr(config, v)}")
+    for v in needed + (['WEBCAM_EVENTS_DIR'] if {'biopac', 'check'} & set(steps) else []):
+        value = webcam_events_dir(config) if v == 'WEBCAM_EVENTS_DIR' else getattr(config, v)
+        print(f"  {v:24} = {value}")
     return config
+
+
+def webcam_events_dir(cfg):
+    return str(getattr(cfg, 'WEBCAM_EVENTS_DIR', None)
+               or os.path.join(str(cfg.SERVER_ROOT), 'event_onsets', 'webcam_biometrics'))
+
+
+def video_status(summary, problems, out_dir):
+    """Turn step 1's (summary, problems) into {pid: (level, message)}."""
+    status = {}
+    for pid, text in summary:
+        if text.startswith('already done'):
+            status[pid] = ('done', text)
+        elif text.startswith('OK'):
+            status[pid] = ('ok', 'OK')
+        elif text.startswith('FAILED'):
+            old = os.path.join(out_dir, f'{pid}_video_events.csv')
+            stale = (f" The old {os.path.basename(old)} is still there and is probably out of date - "
+                     f"move it away so later scripts don't use it." if os.path.isfile(old) else "")
+            status[pid] = ('fail', text + stale)
+        else:
+            status[pid] = ('warn', text)
+    for p in problems:
+        pid, reason = p.split(': ', 1)
+        status[pid] = ('skip', reason)
+    return status
+
+
+LEVEL_LABEL = {'ok': 'OK', 'done': 'done', 'warn': 'WARN', 'skip': 'SKIP', 'fail': 'FAIL'}
+
+
+def print_final_summary(steps, results, step_errors):
+    print(f"\n{'#' * 78}\n# SUMMARY  (OK = written now, done = kept existing file, '-' = no input found)\n{'#' * 78}")
+    pids = sorted({pid for r in results.values() for pid in r})
+    print(f"  {'participant':>12}  " + "  ".join(f"{s:<9}" for s in steps))
+    for pid in pids:
+        cells = [LEVEL_LABEL[results[s][pid][0]] if s in results and pid in results[s]
+                 else ('ERROR' if s in step_errors else '-') for s in steps]
+        print(f"  {pid:>12}  " + "  ".join(f"{c:<9}" for c in cells))
+    details = [(pid, s, results[s][pid]) for pid in pids for s in steps
+               if s in results and pid in results[s] and results[s][pid][0] in ('warn', 'skip', 'fail')]
+    if details:
+        print("\nNeeds a look:")
+        for pid, s, (level, msg) in details:
+            print(f"  {pid:>12}  {s:<9} {LEVEL_LABEL[level]:<5} {msg}")
+    for s, err in step_errors.items():
+        print(f"\n[ERROR] step '{s}' did not run: {err}")
+
+
+def run_pipeline(steps=ALL_STEPS, rerun_all=False, rerun=(), allow_untrimmed=False, fps=30.0):
+    """Run the chosen steps in order. Returns 0 if everything is OK/done, else 1."""
+    unknown = [s for s in steps if s not in ALL_STEPS]
+    if unknown:
+        raise ValueError(f"Unknown step(s) {unknown}; choose from {list(ALL_STEPS)}")
+    steps = [s for s in ALL_STEPS if s in steps]
+    cfg = load_config(steps)
+    results, step_errors = {}, {}
+
+    def banner(text):
+        print(f"\n{'#' * 78}\n# {text}\n{'#' * 78}")
+
+    if 'video' in steps:
+        banner("STEP 1  VIDEO   PsychoPy -> events on the webcam clock")
+        out_dir = str(cfg.FACEREADER_ONSETS_DIR)
+        try:
+            summary, problems = run_all(str(cfg.PSYCHOPY_DATA_DIR), str(cfg.WEBCAM_PNG_EXTERNAL_DIR),
+                                        str(cfg.VIDEO_BOX_DIR), out_dir, fps,
+                                        video_external_dir=getattr(cfg, 'VIDEO_EXTERNAL_DIR', None),
+                                        rerun_all=rerun_all, rerun=rerun)
+            results['video'] = video_status(summary, problems, out_dir)
+        except Exception as e:
+            step_errors['video'] = str(e)
+            print(f"[ERROR] step 1 stopped: {e}")
+    if 'biopac' in steps:
+        banner("STEP 2  BIOPAC  trigger channels -> events on the ECG (Kubios) clock")
+        try:
+            results['biopac'] = run_biopac(str(cfg.RAW_PHYSIOLOGY_DIR), webcam_events_dir(cfg),
+                                           rerun_all=rerun_all, rerun=rerun, allow_untrimmed=allow_untrimmed)
+        except Exception as e:
+            step_errors['biopac'] = str(e)
+            print(f"[ERROR] step 2 stopped: {e}")
+    if 'check' in steps:
+        banner("STEP 3  CHECK   video events vs BIOPAC events, per participant")
+        if step_errors:
+            print(f"[WARNING] step(s) {list(step_errors)} failed - checking whatever event files already exist")
+        try:
+            results['check'] = run_crosscheck(str(cfg.FACEREADER_ONSETS_DIR), webcam_events_dir(cfg))
+        except Exception as e:
+            step_errors['check'] = str(e)
+            print(f"[ERROR] step 3 stopped: {e}")
+    if 'durations' in steps:
+        banner("STEP 4  DURATIONS  Kubios blocks: same length for ECG, video events, FaceReader and webcam?")
+        try:
+            results['durations'] = run_duration_check(cfg)
+        except Exception as e:
+            step_errors['durations'] = str(e)
+            print(f"[ERROR] step 4 stopped: {e}")
+
+    print_final_summary(steps, results, step_errors)
+    bad = step_errors or any(level in ('warn', 'skip', 'fail') for r in results.values() for level, _ in r.values())
+    return 1 if bad else 0
 
 
 # %%
 FPS = 30.0   # current sessions: must match --fps of 000_convert_png_to_avi.py --method realtime (default 30)
 
-RERUN_ALL = False          # when running as cells: True = redo everyone
-RERUN_PARTICIPANTS = []    # when running as cells: e.g. ['s9686'] to redo just them
+STEPS = ['video', 'biopac', 'check', 'durations']   # when running as cells: which steps to run
+RERUN_ALL = False                      # when running as cells: True = redo everyone
+RERUN_PARTICIPANTS = []                # when running as cells: e.g. ['s9686'] to redo just them
+ALLOW_UNTRIMMED = False                # when running as cells: True = accept a non-trimmed .acq folder
 
 if __name__ == '__main__':
-    # From the terminal:
-    #   python 001_generate_event_onsets.py                     new participants only
-    #   python 001_generate_event_onsets.py --rerun S9686 x1234 also redo these
-    #   python 001_generate_event_onsets.py --rerun-all         redo everyone
-    import argparse
-    parser = argparse.ArgumentParser(description="Generate FaceReader event onsets from PsychoPy data.")
+    parser = argparse.ArgumentParser(description="Video (webcam-clock) and BIOPAC (ECG-clock) event onsets, "
+                                                 "plus a cross-check of the two.")
+    parser.add_argument('--steps', nargs='+', choices=ALL_STEPS, default=None,
+                        help="steps to run (default: all four)")
     parser.add_argument('--rerun', nargs='+', default=[], metavar='ID',
-                        help="participant ID(s) to redo even if they already have onsets (any case)")
+                        help="participant ID(s) to redo even if they already have output (any case)")
     parser.add_argument('--rerun-all', action='store_true', help="redo every participant")
+    parser.add_argument('--allow-untrimmed', action='store_true',
+                        help="don't stop if RAW_PHYSIOLOGY_DIR is not the trimmed folder")
     args, _ = parser.parse_known_args()   # ignore extra arguments added when run as cells in an IDE
-    cfg = load_config()
-    run_all(str(cfg.PSYCHOPY_DATA_DIR), str(cfg.WEBCAM_PNG_EXTERNAL_DIR), str(cfg.VIDEO_BOX_DIR),
-            str(cfg.FACEREADER_ONSETS_DIR), FPS, video_external_dir=getattr(cfg, 'VIDEO_EXTERNAL_DIR', None),
-            rerun_all=RERUN_ALL or args.rerun_all, rerun=[*RERUN_PARTICIPANTS, *args.rerun])
+    exit_code = run_pipeline(args.steps or STEPS, rerun_all=RERUN_ALL or args.rerun_all,
+                             rerun=[*RERUN_PARTICIPANTS, *args.rerun],
+                             allow_untrimmed=ALLOW_UNTRIMMED or args.allow_untrimmed, fps=FPS)
+    if not hasattr(sys, 'ps1') and 'ipykernel' not in sys.modules:   # don't kill an interactive session
+        sys.exit(exit_code)

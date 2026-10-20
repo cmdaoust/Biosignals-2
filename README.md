@@ -132,32 +132,37 @@ Biosignals-2/
 │   │   │                        #   --method 1to1: every PNG once, lossless FFV1 .avi, read by
 │   │   │                        #   BOTH WebcamBiometrics and FaceReader heart rate. Skips
 │   │   │                        #   participants that already have the output.
-│   │   ├── 001_generate_event_onsets.py  # PsychoPy data -> each event (baseline, each video,
-│   │   │                        #   inductions, recoveries) as video frame/time, for FaceReader
-│   │   │                        #   (video columns) and rPPG (onset_s/offset_s). Writes
-│   │   │                        #   {id}_video_events.csv + all_participants_video_events.csv.
+│   │   ├── 001_generate_event_onsets.py  # All event tables, 4 steps: (1) PsychoPy -> each event
+│   │   │                        #   (baseline, videos, inductions, recoveries) on the webcam clock
+│   │   │                        #   ({id}_video_events.csv: video columns for FaceReader,
+│   │   │                        #   onset_s/offset_s for rPPG); (2) BIOPAC triggers -> the same
+│   │   │                        #   events on the ECG clock ({id}_events_biopac.csv); (3) checks
+│   │   │                        #   the two agree; (4) checks Kubios blocks last the same for ECG,
+│   │   │                        #   FaceReader and webcam (kubios/block_duration_check.py).
 │   │   │                        #   Skips participants already done (--rerun ID / --rerun-all).
-│   │   ├── 002_create_webcam_events_biopac.py  # BIOPAC trigger channels -> the same events on
-│   │   │                        #   the ECG clock ({id}_events_biopac.csv), so 001 and 002 can be
-│   │   │                        #   matched to find each participant's ECG->video offset.
-│   │   │                        #   Skips participants already done (--rerun ID / --rerun-all).
-│   │   ├── 003_run_webcam_biometrics.py  # Runs WebcamBiometrics on the 1:1 video: extract skin
+│   │   ├── 002_run_webcam_biometrics.py  # Runs WebcamBiometrics on the 1:1 video: extract skin
 │   │   │                        #   colour -> heart rate -> per-frame, per-event and per-beat
 │   │   │                        #   CSVs in 3_Data/webcam_biometrics/. Estimates the ECG->video
-│   │   │                        #   offset (from 001 + 002) into 3_Data/ecg_video_offsets.csv.
+│   │   │                        #   offset (from 001's two event files) into 3_Data/ecg_video_offsets.csv.
 │   │   │                        #   --optimize: improved beat detector (_optimize outputs).
-│   │   ├── 004_convert_mkv_to_avi.py     # ONE-OFF: old {id}_1to1.mkv (before 7 Oct 2026) ->
-│   │   │                        #   {id}_1to1_ffv1.avi, verified pixel-identical; FaceReader
-│   │   │                        #   processes .mkv badly. --delete-mkv removes the .mkv after.
-│   │   ├── 005_compare_hrv.R    # HRV per block from ECG (Kubios), webcam (current + optimised)
+│   │   ├── 003_compare_hrv.R    # HRV per block from ECG (Kubios), webcam (current + optimised)
 │   │   │                        #   and FaceReader, with the same windows, clock and maths;
 │   │   │                        #   as-is and cleaned intervals, and why each source differs.
-│   │   ├── 006_compare_facereader_runs.R # Two FaceReader runs of the same participant frame by
+│   │   ├── 004_compare_facereader_runs.R # Two FaceReader runs of the same participant frame by
 │   │   │                        #   frame (e.g. .mkv vs .avi), and which is closer to the ECG.
+│   │   ├── camera_timing_summary.py  # Not in the run order: how regular the webcam's frame
+│   │   │                        #   timing was (fps, jitter, dropped-frame gaps, how far
+│   │   │                        #   FaceReader's clock is off) per participant and block,
+│   │   │                        #   for the methods section. -> SERVER_ROOT/camera_timing/
 │   │   ├── README_convert_png_to_video.md  # Plain-language explanation of the 1:1 video method
 │   │   ├── blendshapes_au_lookup.xlsx    # Lookup: each face blendshape -> probable FACS action
 │   │   │                        #   unit(s) and most likely emotion, with uncertainty notes
-│   │   └── archive/             # Superseded versions (older 004_convert_mkv_to_avi.py)
+│   │   └── archive/             # Not in the run order: old 001 + 002 (merged into 001 on
+│   │                            #   20 Oct 2026), older convert_mkv_to_avi.py, and
+│   │                            #   oneoff_convert_old_mkv_to_avi_pre_7oct2026.py: ONE-OFF for
+│   │                            #   old/pilot {id}_1to1.mkv (made before 7 Oct 2026) ->
+│   │                            #   {id}_1to1_ffv1.avi, pixel-identical. New participants
+│   │                            #   never need it. --delete-mkv removes the .mkv after.
 │   ├── NOTES_TO_FOLLOW_UP.md    # Open methodological questions
 │   ├── generate_qc_report.R     # Builds biosignals2_qc.html (main-study QC dashboard)
 │   ├── generate_qc_report_pilot.R  # Builds biosignals2_qc_pilot.html (pilot participants)
