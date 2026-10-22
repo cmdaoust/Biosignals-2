@@ -107,12 +107,13 @@ ACQ_TO_PID = {
 # ── HELPERS ───────────────────────────────────────────────────────────────────
 
 def pid_from_acq(acq_name):
-    """Participant ID = the .acq filename with ACQ_SUFFIX stripped."""
-    if acq_name in ACQ_TO_PID:
-        return ACQ_TO_PID[acq_name]
-    if acq_name.endswith(ACQ_SUFFIX):
-        return acq_name[:-len(ACQ_SUFFIX)]
-    return os.path.splitext(acq_name)[0]
+    """Participant ID = the .acq filename with ACQ_SUFFIX stripped, lower-cased (IDs ignore case)."""
+    overrides = {k.lower(): v for k, v in ACQ_TO_PID.items()}
+    if acq_name.lower() in overrides:
+        return overrides[acq_name.lower()].strip().lower()
+    if acq_name.lower().endswith(ACQ_SUFFIX.lower()):
+        return acq_name[:-len(ACQ_SUFFIX)].strip().lower()
+    return os.path.splitext(acq_name)[0].strip().lower()
 
 
 def pid_from_csv(csv_name):
@@ -121,7 +122,7 @@ def pid_from_csv(csv_name):
     PsychoPy writes "{pid}_Biosignals2_Psychopy_...csv" (and "001_carmen_pilot_..."
     for the pilots), so the ID is the leading field, not a fixed slice.
     """
-    return csv_name.split('_')[0]
+    return csv_name.split('_')[0].strip().lower()   # IDs ignore case: matched to the .acq in lower case
 
 
 def find_baseline_onset(acq_path, threshold=0.5, min_dur_s=1.0):
@@ -258,7 +259,8 @@ def main():
         f for f in glob.glob(os.path.join(PSYCHOPY_DATA_DIR, '*.csv'))
         if not any(os.path.basename(f).endswith(s) for s in EXCLUDE_SUFFIXES)
     )
-    acq_files = sorted(glob.glob(os.path.join(RAW_PHYSIOLOGY_DIR, '*' + ACQ_SUFFIX)))
+    acq_files = sorted(os.path.join(RAW_PHYSIOLOGY_DIR, f) for f in os.listdir(RAW_PHYSIOLOGY_DIR)
+                       if f.lower().endswith(ACQ_SUFFIX.lower()))   # suffix in any case
 
     if not csv_files:
         raise FileNotFoundError(f'No PsychoPy trial .csv files found in {PSYCHOPY_DATA_DIR}')
@@ -271,6 +273,14 @@ def main():
 
     # pid → .acq path, matched on the full participant ID rather than a prefix.
     acq_by_pid = {pid_from_acq(os.path.basename(f)): f for f in acq_files}
+    # IDs ignore case, so e.g. K6294_... and k6294_... are the same participant: say so
+    # rather than silently using whichever comes last.
+    for label, pids in (('.acq recordings', [pid_from_acq(os.path.basename(f)) for f in acq_files]),
+                        ('PsychoPy CSVs', [pid_from_csv(os.path.basename(f)) for f in csv_files])):
+        dup = sorted({x for x in pids if pids.count(x) > 1})
+        if dup:
+            print(f'⚠  Several {label} for the same participant (IDs ignore case): {", ".join(dup)} '
+                  '- only the last one is used; move the wrong file out of the folder.')
 
     all_rows = {}
     # A participant with no trimmed recording (e.g. an early pilot) is simply not
