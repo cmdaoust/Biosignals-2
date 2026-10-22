@@ -60,7 +60,7 @@ stopifnot(file.exists(eda_path))
 
 eda <- read_csv(eda_path, show_col_types = FALSE) |>
   mutate(
-    pid       = as.character(pid),
+    pid       = tolower(as.character(pid)),   # IDs ignore case: always lower case
     condition = factor(condition, levels = CONDITION_LEVELS)
   ) |>
   select(-any_of(c("Event.nid", "Event.Nr", "Event.Name")))  # drop Ledalab bookkeeping cols
@@ -88,7 +88,7 @@ seg_to_condition <- c(
 
 hrv <- hrv_raw |>
   # Extract participant ID from filename (e.g. "g2313_physiology_trimmed.acq" → "g2313")
-  mutate(pid = str_extract(FileName, "^[^_]+")) |>
+  mutate(pid = tolower(str_extract(FileName, "^[^_]+"))) |>   # IDs ignore case
   select(pid, starts_with("S1_"), starts_with("S2_"), starts_with("S3_"),
          starts_with("S4_"), starts_with("S5_")) |>
   # Pivot to long: one row per pid × segment × metric
@@ -128,7 +128,8 @@ condition_remap <- c(
 )
 
 ratings_raw <- read_csv(ratings_path, show_col_types = FALSE) |>
-  mutate(condition = condition_remap[condition])
+  mutate(condition = condition_remap[condition],
+         participant_id = tolower(as.character(participant_id)))   # IDs ignore case
 
 # Block-level ratings: block_end_valence / block_end_arousal.
 # Within each pid × condition, these values are the same across all rows

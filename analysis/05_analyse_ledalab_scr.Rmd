@@ -135,7 +135,7 @@ if (length(era_files) == 0) {
 cat("Found", length(era_files), "ERA file(s).\n")
 
 era_raw <- map_dfr(era_files, function(f) {
-  pid <- str_extract(basename(f), "^[^_]+")
+  pid <- tolower(str_extract(basename(f), "^[^_]+"))   # IDs ignore case: always lower case
   read_tsv(f, show_col_types = FALSE) |>
     mutate(pid = pid)
 })
@@ -405,7 +405,7 @@ cat("Found", length(scrlist_files), "SCR-list file(s).\n")
 # Note: using read.table (base R) rather than read_tsv to avoid vroom memory-mapping
 # crashes on Box Drive / cloud-synced files.
 scrlist_raw <- map_dfr(scrlist_files, function(f) {
-  pid <- str_extract(basename(f), "^[^_]+")
+  pid <- tolower(str_extract(basename(f), "^[^_]+"))   # IDs ignore case: always lower case
   read.table(f, header = TRUE, sep = "\t", stringsAsFactors = FALSE) |>
     mutate(pid = pid)
 })
@@ -434,7 +434,7 @@ nid_map_local <- read.table(file.path(BLOCK_ONSETS_DIR, "nid_map_biopac_ledalab.
                             header = TRUE, sep = "\t", stringsAsFactors = FALSE)
 
 epoch_labels <- map_dfr(ledalab_event_files, function(f) {
-  pid <- str_extract(basename(f), "^[^_]+")
+  pid <- tolower(str_extract(basename(f), "^[^_]+"))   # IDs ignore case: always lower case
   read.table(f, header = TRUE, sep = "\t", stringsAsFactors = FALSE) |>
     left_join(nid_map_local, by = "nid") |>
     arrange(time) |>

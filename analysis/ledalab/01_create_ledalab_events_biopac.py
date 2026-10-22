@@ -112,9 +112,11 @@ TRIGGER_MAP = {
 
 EXPECTED_CONDITIONS = sorted(set(TRIGGER_MAP.values()))
 
-# Optional: override ACQ filename → participant ID mapping.
+# Optional: override ACQ filename → participant ID mapping (file names compared ignoring case).
 # Leave empty to take the participant ID from the filename, which is everything
-# before ACQ_SUFFIX (e.g. "e5510_physiology_trimmed.acq" → "e5510").
+# before ACQ_SUFFIX (e.g. "E5510_physiology_trimmed.acq" → "e5510").
+# Participant IDs are NOT case sensitive: they are always lower-cased, so E5510 and e5510
+# are the same participant and the output is always e5510_events_blocks_biopac_ledalab.txt.
 ACQ_TO_PID = {
     # 'carmen_pilot_physiology_trimmed.acq': '001',
 }
@@ -123,12 +125,19 @@ ACQ_TO_PID = {
 # ── HELPERS ───────────────────────────────────────────────────────────────────
 
 def pid_from_filename(acq_name):
-    """Participant ID = the filename with ACQ_SUFFIX stripped."""
-    if acq_name in ACQ_TO_PID:
-        return ACQ_TO_PID[acq_name]
-    if acq_name.endswith(ACQ_SUFFIX):
-        return acq_name[:-len(ACQ_SUFFIX)]
-    return os.path.splitext(acq_name)[0]
+    """Participant ID = the filename with ACQ_SUFFIX stripped, lower-cased (IDs ignore case)."""
+    overrides = {k.lower(): v for k, v in ACQ_TO_PID.items()}
+    if acq_name.lower() in overrides:
+        return overrides[acq_name.lower()].strip().lower()
+    if acq_name.lower().endswith(ACQ_SUFFIX.lower()):
+        return acq_name[:-len(ACQ_SUFFIX)].strip().lower()
+    return os.path.splitext(acq_name)[0].strip().lower()
+
+
+def find_acq_files(folder):
+    """Every *_physiology_trimmed.acq in folder, matching the suffix in any case."""
+    return sorted(os.path.join(folder, f) for f in os.listdir(folder)
+                  if f.lower().endswith(ACQ_SUFFIX.lower()))
 
 
 def find_events(channel, threshold=0.5, min_dur_s=1.0):
@@ -207,7 +216,7 @@ def save_nid_map(nid_map, filepath):
 # ── MAIN ──────────────────────────────────────────────────────────────────────
 
 def main():
-    acq_files = sorted(glob.glob(os.path.join(RAW_PHYSIOLOGY_DIR, '*' + ACQ_SUFFIX)))
+    acq_files = find_acq_files(RAW_PHYSIOLOGY_DIR)
     if not acq_files:
         raise FileNotFoundError(
             f'No *{ACQ_SUFFIX} files found in {RAW_PHYSIOLOGY_DIR}. '
@@ -217,6 +226,19 @@ def main():
 
     all_rows = {}
     skipped  = {}
+
+    # Two recordings for the same participant (e.g. K6294_... and k6294_..., or the same ID
+    # via ACQ_TO_PID) can't be told apart: reject that participant rather than pick one.
+    by_pid = {}
+    for acq_path in acq_files:
+        by_pid.setdefault(pid_from_filename(os.path.basename(acq_path)), []).append(acq_path)
+    for pid, paths in by_pid.items():
+        if len(paths) > 1:
+            names = ', '.join(os.path.basename(x) for x in paths)
+            print(f'\n✗ REJECTED — {pid}: {len(paths)} recordings for one participant ({names}). '
+                  'Participant IDs ignore case; move the wrong one out of the folder.')
+            skipped[pid] = ['several recordings: ' + names]
+    acq_files = [x for x in acq_files if pid_from_filename(os.path.basename(x)) not in skipped]
 
     for acq_path in acq_files:
         acq_name = os.path.basename(acq_path)

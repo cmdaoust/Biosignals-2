@@ -1,0 +1,731 @@
+---
+title: "Biosignals2: interim summary"
+subtitle: "Block effects and FaceReader vs ECG agreement"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
+    self_contained: true
+---
+
+```{r setup, include = FALSE}
+# =============================================================================
+# 07_interim_summary.Rmd
+# -----------------------------------------------------------------------------
+# A short summary to share with collaborators. It answers two questions:
+#   1. Do the five experimental blocks differ on block-level self-report, Ledalab SCR,
+#      ECG HR/HRV, FaceReader HR/HRV and FaceReader action units?
+#   2. Do FaceReader and ECG agree on HR and HRV (both run through Kubios)?
+#
+# It only READS outputs that other scripts already make. Run these first:
+#   01_data_cleaning.Rmd             -> clean_combined_data/psychopy/biosignals2_selfreport_ratings.csv
+#   05_analyse_ledalab_scr.Rmd       -> clean_combined_data/biosignals2_eda.csv
+#                                       (otherwise read straight from ledalab/*_era.txt)
+#   Kubios on the ECG                -> kubios/<id>_*_hrv.csv or KubiosHRVresults*.csv
+#   kubios/002_create_kubios_samples_video.py, then Kubios on <id>_facereader_beats_kubios.txt
+#                                    -> facereader/Kubios_Samples.csv + the FaceReader Kubios report
+#   FaceReader detailed log export   -> facereader/<id>_detailed.txt (or .xlsx)
+# Any source that isn't there yet is skipped with a note; nothing stops the knit.
+#
+# Knit: Rscript -e "rmarkdown::render('analysis/07_interim_summary.Rmd')"
+# The HTML is self-contained (one file). It prints no file paths, and participant IDs are
+# replaced by P01, P02, ... when ANONYMISE_IDS is TRUE.
+# =============================================================================
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 9, fig.height = 4.2, dpi = 110)
+
+# ── Settings ─────────────────────────────────────────────────────────────────
+INCLUDE_PILOTS     <- FALSE  # TRUE = also analyse pilot participants (participant_status.csv)
+ANONYMISE_IDS      <- TRUE   # P01, P02, ... instead of real IDs in the tables
+MIN_FACE_VALID     <- 0.50   # FaceReader AUs: drop a block with less than this share of frames with a face
+MIN_BLOCK_BEATS    <- 100    # Kubios FaceReader: drop a block with fewer beats (~150-250 expected in 3 min)
+MAX_IBI_GAP_S      <- 2      # FaceReader coverage: beats further apart than this = no heart-rate signal in between
+FLAG_CORRECTED_PCT <- 5      # Kubios: blocks with more than this % of beats corrected are counted as noisy
+KUBIOS_CORRECTION  <- "Medium"  # Kubios artefact (noise) correction level used for ECG and FaceReader - reported in the HTML
+KEY_AUS            <- c("AU04", "AU06", "AU09", "AU12")   # AUs plotted individually
+
+suppressPackageStartupMessages({
+  library(dplyr); library(tidyr); library(stringr); library(readr); library(purrr)
+  library(ggplot2); library(knitr); library(lmerTest); library(emmeans)
+})
+emm_options(lmer.df = "satterthwaite", msg.interaction = FALSE)
+
+# ── config.R (repo root) and participant_status ──────────────────────────────
+find_up <- function(start, file) {
+  d <- normalizePath(start, winslash = "/", mustWork = FALSE)
+  repeat {
+    if (file.exists(file.path(d, file))) return(d)
+    p <- dirname(d); if (p == d) return(NA_character_); d <- p
+  }
+}
+start_dir <- tryCatch(knitr::current_input(dir = TRUE), error = function(e) NULL)
+start_dir <- if (is.null(start_dir) || is.na(start_dir)) getwd() else dirname(start_dir)
+repo_dir  <- find_up(start_dir, "config.R")
+if (is.na(repo_dir)) stop("config.R not found above ", start_dir, ". Copy config_template.R to config.R.")
+source(file.path(repo_dir, "config.R"))
+analysis_dir <- file.path(repo_dir, "analysis")
+PARTICIPANT_STATUS_PATH <- file.path(analysis_dir, "participant_status.csv")
+source(file.path(analysis_dir, "participant_status.R"), local = TRUE)
+
+FR_DIR     <- get0("FACEREADER_RESULTS_DIR", ifnotfound = file.path(SERVER_ROOT, "facereader"))
+KUBIOS_DIR <- get0("KUBIOS_RESULTS_DIR",     ifnotfound = file.path(SERVER_ROOT, "kubios"))
+```
+
+```{r helpers}
+# ── Blocks ───────────────────────────────────────────────────────────────────
+BLOCKS       <- c("baseline", "neg_induction", "neg_recovery", "pos_induction", "pos_recovery")
+BLOCK_LABELS <- c("Baseline", "Neg induction", "Neg recovery", "Pos induction", "Pos recovery")
+BLOCK_COLS   <- setNames(c("#888888", "#D9653B", "#F0B49A", "#3F7FB5", "#A8C4D8"), BLOCK_LABELS)
+
+# Any block spelling used in this project -> one of BLOCKS. Recovery is tested first because
+# "post_negative_induction_recovery" contains both words.
+to_block <- function(x) {
+  x <- tolower(str_replace_all(str_remove(str_trim(as.character(x)), "\\(\\d+\\)$"), "[ -]+", "_"))
+  neg <- str_detect(x, "^neg|_neg|negative"); pos <- str_detect(x, "^pos|_pos|positive")
+  rec <- str_detect(x, "recov|reconv");      ind <- str_detect(x, "induc")
+  case_when(str_detect(x, "baseline") ~ "baseline",
+            neg & rec ~ "neg_recovery",  pos & rec ~ "pos_recovery",
+            neg & ind ~ "neg_induction", pos & ind ~ "pos_induction",
+            TRUE ~ NA_character_)
+}
+block_factor <- function(b) factor(BLOCK_LABELS[match(b, BLOCKS)], levels = BLOCK_LABELS)
+
+norm_pid <- function(x) toupper(str_trim(as.character(x)))
+keep_pids <- function(d) d |> filter(participant_keep(pid, INCLUDE_PILOTS))
+num <- function(x) suppressWarnings(as.numeric(str_replace(str_trim(as.character(x)), ",", ".")))
+`%||%` <- function(a, b) if (is.null(a)) b else a
+
+# Every loader returns a long tibble: pid, block (factor), measure, value.
+# A loader that can't find its data returns an empty tibble with attr "note".
+empty_long <- function(note) structure(tibble(pid = character(), block = factor(levels = BLOCK_LABELS),
+                                              measure = character(), value = numeric()), note = note)
+safely_load <- function(expr, what) tryCatch(expr, error = function(e)
+  empty_long(paste0(what, ": could not be read (", conditionMessage(e), ")")))
+show_note <- function(d) if (!is.null(attr(d, "note"))) cat("> **Not shown:** ", attr(d, "note"), "\n\n", sep = "")
+
+# ── Statistics ───────────────────────────────────────────────────────────────
+# Linear mixed model per measure: value ~ block + (1 | participant). Reports the omnibus block
+# effect (Satterthwaite F test) and three planned contrasts. Blocks a measure doesn't have are
+# simply left out of its model.
+CONTRASTS <- list(`Neg ind - Baseline` = c(`Neg induction` = 1, Baseline = -1),
+                  `Pos ind - Baseline` = c(`Pos induction` = 1, Baseline = -1),
+                  `Pos ind - Neg ind`  = c(`Pos induction` = 1, `Neg induction` = -1))
+
+block_test <- function(d) {
+  d <- d |> filter(!is.na(value)) |> mutate(block = droplevels(block))
+  out <- tibble(n = n_distinct(d$pid), F = NA_real_, df = NA_character_, p = NA_real_)
+  for (k in names(CONTRASTS)) out[[k]] <- NA_real_
+  for (k in names(CONTRASTS)) out[[paste0(k, " p")]] <- NA_real_
+  if (out$n < 3 || nlevels(d$block) < 2) return(out)
+  m <- tryCatch(suppressMessages(lmer(value ~ block + (1 | pid), data = d)), error = function(e) NULL)
+  if (is.null(m)) return(out)
+  a <- anova(m)
+  out$F <- a$`F value`[1]; out$df <- sprintf("%d, %.1f", a$NumDF[1], a$DenDF[1]); out$p <- a$`Pr(>F)`[1]
+  emm <- emmeans(m, ~ block)
+  lv  <- levels(d$block)
+  for (k in names(CONTRASTS)) {
+    w <- CONTRASTS[[k]]
+    if (!all(names(w) %in% lv)) next
+    v <- setNames(rep(0, length(lv)), lv); v[names(w)] <- w
+    s <- summary(contrast(emm, method = setNames(list(unname(v)), k)))
+    out[[k]] <- s$estimate; out[[paste0(k, " p")]] <- s$p.value
+  }
+  out
+}
+
+block_means <- function(d) d |>
+  group_by(measure, block) |>
+  summarise(m = mean(value, na.rm = TRUE), s = sd(value, na.rm = TRUE), .groups = "drop") |>
+  mutate(txt = ifelse(is.na(s), sprintf("%.2f", m), sprintf("%.2f (%.2f)", m, s))) |>
+  select(measure, block, txt) |>
+  pivot_wider(names_from = block, values_from = txt)
+
+test_table <- function(d, fdr = FALSE) {
+  if (!nrow(d)) return(tibble())
+  t <- d |> group_by(measure) |> group_modify(~ block_test(.x)) |> ungroup()
+  if (fdr) t$`p (FDR)` <- p.adjust(t$p, "BH")
+  t
+}
+
+fmt_p   <- function(p) ifelse(is.na(p), "–", ifelse(p < .001, "<.001", sprintf("%.3f", p)))
+fmt_est <- function(e, p) ifelse(is.na(e), "–", sprintf("%+.2f%s", e,
+                                 ifelse(p < .05, " *", "")))
+pretty_tests <- function(t) {
+  if (!nrow(t)) return(t)
+  out <- t |> transmute(Measure = measure, N = n,
+                        `Block effect` = ifelse(is.na(F), "–", sprintf("F(%s) = %.2f", df, F)),
+                        p = fmt_p(p))
+  if ("p (FDR)" %in% names(t)) out$`p (FDR)` <- fmt_p(t$`p (FDR)`)
+  for (k in names(CONTRASTS)) out[[k]] <- fmt_est(t[[k]], t[[paste0(k, " p")]])
+  out
+}
+
+# ── Plot: one panel per measure, thin line per participant, mean ± SE ────────
+plot_blocks <- function(d, ncol = 3, ylab = NULL) {
+  s <- d |> group_by(measure, block) |>
+    summarise(m = mean(value, na.rm = TRUE), se = sd(value, na.rm = TRUE) / sqrt(sum(!is.na(value))),
+              .groups = "drop")
+  ggplot(d, aes(block, value)) +
+    geom_line(aes(group = pid), colour = "grey80", linewidth = 0.4) +
+    geom_point(colour = "grey70", size = 1) +
+    geom_errorbar(data = s, aes(y = m, ymin = m - se, ymax = m + se), width = 0.15, colour = "grey20") +
+    geom_point(data = s, aes(y = m, fill = block), shape = 21, size = 3.2, colour = "grey20") +
+    scale_fill_manual(values = BLOCK_COLS, guide = "none") +
+    facet_wrap(~ measure, scales = "free_y", ncol = ncol) +
+    labs(x = NULL, y = ylab) +
+    theme_minimal(base_size = 11) +
+    theme(axis.text.x = element_text(angle = 30, hjust = 1), panel.grid.minor = element_blank(),
+          strip.text = element_text(face = "bold"))
+}
+```
+
+```{r load-ratings}
+order_counts <- NULL   # how many participants did the negative / positive block first
+# Block-level state ratings (1–7), given at the END of each block (baseline: after the
+# 3-min fixation). Not the per-video ratings.
+ratings <- safely_load({
+  f <- file.path(get0("COMBINED_PSYCHO_DIR", ifnotfound = file.path(SERVER_ROOT, "clean_combined_data", "psychopy")),
+                 "biosignals2_selfreport_ratings.csv")
+  if (!file.exists(f)) empty_long("biosignals2_selfreport_ratings.csv not found (knit 01_data_cleaning.Rmd).") else
+    read_csv(f, show_col_types = FALSE) |>
+      (\(d) { order_counts <<- if ("conditionOrder" %in% names(d)) d |> filter(participant_keep(participant_id, INCLUDE_PILOTS)) |>
+                 distinct(participant_id, conditionOrder) |> count(conditionOrder) else NULL; d })() |>
+      transmute(pid = norm_pid(participant_id), block = to_block(condition),
+                Valence = block_end_valence, Arousal = block_end_arousal) |>
+      filter(!is.na(block)) |>
+      group_by(pid, block) |> summarise(across(c(Valence, Arousal), ~ first(na.omit(.x))), .groups = "drop") |>
+      pivot_longer(c(Valence, Arousal), names_to = "measure", values_to = "value") |>
+      mutate(block = block_factor(block)) |> keep_pids()
+}, "Self-report")
+```
+
+```{r load-scr}
+# Ledalab continuous decomposition (CDA), one value per block (0–180 s window).
+# CDA.SCR = mean phasic driver (primary), CDA.nSCR = number of SCRs, CDA.Tonic = mean tonic level.
+SCR_MEASURES <- c(`SCR: mean phasic driver (µS)` = "CDA.SCR",
+                  `SCR: count (n)`              = "CDA.nSCR",
+                  `SCR: tonic level (µS)`       = "CDA.Tonic")
+scr <- safely_load({
+  f <- file.path(COMBINED_DATA_DIR, "biosignals2_eda.csv")
+  raw <- if (file.exists(f)) {
+    read_csv(f, show_col_types = FALSE) |> mutate(block = to_block(condition))
+  } else {
+    # Fallback, same as 05: ERA files + the NID -> condition map
+    era <- list.files(LEDALAB_RESULTS_DIR, pattern = "_era\\.txt$", full.names = TRUE)
+    map_path <- file.path(BLOCK_ONSETS_DIR, "nid_map_psychopy_ledalab.txt")
+    if (!length(era) || !file.exists(map_path)) stop("no biosignals2_eda.csv and no Ledalab ERA files")
+    nid <- read_tsv(map_path, show_col_types = FALSE)
+    map_dfr(era, function(x) {
+      e <- read_tsv(x, show_col_types = FALSE)
+      names(e)[tolower(names(e)) == "event.nid"] <- "nid"
+      e |> mutate(pid = str_extract(basename(x), "^[^_]+")) |> left_join(nid, by = "nid")
+    }) |> mutate(block = to_block(condition))
+  }
+  raw |> mutate(pid = norm_pid(pid)) |> filter(!is.na(block)) |>
+    select(pid, block, any_of(unname(SCR_MEASURES))) |>
+    pivot_longer(-c(pid, block), names_to = "measure", values_to = "value") |>
+    group_by(pid, block, measure) |> summarise(value = mean(value, na.rm = TRUE), .groups = "drop") |>
+    mutate(measure = names(SCR_MEASURES)[match(measure, SCR_MEASURES)], block = block_factor(block),
+           value = ifelse(is.nan(value), NA, value)) |>
+    keep_pids()
+}, "Ledalab SCR")
+```
+
+```{r load-kubios}
+# Kubios readers (same logic as generate_qc_report.R). The stream (ECG vs FaceReader) is told
+# apart by the name of the file Kubios analysed. Per participant and stream the newest
+# report is used; the batch summary (KubiosHRVresults*.csv, samples S1..S5 in
+# Kubios_Samples.csv order) only when there is no report.
+kubios_stream <- function(name) {
+  n <- tolower(basename(as.character(name)))
+  case_when(str_detect(n, "facereader|heart beat log") ~ "facereader",
+            str_detect(n, "webcam") ~ "webcam", TRUE ~ "ecg")
+}
+kub_blank <- function(x) x[!is.na(x) & nzchar(x)]
+
+read_kubios_report <- function(f) {
+  L <- tryCatch(read_lines(f), error = function(e) character(0))
+  h <- which(str_detect(L, fixed("RR Interval Samples Selected for Analysis")))[1]
+  if (is.na(h)) return(tibble())
+  labels <- kub_blank(str_trim(str_split(L[h + 1], ",")[[1]][-1]))
+  n <- length(labels); if (!n) return(tibble())
+  val <- function(pattern) {
+    i <- which(str_detect(L, pattern))[1]
+    x <- if (is.na(i)) rep(NA_real_, n) else num(kub_blank(str_trim(str_split(L[i], ",")[[1]][-1])))
+    length(x) <- n; x
+  }
+  tibble(pid = norm_pid(str_extract(basename(f), "^[^_]+")), stream = kubios_stream(f),
+         block = to_block(labels), n_beats = val(fixed("Beats total:")),
+         HR = val(fixed("Mean HR (beats/min):")), RMSSD = val(fixed("RMSSD (ms):")),
+         SDNN = val(fixed("SDNN (ms):")),
+         corrected = val(regex("^\\s*(Beats?|Artefacts?|Artifacts?) corrected", ignore_case = TRUE)),
+         mtime = file.mtime(f), from = "report")
+}
+read_kubios_batch <- function(f) {
+  raw <- tryCatch(read_csv(f, skip = 2, col_types = cols(.default = col_character()),
+                           name_repair = "unique_quiet", show_col_types = FALSE), error = function(e) NULL)
+  if (is.null(raw) || !"FileName" %in% names(raw)) return(tibble())
+  raw <- raw |> filter(!is.na(FileName), nzchar(str_trim(FileName)))
+  col <- function(i, m) { k <- paste0("S", i, "_", m); if (k %in% names(raw)) num(raw[[k]]) else NA_real_ }
+  map_dfr(seq_along(BLOCKS), function(i) tibble(
+    pid = norm_pid(str_extract(basename(raw$FileName), "^[^_]+")), stream = kubios_stream(raw$FileName),
+    block = BLOCKS[i], n_beats = NA_real_, HR = col(i, "Mean HR (bpm)"), RMSSD = col(i, "RMSSD (ms)"),
+    SDNN = col(i, "SDNN (ms)"), corrected = col(i, "Beats corrected (%)"), mtime = file.mtime(f), from = "batch"))
+}
+
+kubios <- safely_load({
+  dirs <- unique(c(KUBIOS_DIR, file.path(KUBIOS_DIR, "kubios"), FR_DIR, file.path(FR_DIR, "kubios")))
+  dirs <- dirs[dir.exists(dirs)]
+  rep_files   <- unlist(map(dirs, ~ list.files(.x, "_hrv\\.csv$", full.names = TRUE, ignore.case = TRUE)))
+  batch_files <- unlist(map(dirs, ~ list.files(.x, "^KubiosHRVresults.*\\.csv$", full.names = TRUE, ignore.case = TRUE)))
+  reps  <- map_dfr(unique(rep_files), read_kubios_report)
+  batch <- map_dfr(unique(batch_files), read_kubios_batch)
+  pick_newest <- function(d) if (!nrow(d)) d else d |> group_by(pid, stream) |> filter(mtime == max(mtime)) |>
+    group_by(pid, stream, block) |> slice_tail(n = 1) |> ungroup()
+  reps <- pick_newest(reps); batch <- pick_newest(batch)
+  k <- bind_rows(reps, if (nrow(batch)) anti_join(batch, distinct(reps, pid, stream), by = c("pid", "stream")))
+  if (!nrow(k)) stop("no Kubios reports or batch summaries found")
+  k |> filter(stream %in% c("ecg", "facereader"), !is.na(block), !is.na(HR)) |>
+    mutate(pid = norm_pid(pid)) |> keep_pids()
+}, "Kubios")
+
+# Kubios artefact correction per block (before any block is dropped), for section 1.1
+kubios_qc <- if (nrow(kubios)) kubios |> select(pid, stream, block, n_beats, corrected) else
+  tibble(pid = character(), stream = character(), block = character(), n_beats = numeric(), corrected = numeric())
+
+# FaceReader blocks with too few beats are unreliable -> dropped everywhere below
+fr_low_beats <- if (nrow(kubios)) kubios |> filter(stream == "facereader", !is.na(n_beats), n_beats < MIN_BLOCK_BEATS) else tibble()
+if (nrow(kubios)) kubios <- kubios |> anti_join(fr_low_beats, by = c("pid", "stream", "block"))
+
+hr_long <- function(s) {
+  if (!nrow(kubios)) return(empty_long(attr(kubios, "note")))
+  d <- kubios |> filter(stream == s)
+  if (!nrow(d)) return(empty_long(paste0("no Kubios results for the ", ifelse(s == "ecg", "ECG", "FaceReader"), " beats yet.")))
+  d |> select(pid, block, HR, RMSSD, SDNN) |>
+    pivot_longer(c(HR, RMSSD, SDNN), names_to = "measure", values_to = "value") |>
+    mutate(measure = recode(measure, HR = "HR (bpm)", RMSSD = "RMSSD (ms)", SDNN = "SDNN (ms)"),
+           block = block_factor(block))
+}
+ecg_hr <- hr_long("ecg")
+fr_hr  <- hr_long("facereader")
+```
+
+```{r load-aus}
+# FaceReader action units per block, from the detailed log (<id>_detailed.txt/.xlsx).
+# Block windows: the FaceReader row of facereader/Kubios_Samples.csv (kubios/002), i.e. the SAME
+# windows, on FaceReader's own clock, that Kubios used for FaceReader HR/HRV. The detailed log and
+# the heart beat log come from the same FaceReader run, so they share that clock; this is checked
+# by comparing the video named in both logs.
+# Frames where FaceReader found no face (FIND_FAILED / FIT_FAILED) are left out; a block with less
+# than MIN_FACE_VALID of its frames with a face is dropped.
+au_letters <- c(NotActive = 0, A = 0.11, B = 0.35, C = 0.62, D = 0.85, E = 0.97)
+parse_au <- function(x) { v <- num(x); i <- x %in% names(au_letters); v[i] <- au_letters[x[i]]; v }
+fr_time <- function(x) {
+  x <- str_replace(as.character(x), ",", "."); p <- str_split_fixed(x, ":", 3)
+  v <- num(x)   # plain number: seconds, or an Excel day fraction (< 1)
+  ifelse(str_detect(x, ":"), num(p[, 1]) * 3600 + num(p[, 2]) * 60 + num(p[, 3]), ifelse(v < 1, v * 86400, v))
+}
+
+# Header row (first cell == header_key) and the metadata rows above it
+read_fr_log <- function(path, header_key) {
+  if (str_detect(path, regex("\\.xlsx?$", ignore_case = TRUE))) {
+    g <- as.data.frame(readxl::read_excel(path, sheet = 1, col_names = FALSE, col_types = "text",
+                                          .name_repair = "minimal"), stringsAsFactors = FALSE)
+    h <- which(str_trim(g[[1]]) == header_key)[1]; if (is.na(h)) return(NULL)
+    meta <- g[seq_len(h - 1), 1:2, drop = FALSE]
+    body <- g[-seq_len(h), , drop = FALSE]; names(body) <- str_trim(as.character(unlist(g[h, ])))
+  } else {
+    L <- sub("^﻿", "", readLines(path, warn = FALSE, encoding = "UTF-8"))
+    h <- which(str_trim(str_extract(L, "^[^\t]*")) == header_key)[1]; if (is.na(h)) return(NULL)
+    meta <- as.data.frame(str_split_fixed(L[seq_len(h - 1)], "\t", 3)[, 1:2, drop = FALSE])
+    body <- read.delim(text = L[h:length(L)], sep = "\t", colClasses = "character", check.names = FALSE,
+                       quote = "", na.strings = character(0), strip.white = TRUE)
+  }
+  video <- meta[[2]][str_detect(tolower(str_trim(meta[[1]])), "^file ?name")][1]
+  list(body = body, video = tolower(basename(gsub("\\\\", "/", str_trim(video %||% NA_character_)))))
+}
+
+read_fr_windows <- function() {
+  f <- file.path(FR_DIR, "Kubios_Samples.csv")
+  if (!file.exists(f)) return(tibble())
+  L <- read_lines(f)[-1]; L <- L[nzchar(str_trim(L))]
+  map_dfr(str_split(L, ","), function(p) {
+    tr <- matrix(p[-(1:2)][seq_len(3 * floor((length(p) - 2) / 3))], ncol = 3, byrow = TRUE)
+    tibble(file = p[1], block = to_block(tr[, 1]), start = num(tr[, 2]), end = num(tr[, 3]))
+  }) |> mutate(pid = norm_pid(str_extract(basename(file), "^[^_]+")),
+               is_log = str_detect(tolower(file), "heart beat log")) |>
+    filter(!is.na(block), !is.na(start), !is.na(end))
+}
+
+au_notes <- character(0)
+aus <- safely_load({
+  wins <- read_fr_windows()
+  if (!nrow(wins)) stop("no facereader/Kubios_Samples.csv (run kubios/002_create_kubios_samples_video.py)")
+  logs <- list.files(FR_DIR, "_detailed\\.(txt|xlsx)$", full.names = TRUE, ignore.case = TRUE)
+  logs <- logs[!startsWith(basename(logs), "~$")]
+  logs <- logs[participant_keep(str_extract(basename(logs), "^[^_]+"), INCLUDE_PILOTS)]
+  logs <- logs[!duplicated(norm_pid(str_extract(basename(logs), "^[^_]+")))]   # .txt before .xlsx
+  if (!length(logs)) stop("no FaceReader detailed logs (<id>_detailed.txt/.xlsx)")
+  out <- map_dfr(logs, function(path) {
+    pid <- norm_pid(str_extract(basename(path), "^[^_]+"))
+    w <- wins |> filter(pid == !!pid) |> arrange(desc(is_log))   # heart beat log row first (no time shift)
+    w <- w |> filter(file == first(file))
+    if (!nrow(w)) { au_notes <<- c(au_notes, paste(pid, "– no block windows in Kubios_Samples.csv")); return(tibble()) }
+    lg <- read_fr_log(path, "Video Time")
+    if (is.null(lg)) { au_notes <<- c(au_notes, paste(pid, "– detailed log has no 'Video Time' header")); return(tibble()) }
+    hb <- list.files(FR_DIR, "heart beat log\\.(txt|xlsx)$", full.names = TRUE, ignore.case = TRUE)
+    hb <- hb[norm_pid(str_extract(basename(hb), "^[^_]+")) == pid]
+    hb_video <- if (length(hb)) tryCatch(read_fr_log(hb[1], "Time")$video, error = function(e) NA) else NA
+    if (!is.na(hb_video) && !is.na(lg$video) && hb_video != lg$video) {
+      au_notes <<- c(au_notes, paste0(pid, " – detailed log and heart beat log come from different videos ",
+                                      "(re-export both from the same FaceReader run)")); return(tibble())
+    }
+    b <- lg$body
+    au_cols <- names(b)[str_detect(names(b), "^Action Unit \\d+ - ") & !str_detect(names(b), " - (Left|Right) - ")]
+    if (!length(au_cols)) { au_notes <<- c(au_notes, paste(pid, "– no action unit columns in the export")); return(tibble()) }
+    t <- fr_time(b[["Video Time"]])
+    valid <- if ("Neutral" %in% names(b)) !is.na(num(b$Neutral)) else !is.na(num(b[[au_cols[1]]]))
+    au <- as.data.frame(lapply(b[au_cols], parse_au)); names(au) <- au_cols
+    map_dfr(seq_len(nrow(w)), function(i) {
+      inb <- !is.na(t) & t >= w$start[i] & t < w$end[i]
+      ok  <- inb & valid
+      prop <- if (any(inb)) mean(valid[inb]) else 0
+      tibble(pid = pid, block = w$block[i], prop_valid = prop, measure = au_cols,
+             value = if (prop >= MIN_FACE_VALID) colMeans(au[ok, , drop = FALSE], na.rm = TRUE) else NA_real_)
+    })
+  })
+  if (!nrow(out)) stop("no usable FaceReader detailed logs")
+  out |> mutate(au = sprintf("AU%02d", as.integer(str_match(measure, "^Action Unit (\\d+)")[, 2])),
+                au_name = str_match(measure, "^Action Unit \\d+ - (.+)$")[, 2],
+                measure = paste(au, au_name), block = block_factor(block),
+                value = ifelse(is.nan(value), NA, value))
+}, "FaceReader action units")
+face_valid <- if (nrow(aus)) aus |> distinct(pid, block, prop_valid) else tibble()
+
+# FaceReader heart-rate coverage per block, from the heart beat log: the share of the block
+# spanned by consecutive beats no more than MAX_IBI_GAP_S apart. Longer gaps are time with no
+# heart-rate signal: face lost, FaceReader's ~8.5-s recalibration after it finds the face again,
+# or beats it could not detect. Same block windows as Kubios and the AUs.
+hr_cov <- tryCatch({
+  wins <- read_fr_windows() |> filter(is_log)
+  hb <- list.files(FR_DIR, "heart beat log\\.(txt|xlsx)$", full.names = TRUE, ignore.case = TRUE)
+  hb <- hb[!startsWith(basename(hb), "~$")]
+  hb <- hb[participant_keep(str_extract(basename(hb), "^[^_]+"), INCLUDE_PILOTS)]
+  hb <- hb[!duplicated(norm_pid(str_extract(basename(hb), "^[^_]+")))]
+  map_dfr(hb, function(path) {
+    pid <- norm_pid(str_extract(basename(path), "^[^_]+"))
+    w <- wins |> filter(pid == !!pid, tolower(basename(file)) == tolower(basename(path)))
+    if (!nrow(w)) w <- wins |> filter(pid == !!pid) |> filter(file == first(file))
+    lg <- read_fr_log(path, "Time")
+    if (!nrow(w) || is.null(lg)) return(tibble())
+    t <- sort(fr_time(lg$body[[1]])); t <- t[!is.na(t)]
+    s <- head(t, -1); e <- t[-1]; ok <- (e - s) <= MAX_IBI_GAP_S
+    tibble(pid = pid, block = w$block, prop_hr = map2_dbl(w$start, w$end, function(a, b)
+      if (length(t) < 2) 0 else sum(pmax(0, pmin(e, b) - pmax(s, a))[ok]) / (b - a)))
+  })
+}, error = function(e) tibble())
+
+fr_missing <- full_join(
+  if (nrow(face_valid)) face_valid |> transmute(pid, block = as.character(block), face = 100 * (1 - prop_valid)) else tibble(pid = character(), block = character(), face = numeric()),
+  if (nrow(hr_cov)) hr_cov |> transmute(pid, block = BLOCK_LABELS[match(block, BLOCKS)], hr = 100 * (1 - pmin(prop_hr, 1))) else tibble(pid = character(), block = character(), hr = numeric()),
+  by = c("pid", "block")) |>
+  full_join(kubios_qc |> filter(stream == "facereader") |>
+              transmute(pid, block = BLOCK_LABELS[match(block, BLOCKS)], kub = corrected), by = c("pid", "block")) |>
+  filter(!is.na(block)) |> mutate(block = factor(block, levels = BLOCK_LABELS))
+ecg_corrected <- kubios_qc |> filter(stream == "ecg", pid %in% fr_missing$pid) |> pull(corrected)
+```
+
+```{r ids}
+# One anonymous code per participant, used in every table below
+all_pids <- sort(unique(c(ratings$pid, scr$pid, ecg_hr$pid, fr_hr$pid, aus$pid, fr_missing$pid)))
+pid_code <- if (ANONYMISE_IDS) setNames(sprintf("P%02d", seq_along(all_pids)), all_pids) else setNames(all_pids, all_pids)
+```
+
+## Summary
+
+```{r summary-counts, echo = FALSE}
+n_of <- function(d) if (nrow(d)) n_distinct(d$pid[!is.na(d$value)]) else 0
+```
+
+Main-study participants`r if (INCLUDE_PILOTS) " and pilots" else ""` with data so far:
+self-report **`r n_of(ratings)`**, SCR **`r n_of(scr)`**, ECG HR/HRV **`r n_of(ecg_hr)`**,
+FaceReader HR/HRV **`r n_of(fr_hr)`**, FaceReader action units **`r n_of(aus)`**.
+The sample is still small, so every test below is **descriptive and exploratory**: it shows
+where the data are heading, not confirmed effects.
+
+**How the tests work.** For each measure we fit a linear mixed model
+`value ~ block + (1 | participant)`. The *block effect* is the omnibus F test across the five
+blocks. The three planned contrasts are estimated differences in the measure's own units
+(`*` = p < .05, uncorrected): negative induction vs baseline, positive induction vs baseline,
+and positive vs negative induction.
+
+```{r summary-table, results = "asis"}
+key_au <- if (nrow(aus)) aus |> filter(au %in% c("AU04", "AU12")) |> mutate(measure = paste("FaceReader", measure)) else aus
+all_main <- bind_rows(
+  ratings |> mutate(measure = paste("Self-report", tolower(measure)), domain = "1"),
+  scr     |> mutate(domain = "2"),
+  ecg_hr  |> mutate(measure = paste("ECG", measure), domain = "3"),
+  fr_hr   |> mutate(measure = paste("FaceReader", measure), domain = "4"),
+  key_au  |> select(pid, block, measure, value) |> mutate(domain = "5"))
+if (nrow(all_main)) {
+  ord <- all_main |> distinct(domain, measure) |> arrange(domain)
+  tt  <- test_table(all_main |> select(-domain))
+  pretty_tests(tt) |>
+    left_join(block_means(all_main), by = c(Measure = "measure")) |>
+    arrange(match(Measure, ord$measure)) |>
+    select(Measure, N, all_of(intersect(BLOCK_LABELS, names(block_means(all_main)))), everything()) |>
+    kable(caption = "Block means (SD) and block tests. AU rows: the two most-studied AUs (all AUs in section 2.5).",
+          align = "l")
+} else cat("No data available yet.\n")
+```
+
+```{r summary-agreement-short, echo = FALSE}
+ag_short <- NULL
+if (nrow(ecg_hr) && nrow(fr_hr)) {
+  j <- inner_join(ecg_hr, fr_hr, by = c("pid", "block", "measure"), suffix = c("_ecg", "_fr")) |>
+    filter(!is.na(value_ecg), !is.na(value_fr))
+  if (nrow(j)) ag_short <- j |> group_by(measure) |>
+    summarise(bias = mean(value_fr - value_ecg), mae = mean(abs(value_fr - value_ecg)),
+              r = if (n() >= 3) cor(value_ecg, value_fr) else NA_real_, .groups = "drop")
+}
+```
+
+`r rng_txt <- function(x) sprintf("%.0f%% (range %.0f–%.0f%%)", mean(x), min(x), max(x)); if (nrow(fr_missing)) paste0("**FaceReader missing data (section 1.1):** across ", n_distinct(fr_missing$pid), " participants' blocks, ", paste(c(if (any(!is.na(fr_missing$face))) paste("face not found in", rng_txt(na.omit(fr_missing$face)), "of video frames"), if (any(!is.na(fr_missing$hr))) paste("no heart-rate signal for", rng_txt(na.omit(fr_missing$hr)), "of block time"), if (any(!is.na(fr_missing$kub))) paste0("Kubios corrected ", rng_txt(na.omit(fr_missing$kub)), " of FaceReader beats as noise (ECG: ", if (any(!is.na(ecg_corrected))) sprintf("%.1f%%", mean(ecg_corrected, na.rm = TRUE)) else "n/a", ")")), collapse = "; "), ".") else ""`
+
+`r if (!is.null(ag_short)) paste0("**FaceReader vs ECG (section 3):** ", paste(sprintf("%s mean difference %+.1f, mean absolute difference %.1f%s", ag_short$measure, ag_short$bias, ag_short$mae, ifelse(is.na(ag_short$r), "", sprintf(", r = %.2f", ag_short$r))), collapse = "; "), ".") else "**FaceReader vs ECG:** no participants with both Kubios results yet."`
+
+## 1. Data available per participant
+
+```{r availability, results = "asis"}
+has <- function(d) if (nrow(d)) d |> filter(!is.na(value)) |> group_by(pid) |> summarise(n = n_distinct(block)) else tibble(pid = character(), n = integer())
+avail <- tibble(pid = all_pids) |>
+  left_join(has(ratings) |> rename(`Self-report` = n), by = "pid") |>
+  left_join(has(scr)     |> rename(SCR = n), by = "pid") |>
+  left_join(has(ecg_hr)  |> rename(`ECG HR/HRV` = n), by = "pid") |>
+  left_join(has(fr_hr)   |> rename(`FaceReader HR/HRV` = n), by = "pid") |>
+  left_join(has(aus)     |> rename(`FaceReader AUs` = n), by = "pid") |>
+  mutate(across(-pid, ~ ifelse(is.na(.x), "–", paste0(.x, "/5"))), Participant = pid_code[pid]) |>
+  select(Participant, everything(), -pid) |> arrange(Participant)
+if (nrow(avail)) kable(avail, caption = "Blocks with data (out of 5) per participant and source") else cat("No data yet.\n")
+```
+
+```{r dropped-blocks, results = "asis"}
+if (nrow(fr_low_beats))
+  cat(sprintf("- FaceReader HR/HRV: %d block(s) dropped for having fewer than %d beats.\n", nrow(fr_low_beats), MIN_BLOCK_BEATS))
+if (nrow(face_valid) && any(face_valid$prop_valid < MIN_FACE_VALID))
+  cat(sprintf("- FaceReader AUs: %d block(s) dropped for a face in fewer than %.0f%% of frames.\n",
+              sum(face_valid$prop_valid < MIN_FACE_VALID), 100 * MIN_FACE_VALID))
+for (i in seq_along(au_notes)) {   # notes start with the participant ID: show its code instead
+  id <- sub(" .*", "", au_notes[i]); code <- if (id %in% names(pid_code)) pid_code[[id]] else if (ANONYMISE_IDS) "a participant" else id
+  cat("- FaceReader AUs: ", code, sub("^\\S+", "", au_notes[i]), "\n", sep = "")
+}
+```
+
+### 1.1 How much FaceReader data is missing
+
+FaceReader data can be missing for two reasons:
+
+1. **The face isn't found.** Shown as the percentage of video frames with no face (no
+   expressions or action units for those frames), and the resulting percentage of block time
+   with **no heart-rate signal**: gaps of more than `r MAX_IBI_GAP_S` s between detected beats,
+   which includes FaceReader's ~8.5-s recalibration each time it finds the face again.
+2. **Kubios finds the beat-to-beat (RR) data too noisy.** Shown as the percentage of
+   FaceReader's beats that Kubios corrected as artefacts, with the ECG's for comparison. Blocks
+   with more than `r FLAG_CORRECTED_PCT`% of beats corrected are counted as noisy.
+
+Kubios artefact (noise) correction was set to **`r KUBIOS_CORRECTION`** for both the ECG and the
+FaceReader data. Participants without a FaceReader export aren't included here (see the table
+above). Blocks are dropped from the analyses when a face is found in fewer than
+`r 100 * MIN_FACE_VALID`% of frames (action units) or Kubios has fewer than `r MIN_BLOCK_BEATS`
+beats (HR/HRV).
+
+```{r fr-missing, results = "asis", fig.height = 3.4}
+if (!nrow(fr_missing)) {
+  cat("> **Not shown:** needs FaceReader detailed logs or heart beat logs plus facereader/Kubios_Samples.csv, or Kubios results for the FaceReader beats.\n")
+} else {
+  rng <- function(x) { x <- x[!is.na(x)]; if (!length(x)) "–" else sprintf("%.1f (%.1f–%.1f)", mean(x), min(x), max(x)) }
+  noisy <- function(x) { x <- x[!is.na(x)]; if (!length(x)) "–" else sprintf("%d / %d", sum(x > FLAG_CORRECTED_PCT), length(x)) }
+  ecg_by_block <- kubios_qc |> filter(stream == "ecg", pid %in% fr_missing$pid) |>
+    mutate(Block = BLOCK_LABELS[match(block, BLOCKS)])
+  ecg_rng <- function(b) rng(if (b == "All blocks") ecg_by_block$corrected else ecg_by_block$corrected[ecg_by_block$Block == b])
+  tab <- bind_rows(fr_missing |> group_by(Block = as.character(block)),
+                   fr_missing |> mutate(Block = "All blocks") |> group_by(Block)) |>
+    summarise(Participants = n_distinct(pid),
+              `Face not found: % of frames` = rng(face),
+              `No heart-rate signal: % of block time` = rng(hr),
+              `Kubios: % of beats corrected` = rng(kub),
+              `Noisy blocks` = noisy(kub), .groups = "drop") |>
+    mutate(`ECG: % of beats corrected` = map_chr(Block, ecg_rng)) |>
+    arrange(match(Block, c(BLOCK_LABELS, "All blocks")))
+  print(kable(tab, align = "lcccccc", caption = paste0(
+    "FaceReader missing data per block: mean across participants (min–max). Noisy blocks = blocks with more than ",
+    FLAG_CORRECTED_PCT, "% of beats corrected by Kubios / blocks with Kubios results.")))
+
+  long <- fr_missing |> pivot_longer(c(face, hr, kub), names_to = "what", values_to = "pct") |>
+    filter(!is.na(pct)) |>
+    mutate(what = factor(recode(what, face = "1. Face not found (% of frames)", hr = "1. No heart-rate signal (% of time)",
+                                kub = "2. Kubios: beats corrected (%)")),
+           Participant = factor(pid_code[pid], levels = rev(sort(unique(pid_code[pid])))))
+  print(ggplot(long, aes(block, Participant, fill = pct)) +
+    geom_tile(colour = "white") + geom_text(aes(label = sprintf("%.0f", pct)), size = 3) +
+    scale_fill_gradient(low = "#F4F4F4", high = "#D9653B", limits = c(0, 100), name = "%") +
+    facet_wrap(~ what) + labs(x = NULL, y = NULL) + theme_minimal(base_size = 11) +
+    theme(axis.text.x = element_text(angle = 30, hjust = 1), panel.grid = element_blank()))
+}
+```
+
+## 2. Differences between blocks
+
+Thin grey lines are individual participants; filled points are block means ± 1 SE.
+Blocks are always plotted in the same order; the order participants did them in is
+counterbalanced (negative or positive block first).
+`r if (!is.null(order_counts) && nrow(order_counts)) paste0("So far: ", paste0(order_counts$n, " × ", order_counts$conditionOrder, collapse = ", "), if (nrow(order_counts) == 1) ". With only one order so far, block effects are still confounded with time in the session." else ".") else ""`
+
+### 2.1 Self-report (block-end state ratings, 1–7)
+
+```{r ratings-out, results = "asis", fig.height = 3.6}
+show_note(ratings)
+if (nrow(ratings)) { print(plot_blocks(ratings, ncol = 2, ylab = "Rating (1–7)")); print(kable(pretty_tests(test_table(ratings)))) }
+```
+
+### 2.2 Skin conductance (Ledalab CDA)
+
+```{r scr-out, results = "asis"}
+show_note(scr)
+if (nrow(scr)) { print(plot_blocks(scr)); print(kable(pretty_tests(test_table(scr)))) }
+```
+
+### 2.3 ECG heart rate and HRV (Kubios)
+
+```{r ecg-out, results = "asis"}
+show_note(ecg_hr)
+if (nrow(ecg_hr)) { print(plot_blocks(ecg_hr)); print(kable(pretty_tests(test_table(ecg_hr)))) }
+```
+
+### 2.4 FaceReader heart rate and HRV (Kubios on FaceReader's beats)
+
+```{r fr-out, results = "asis"}
+show_note(fr_hr)
+if (nrow(fr_hr)) { print(plot_blocks(fr_hr)); print(kable(pretty_tests(test_table(fr_hr)))) }
+```
+
+### 2.5 FaceReader action units
+
+Mean AU intensity (0–1) per block. The heat map shows the change from each participant's own
+baseline, averaged across participants; the table tests every AU, with p-values also corrected
+for the number of AUs (Benjamini–Hochberg FDR).
+
+```{r au-out, results = "asis", fig.height = 6}
+show_note(aus)
+if (nrow(aus)) {
+  delta <- aus |> filter(!is.na(value)) |> group_by(pid, measure) |>
+    mutate(d = value - value[block == "Baseline"][1]) |> ungroup() |>
+    filter(block != "Baseline", !is.na(d)) |>
+    group_by(measure, block) |> summarise(d = mean(d), .groups = "drop")
+  lim <- max(abs(delta$d), 1e-6)
+  print(ggplot(delta, aes(block, measure, fill = d)) + geom_tile(colour = "white") +
+    geom_text(aes(label = sprintf("%+.02f", d)), size = 2.8) +
+    scale_fill_gradient2(low = "#3F7FB5", mid = "white", high = "#D9653B", limits = c(-lim, lim),
+                         name = "Δ vs\nbaseline") +
+    scale_y_discrete(limits = rev) + labs(x = NULL, y = NULL) + theme_minimal(base_size = 10))
+}
+```
+
+```{r au-key, results = "asis", fig.height = 3.6}
+if (nrow(aus)) {
+  k <- aus |> filter(au %in% KEY_AUS)
+  if (nrow(k)) print(plot_blocks(k, ncol = 4, ylab = "Mean intensity (0–1)"))
+  print(kable(pretty_tests(test_table(aus |> select(pid, block, measure, value), fdr = TRUE)),
+              caption = "All AUs. Contrast estimates are in intensity units (0–1)."))
+}
+```
+
+## 3. Do FaceReader and ECG agree?
+
+Both sources were run through Kubios with the same five block windows (FaceReader's on its own
+video clock) and the same artefact (noise) correction level (`r KUBIOS_CORRECTION`), so these are the numbers each pipeline delivers as used. Each point is one
+participant × block.
+
+```{r agreement, results = "asis"}
+if (!nrow(ecg_hr) || !nrow(fr_hr)) {
+  cat("> **Not shown:** needs Kubios results for both the ECG and the FaceReader beats.\n")
+} else {
+  j <- inner_join(ecg_hr, fr_hr, by = c("pid", "block", "measure"), suffix = c("_ecg", "_fr")) |>
+    filter(!is.na(value_ecg), !is.na(value_fr)) |> mutate(diff = value_fr - value_ecg, avg = (value_fr + value_ecg) / 2)
+  if (!nrow(j)) { cat("> No participant × block has both an ECG and a FaceReader value yet.\n") } else {
+    ccc <- function(x, y) 2 * cov(x, y) / (var(x) + var(y) + (mean(x) - mean(y))^2)
+    ag <- j |> group_by(measure) |> summarise(
+      `Blocks (participants)` = sprintf("%d (%d)", n(), n_distinct(pid)),
+      `ECG mean` = mean(value_ecg), `FaceReader mean` = mean(value_fr),
+      `Bias (FR − ECG)` = mean(diff),
+      `95% limits of agreement` = sprintf("%.1f to %.1f", mean(diff) - 1.96 * sd(diff), mean(diff) + 1.96 * sd(diff)),
+      `Mean abs. difference` = mean(abs(diff)),
+      `Mean abs. % difference` = 100 * mean(abs(diff) / value_ecg),
+      r = if (n() >= 3) cor(value_ecg, value_fr) else NA_real_,
+      CCC = if (n() >= 3) ccc(value_ecg, value_fr) else NA_real_, .groups = "drop") |>
+      rename(Measure = measure)
+    print(kable(ag, digits = 2, caption = "Agreement per measure. CCC = Lin's concordance (1 = identical values)."))
+
+    print(ggplot(j, aes(value_ecg, value_fr)) +
+      geom_abline(linetype = "dashed", colour = "grey50") +
+      geom_point(aes(fill = block), shape = 21, size = 2.6, colour = "grey20") +
+      scale_fill_manual(values = BLOCK_COLS, name = NULL) +
+      facet_wrap(~ measure, scales = "free") +
+      labs(x = "ECG (Kubios)", y = "FaceReader (Kubios)", title = "FaceReader vs ECG (dashed line = perfect agreement)") +
+      theme_minimal(base_size = 11) + theme(legend.position = "bottom"))
+
+    loa <- j |> group_by(measure) |> summarise(b = mean(diff), lo = b - 1.96 * sd(diff), hi = b + 1.96 * sd(diff))
+    print(ggplot(j, aes(avg, diff)) +
+      geom_hline(yintercept = 0, colour = "grey75") +
+      geom_hline(data = loa, aes(yintercept = b), colour = "grey20") +
+      geom_hline(data = loa, aes(yintercept = lo), linetype = "dashed", colour = "grey40") +
+      geom_hline(data = loa, aes(yintercept = hi), linetype = "dashed", colour = "grey40") +
+      geom_point(aes(fill = block), shape = 21, size = 2.6, colour = "grey20") +
+      scale_fill_manual(values = BLOCK_COLS, name = NULL) +
+      facet_wrap(~ measure, scales = "free") +
+      labs(x = "Mean of ECG and FaceReader", y = "FaceReader − ECG",
+           title = "Bland–Altman (solid = bias, dashed = 95% limits of agreement)") +
+      theme_minimal(base_size = 11) + theme(legend.position = "bottom"))
+
+    # Does FaceReader show the same block pattern as the ECG? Within-participant changes from baseline
+    dj <- j |> group_by(pid, measure) |>
+      mutate(d_ecg = value_ecg - value_ecg[block == "Baseline"][1], d_fr = value_fr - value_fr[block == "Baseline"][1]) |>
+      ungroup() |> filter(block != "Baseline", !is.na(d_ecg), !is.na(d_fr))
+    if (nrow(dj) >= 3) {
+      cat("\n\nChange from baseline: do the two sources move together within a participant?\n\n")
+      print(kable(dj |> group_by(Measure = measure) |>
+        summarise(`Blocks` = n(), `r (change vs baseline)` = if (n() >= 3) cor(d_ecg, d_fr) else NA_real_,
+                  `Same direction (%)` = 100 * mean(sign(d_ecg) == sign(d_fr)), .groups = "drop"), digits = 2))
+    }
+  }
+}
+```
+
+The limits of agreement treat every block as independent, although each participant
+contributes up to five; with more participants this should become a repeated-measures
+Bland–Altman analysis.
+
+## Notes
+
+- **Block-level ratings** are the state ratings given at the end of each block (baseline: after the
+  3-minute fixation), not the ratings of the individual videos.
+- **SCR** is Ledalab continuous decomposition over 0–180 s from each block onset.
+- **HR/HRV**: Kubios HRV Scientific on the BIOPAC ECG and, separately, on FaceReader's heart
+  beat log (1:1 lossless video of the webcam), with artefact (noise) correction set to
+  `r KUBIOS_CORRECTION` for both. FaceReader blocks with fewer than
+  `r MIN_BLOCK_BEATS` beats are dropped.
+- **Action units** are FaceReader intensities averaged over frames with a detected face, in the
+  same windows as FaceReader HR/HRV. Blocks with a face in fewer than `r 100 * MIN_FACE_VALID`%
+  of frames are dropped.
+- Participants: main-study only`r if (INCLUDE_PILOTS) " plus pilots" else ""`; pilot, test and
+  excluded sessions are set in `participant_status.csv`.
+
+<details><summary>Session info</summary>
+
+```{r session-info, echo = FALSE}
+sessionInfo()
+```
+
+</details>
