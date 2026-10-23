@@ -39,25 +39,22 @@ library(patchwork)
 ```
 
 ```{r config}
+# Repo root = first folder containing config.R, walking up from this .Rmd's folder.
+# Works when knitting AND when running chunks in RStudio, whatever folder R started in.
 find_project_root <- function() {
-  start <- dirname(rstudioapi::getSourceEditorContext()$path)
-  current <- normalizePath(start, winslash = "/", mustWork = TRUE)
-  
-  repeat {
-    config_path <- file.path(current, "config.R")
-    
-    if (file.exists(config_path)) {
-      return(current)
+  starts <- c(
+    tryCatch(dirname(knitr::current_input(dir = TRUE)), error = function(e) NA_character_),
+    tryCatch(dirname(rstudioapi::getSourceEditorContext()$path), error = function(e) NA_character_),
+    getwd())
+  for (d in starts[!is.na(starts) & nzchar(starts)]) {
+    d <- normalizePath(d, winslash = "/", mustWork = FALSE)
+    repeat {
+      if (file.exists(file.path(d, "config.R"))) return(d)
+      parent <- dirname(d); if (parent == d) break; d <- parent
     }
-    
-    parent <- dirname(current)
-    
-    if (parent == current) {
-      stop("Could not find config.R in this directory or any parent directory.")
-    }
-    
-    current <- parent
   }
+  stop("config.R not found in this file's folder or any folder above it.\n",
+       "Copy config_template.R to config.R (repo root) and fill in your paths.")
 }
 
 project_dir <- find_project_root()

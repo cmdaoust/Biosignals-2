@@ -9,6 +9,10 @@ config.yaml
 analysis/data/
 analysis/followup_schedule.csv
 analysis/questionniare_followup_dates.R
+# Participant ID keys (real IDs behind the P-codes): must never be committed.
+# The interim report keeps its key on Box; these are a safety net.
+**/*id_key*
+**/*interim_report_private*
 
 # ── R artifacts ───────────────────────────────────────────────────────────────
 .Rhistory
