@@ -21,6 +21,7 @@ Box is not included in the GitHub repo. Code references Box paths via `config.py
 |---|---|---|
 | [Main-study QC dashboard](https://cmdaoust.github.io/Biosignals-2/analysis/biosignals2_qc.html) | Main-study participants | `analysis/generate_qc_report.R` |
 | [Pilot QC report](https://cmdaoust.github.io/Biosignals-2/analysis/biosignals2_qc_pilot.html) | Pilot participants only | `analysis/generate_qc_report_pilot.R` |
+| [Interim summary](https://cmdaoust.github.io/Biosignals-2/analysis/07_interim_summary.html) | Main-study participants (pseudonymised P-codes) | Knit `analysis/07_interim_summary.Rmd` |
 
 Each report checks PsychoPy self-report, Ledalab (EDA), Kubios (HRV), webcam biometrics, video,
 FaceReader and questionnaires. Sections for data that isn't available yet are left out rather than failing.
