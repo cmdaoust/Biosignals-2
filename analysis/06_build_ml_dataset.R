@@ -17,12 +17,32 @@
 
 # ── CONFIGURATION ─────────────────────────────────────────────────────────────
 
-source(here::here("config.R"))
+# Repo root = first folder containing config.R, walking up from this script's folder
+# (Rscript, source() or RStudio), whatever folder R started in.
+find_project_root <- function() {
+  f <- sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE))
+  of <- NULL
+  for (i in rev(seq_len(sys.nframe()))) { of <- sys.frame(i)$ofile; if (!is.null(of)) break }
+  starts <- c(if (length(f)) dirname(f[1]), if (!is.null(of)) dirname(of),
+              tryCatch(dirname(rstudioapi::getSourceEditorContext()$path), error = function(e) NA_character_),
+              getwd())
+  for (d in starts[!is.na(starts) & nzchar(starts)]) {
+    d <- normalizePath(d, winslash = "/", mustWork = FALSE)
+    repeat {
+      if (file.exists(file.path(d, "config.R"))) return(d)
+      parent <- dirname(d); if (parent == d) break; d <- parent
+    }
+  }
+  stop("config.R not found in this script's folder or any folder above it.\n",
+       "Copy config_template.R to config.R (repo root) and fill in your paths.")
+}
+config_path <- file.path(find_project_root(), "config.R")
+source(config_path)
 
 # ── Participant selection ── edit analysis/participant_status.csv, not this block.
 # Main-study participants only by default; set TRUE to also analyse the pilots.
 INCLUDE_PILOTS <- FALSE
-analysis_dir <- local({ d <- dirname(normalizePath(here::here("config.R"))); if (basename(d) == "analysis") d else file.path(d, "analysis") })
+analysis_dir <- local({ d <- dirname(normalizePath(config_path)); if (basename(d) == "analysis") d else file.path(d, "analysis") })
 PARTICIPANT_STATUS_PATH <- file.path(analysis_dir, "participant_status.csv")
 source(file.path(analysis_dir, "participant_status.R"), local = TRUE)
 

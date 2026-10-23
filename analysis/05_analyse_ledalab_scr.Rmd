@@ -53,11 +53,28 @@ library(emmeans)
 ```
 
 ```{r config}
-config_path <- here::here("config.R")
+# Find config.R by walking up from this .Rmd's folder (works when knitting AND when running
+# chunks in RStudio, whatever the working directory is). here::here() alone depends on the
+# working directory R started in, which is often Documents, not the repo.
+find_config <- function() {
+  starts <- c(
+    tryCatch(dirname(knitr::current_input(dir = TRUE)), error = function(e) NA_character_),
+    tryCatch(dirname(rstudioapi::getSourceEditorContext()$path), error = function(e) NA_character_),
+    getwd())
+  for (d in starts[!is.na(starts) & nzchar(starts)]) {
+    d <- normalizePath(d, winslash = "/", mustWork = FALSE)
+    repeat {
+      if (file.exists(file.path(d, "config.R"))) return(file.path(d, "config.R"))
+      parent <- dirname(d); if (parent == d) break; d <- parent
+    }
+  }
+  NA_character_
+}
+config_path <- find_config()
 
-if (!file.exists(config_path)) {
-  stop("config.R not found at: ", config_path,
-       "\nCopy config_template.R to config.R and fill in your paths.")
+if (is.na(config_path)) {
+  stop("config.R not found in this script's folder or any folder above it.",
+       "\nCopy config_template.R to config.R (repo root) and fill in your paths.")
 }
 source(config_path)
 
@@ -68,7 +85,7 @@ clean_data_dir    <- COMBINED_DATA_DIR # output folder
 # ── Participant selection ── edit analysis/participant_status.csv, not this chunk.
 # Main-study participants only by default; set TRUE to also analyse the pilots.
 INCLUDE_PILOTS <- FALSE
-analysis_dir <- local({ d <- dirname(normalizePath(here::here("config.R"))); if (basename(d) == "analysis") d else file.path(d, "analysis") })
+analysis_dir <- local({ d <- dirname(normalizePath(config_path)); if (basename(d) == "analysis") d else file.path(d, "analysis") })
 PARTICIPANT_STATUS_PATH <- file.path(analysis_dir, "participant_status.csv")
 source(file.path(analysis_dir, "participant_status.R"), local = TRUE)
 ```
@@ -404,13 +421,41 @@ cat("Found", length(scrlist_files), "SCR-list file(s).\n")
 # the join below produces unexpected results.
 # Note: using read.table (base R) rather than read_tsv to avoid vroom memory-mapping
 # crashes on Box Drive / cloud-synced files.
+# Same selection as ERA, applied before reading so excluded files are never opened.
+scrlist_files <- scrlist_files[participant_keep(tolower(str_extract(basename(scrlist_files), "^[^_]+")),
+                                                INCLUDE_PILOTS)]
+
+# A file that is empty (0 bytes, no header) or can't be read is skipped and listed
+# below instead of stopping the knit. An empty file usually means Ledalab's SCR-list
+# export failed for that participant (or Box hasn't finished syncing it): re-run
+# ledalab/run_ledalab_batch.m, which redoes participants with empty output files.
+# A file with only the header row is fine
+# and means no SCRs were detected.
+scrlist_skipped <- tibble(file = character(), reason = character())
 scrlist_raw <- map_dfr(scrlist_files, function(f) {
   pid <- tolower(str_extract(basename(f), "^[^_]+"))   # IDs ignore case: always lower case
-  read.table(f, header = TRUE, sep = "\t", stringsAsFactors = FALSE) |>
-    mutate(pid = pid)
+  if (is.na(file.size(f)) || file.size(f) == 0) {
+    scrlist_skipped <<- add_row(scrlist_skipped, file = basename(f), reason = "empty file (0 bytes)")
+    return(NULL)
+  }
+  d <- tryCatch(read.table(f, header = TRUE, sep = "\t", stringsAsFactors = FALSE),
+                error = function(e) {
+                  scrlist_skipped <<- add_row(scrlist_skipped, file = basename(f),
+                                              reason = paste("unreadable:", conditionMessage(e)))
+                  NULL
+                })
+  if (is.null(d)) return(NULL)
+  d |> mutate(pid = pid)
 })
 
-scrlist_raw <- scrlist_raw |> filter(participant_keep(pid, INCLUDE_PILOTS))  # same selection as ERA
+if (nrow(scrlist_skipped) > 0) {
+  warning(nrow(scrlist_skipped), " SCR-list file(s) skipped - see the table below.")
+  print(kable(scrlist_skipped, caption = "SCR-list files skipped (participants left out of the SCR-list analyses)"))
+}
+if (nrow(scrlist_raw) == 0) {
+  warning("No usable SCR-list data - the SCR-list sections below are skipped.")
+  knitr::knit_exit()
+}
 cat("Total SCRs detected across all participants:", nrow(scrlist_raw), "\n")
 cat("Columns:", paste(names(scrlist_raw), collapse = ", "), "\n")
 ```

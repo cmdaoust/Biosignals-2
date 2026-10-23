@@ -20,7 +20,8 @@
 # HOW TO RUN
 #   From a terminal, in this folder:
 #     Rscript 003_compare_hrv.R r2433 s0723      (named participants)
-#     Rscript 003_compare_hrv.R --all            (everyone with webcam beats + a Kubios report)
+#     Rscript 003_compare_hrv.R --all            (everyone with an ECG Kubios report; webcam / FaceReader
+#                                                 parts are added for whoever has them)
 #     Rscript 003_compare_hrv.R --all --pilots   (... including pilot participants)
 #   Pilots: INCLUDE_PILOTS below (or --pilots / --no-pilots on the command line) decides whether
 #   pilot participants (analysis/participant_status.csv) are in --all and in the pooled all_*
@@ -49,6 +50,13 @@
 #   * Same maths: RMSSD, SDNN etc. are computed by THIS script for all three, including the ECG
 #     (from Kubios' RR intervals). Kubios' own numbers are kept as a separate row
 #     (version = kubios_report) as a check on the script, not used as the reference.
+#   * Kubios on every source too (version = kubios): if the FaceReader / webcam beats were also
+#     run through Kubios (kubios/002_create_kubios_samples_video.py -> Kubios ->
+#     <id>_facereader_beats_kubios_hrv.csv, <id>_webcam_beats_<variant>_kubios_hrv.csv), Kubios'
+#     own numbers for that source are added as version "kubios" and compared with the ECG's
+#     Kubios report (Kubios vs Kubios, same artefact correction) - i.e. what each source gives
+#     through the standard Kubios workflow. Looked for in the source's folder, its kubios/
+#     subfolder and the Kubios folders; the newest report is used if there are several.
 #   * Two versions of each webcam source:
 #       as_is   the intervals exactly as the tool reports them (what you'd get using its output)
 #       cleaned the same intervals after a simple, identical clean-up: drop intervals outside
@@ -101,6 +109,8 @@
 #                              beats; then a summary of RMSSD / SDNN / HR per block
 #   all_hrv_by_block.csv, all_hrv_diagnostics.csv   every participant run so far, merged
 #   all_hrv_agreement.csv      bias, limits of agreement, MAE, r per metric x source x version
+#                              (as_is / cleaned / facereader_own vs the ECG computed here;
+#                              kubios vs the ECG's Kubios report)
 #   all_hrv_agreement.pdf      Bland-Altman plots (once there are >= 3 blocks)
 #
 # CAVEATS
@@ -216,10 +226,26 @@ esc <- function(s) gsub("([][{}()+*^$|\\\\?.])", "\\\\\\1", s)
 # ---- readers -------------------------------------------------------------------
 find_kubios <- function(pid) {
   hits <- find_files(KUBIOS_DIRS, paste0("^", esc(pid), "_.*hrv.*\\.csv$"))
+  hits <- hits[!grepl("facereader|webcam|heart beat log", basename(hits), ignore.case = TRUE)]   # video-source reports
   hits <- hits[vapply(hits, function(h) any(grepl("RR INTERVAL DATA", readLines(h, warn = FALSE), fixed = TRUE)), TRUE)]
   if (length(hits) > 1) stop(pid, ": more than one Kubios report, can't choose:\n  ", paste(hits, collapse = "\n  "))
   if (!length(hits)) return(NULL)
   hits
+}
+
+# Kubios report for a video source's beats (FaceReader or a webcam variant), or NULL.
+# Newest one if there are several (e.g. re-run in Kubios).
+find_kubios_video <- function(pid, src) {
+  if (src == "facereader") {
+    dirs <- c(FACEREADER_DIRS_ALL, KUBIOS_DIRS)
+    pat  <- paste0("^", esc(pid), "_.*facereader.*_hrv\\.csv$")
+  } else {
+    dirs <- c(WEBCAM_HR_DIR, KUBIOS_DIRS)
+    pat  <- paste0("^", esc(pid), "_webcam_beats_", sub("^webcam_", "", src), "(_kubios)?_hrv\\.csv$")
+  }
+  hits <- find_files(unique(c(dirs, file.path(dirs, "kubios"))), pat)
+  if (!length(hits)) return(NULL)
+  hits[which.max(file.mtime(hits))]
 }
 
 # Kubios HRV report CSV -> list(blocks = per-block table incl. Kubios' own metrics, rr = beats)
@@ -255,6 +281,7 @@ read_kubios <- function(path) {
     stringsAsFactors = FALSE)
 
   i_rr <- which(startsWith(first, "RR INTERVAL DATA"))[1]
+  if (is.na(i_rr)) return(list(blocks = blocks, rr = data.frame(block = character(), t = numeric(), rr = numeric()), path = path))
   hdr <- f[[i_rr + 1]]
   cols <- which(hdr != "")
   bl <- norm_block(hdr[cols])
@@ -824,7 +851,8 @@ plot_summary <- function(pid, tab) {
                c("webcam_faceloss", "as_is", "webcam_faceloss", 1), c("webcam_faceloss", "cleaned", "webcam_faceloss", 16),
                c("webcam_optimized", "as_is", "webcam_optimized", 1), c("webcam_optimized", "cleaned", "webcam_optimized", 16),
                c("facereader", "as_is", "facereader", 1), c("facereader", "cleaned", "facereader", 16),
-               c("facereader", "facereader_own", "facereader", 17))
+               c("facereader", "facereader_own", "facereader", 17),
+               c("webcam_optimized", "kubios", "webcam_optimized", 8), c("facereader", "kubios", "facereader", 8))
   for (m in c("rmssd_ms", "sdnn_ms", "mean_hr")) {
     v <- tab[[m]]
     if (all(is.na(v))) { plot.new(); next }
@@ -840,10 +868,12 @@ plot_summary <- function(pid, tab) {
     if (m == "rmssd_ms") legend("topleft", c("Kubios report", "ECG (this script)",
                                              "baseline as is", "baseline cleaned", "faceloss as is", "faceloss cleaned",
                                              "optimized as is", "optimized cleaned",
-                                             "FaceReader as is", "FaceReader cleaned", "FaceReader's own HRV"), bty = "n", cex = 0.65, ncol = 6,
-                                pch = c(4, 16, 1, 16, 1, 16, 1, 16, 1, 16, 17),
+                                             "FaceReader as is", "FaceReader cleaned", "FaceReader's own HRV",
+                                             "optimized via Kubios", "FaceReader via Kubios"), bty = "n", cex = 0.65, ncol = 7,
+                                pch = c(4, 16, 1, 16, 1, 16, 1, 16, 1, 16, 17, 8, 8),
                                 col = COLS[c("kubios", "ecg", "webcam_baseline", "webcam_baseline", "webcam_faceloss", "webcam_faceloss",
-                                             "webcam_optimized", "webcam_optimized", "facereader", "facereader", "facereader")])
+                                             "webcam_optimized", "webcam_optimized", "facereader", "facereader", "facereader",
+                                             "webcam_optimized", "facereader")])
   }
   par(mfrow = c(1, 1))
 }
@@ -854,15 +884,21 @@ run_pid <- function(pid) {
   kp <- find_kubios(pid)
   if (is.null(kp)) { say("  no Kubios report (%s_*hrv*.csv) in %s - skipped.", pid, paste(KUBIOS_DIRS, collapse = " or ")); return(NULL) }
   k <- read_kubios(kp)
-  offset <- read_offset(pid)
+  # The ECG->video offset (from 002) is only needed to put webcam / FaceReader BEATS on the ECG
+  # clock. Without it the participant still gets the ECG rows and any Kubios results for the
+  # video sources (block-level, no beat alignment needed) - just no beat-level comparison.
+  offset <- tryCatch(read_offset(pid), error = function(e) {
+    say("  %s -> beat-level webcam/FaceReader comparison skipped; ECG and Kubios results still written.", conditionMessage(e))
+    NA_real_ })
   clock <- read_frame_clock(pid)
-  say("  Kubios: %s | ECG->video offset %.3f s", basename(kp), offset)
-  srcs <- Filter(Negate(is.null), list(webcam_baseline = read_webcam(pid, offset, "baseline"),
-                                       webcam_faceloss = read_webcam(pid, offset, "faceloss"),
-                                       webcam_optimized = read_webcam(pid, offset, "optimized"),
-                                       facereader = read_facereader(pid, offset, clock)))
-  if (!length(srcs)) { say("  nothing to compare."); return(NULL) }
-  own <- read_facereader_own(pid, offset, clock)
+  say("  Kubios: %s | ECG->video offset %s", basename(kp), if (is.na(offset)) "none" else sprintf("%.3f s", offset))
+  srcs <- if (is.na(offset)) list() else
+    Filter(Negate(is.null), list(webcam_baseline = read_webcam(pid, offset, "baseline"),
+                                 webcam_faceloss = read_webcam(pid, offset, "faceloss"),
+                                 webcam_optimized = read_webcam(pid, offset, "optimized"),
+                                 facereader = read_facereader(pid, offset, clock)))
+  if (!length(srcs) && !is.na(offset)) say("  no webcam beats or FaceReader heart beat log: ECG and Kubios results only.")
+  own <- if (is.na(offset)) NULL else read_facereader_own(pid, offset, clock)
   blocks <- k$blocks[k$blocks$block %in% BLOCKS, ]
 
   rows <- list(); diags <- list(); res <- list(); text <- character(0)
@@ -872,6 +908,22 @@ run_pid <- function(pid) {
       n_intervals = sum(k$rr$block == b$block), pct_removed = b$beats_corrected_pct, mean_hr = b$k_mean_hr,
       mean_rr_ms = b$k_mean_rr_ms, sdnn_ms = b$k_sdnn_ms, rmssd_ms = b$k_rmssd_ms, pnn50 = b$k_pnn50,
       sd1_ms = b$k_sd1_ms, sd2_ms = b$k_sd2_ms, lf_hf = b$k_lf_hf, hf_nu = b$k_hf_nu)
+  }
+  # Kubios' own results for the video sources' beats (version "kubios"), if they were run through Kubios
+  for (src in SOURCES) {
+    kvp <- find_kubios_video(pid, src)
+    if (is.null(kvp)) next
+    kv <- tryCatch(read_kubios(kvp), error = function(e) { say("  %s Kubios report unreadable (%s): %s", src, basename(kvp), conditionMessage(e)); NULL })
+    if (is.null(kv)) next
+    kb <- kv$blocks[kv$blocks$block %in% BLOCKS, ]
+    say("  %s Kubios: %s (%d blocks)", src, basename(kvp), nrow(kb))
+    for (i in seq_len(nrow(kb))) {
+      b <- kb[i, ]
+      rows[[length(rows) + 1]] <- data.frame(pid = pid, block = b$block, source = src, version = "kubios",
+        n_intervals = if (nrow(kv$rr)) sum(kv$rr$block == b$block) else NA, pct_removed = b$beats_corrected_pct,
+        mean_hr = b$k_mean_hr, mean_rr_ms = b$k_mean_rr_ms, sdnn_ms = b$k_sdnn_ms, rmssd_ms = b$k_rmssd_ms,
+        pnn50 = b$k_pnn50, sd1_ms = b$k_sd1_ms, sd2_ms = b$k_sd2_ms, lf_hf = b$k_lf_hf, hf_nu = b$k_hf_nu)
+    }
   }
   lags <- list()
   for (nm in names(srcs)) {
@@ -898,6 +950,13 @@ run_pid <- function(pid) {
           as.list(r$metrics$ecg), pct_removed = 0)
     }
   }
+  # No beat-level source: the ECG through this script's maths is otherwise added inside the
+  # source loop above, so add it here (same calculation: hrv() on the block's ECG intervals)
+  if (!length(srcs)) for (i in seq_len(nrow(blocks))) {
+    b <- blocks[i, ]; e_in <- k$rr[k$rr$block == b$block, ]
+    rows[[length(rows) + 1]] <- data.frame(pid = pid, block = b$block, source = "ecg", version = "as_is",
+      as.list(hrv(data.frame(t = e_in$t, rr = e_in$rr))), pct_removed = 0)
+  }
   own_chk <- NULL
   if (!is.null(own)) {
     for (i in seq_len(nrow(blocks))) {
@@ -918,7 +977,7 @@ run_pid <- function(pid) {
   tab <- do.call(rbind, lapply(rows, function(r) r[, c("pid", "block", "source", "version", "n_intervals", "pct_removed",
     "mean_hr", "mean_rr_ms", "sdnn_ms", "rmssd_ms", "pnn50", "sd1_ms", "sd2_ms", "lf_hf", "hf_nu")]))
   tab <- tab[order(match(tab$block, BLOCKS), match(tab$source, c("ecg", SOURCES)), tab$version), ]
-  dg <- do.call(rbind, lapply(diags, function(x) { x[setdiff(c("matched", "missed", "extra", "recall_pct", "precision_pct",
+  dg <- if (!length(diags)) NULL else do.call(rbind, lapply(diags, function(x) { x[setdiff(c("matched", "missed", "extra", "recall_pct", "precision_pct",
         "mistimed", "lag_block_ms", "jitter_ms", "matched_intervals_pct", "ibi_err_median_abs_ms", "ibi_err_within_50ms_pct",
         "noise_rmssd_ms", "rmssd_matched_src_ms", "rmssd_matched_ecg_ms", "attr_artefacts_ms", "attr_timing_ms",
         "attr_selection_ms"), names(x))] <- NA; x }))
@@ -927,7 +986,7 @@ run_pid <- function(pid) {
   chk <- merge(tab[tab$source == "ecg" & tab$version == "as_is", c("block", "rmssd_ms", "sdnn_ms", "mean_hr")],
                tab[tab$version == "kubios_report", c("block", "rmssd_ms", "sdnn_ms", "mean_hr")], by = "block", suffixes = c("", "_k"))
   chk <- chk[!is.na(chk$rmssd_ms) & !is.na(chk$rmssd_ms_k), ]
-  text <- c(text, sprintf("%s  (Kubios: %s; offset %.3f s)", pid, basename(kp), offset))
+  text <- c(text, sprintf("%s  (Kubios: %s; offset %s)", pid, basename(kp), if (is.na(offset)) "none" else sprintf("%.3f s", offset)))
   if (nrow(chk)) {
     text <- c(text, sprintf("ECG check, this script vs Kubios: RMSSD differs by up to %.1f ms, SDNN %.1f ms, HR %.2f bpm%s",
       max(abs(chk$rmssd_ms - chk$rmssd_ms_k)), max(abs(chk$sdnn_ms - chk$sdnn_ms_k)), max(abs(chk$mean_hr - chk$mean_hr_k)),
@@ -953,16 +1012,18 @@ run_pid <- function(pid) {
 
   dir.create(OUT_DIR, showWarnings = FALSE, recursive = TRUE)
   write.csv(rnd(tab), file.path(OUT_DIR, paste0(pid, "_hrv_by_block.csv")), row.names = FALSE, na = "")
-  write.csv(rnd(dg), file.path(OUT_DIR, paste0(pid, "_hrv_diagnostics.csv")), row.names = FALSE, na = "")
+  diag_file <- file.path(OUT_DIR, paste0(pid, "_hrv_diagnostics.csv"))
+  if (!is.null(dg)) write.csv(rnd(dg), diag_file, row.names = FALSE, na = "") else if (file.exists(diag_file)) file.remove(diag_file)
   writeLines(text, file.path(OUT_DIR, paste0(pid, "_hrv_diagnosis.txt")))
   if (!is.null(own_chk)) write.csv(rnd(own_chk), file.path(OUT_DIR, paste0(pid, "_facereader_own_vs_beatlog.csv")), row.names = FALSE, na = "")
   cat("\n", paste(text, collapse = "\n"), "\n", sep = "")
   attr(res, "pid") <- pid
   pdf(file.path(OUT_DIR, paste0(pid, "_hrv_plots.pdf")), width = 11, height = 8.5)
   plot_summary(pid, tab)
-  for (i in seq_len(nrow(blocks))) plot_block(blocks[i, ], k$rr, srcs, res)
+  if (length(srcs)) for (i in seq_len(nrow(blocks))) plot_block(blocks[i, ], k$rr, srcs, res)
   dev.off()
-  say("\n  saved %s_hrv_by_block.csv, _hrv_diagnostics.csv, _hrv_diagnosis.txt, _hrv_plots.pdf in %s", pid, OUT_DIR)
+  say("\n  saved %s_hrv_by_block.csv%s, _hrv_diagnosis.txt, _hrv_plots.pdf in %s", pid,
+      if (is.null(dg)) "" else ", _hrv_diagnostics.csv", OUT_DIR)
   list(tab = tab, diag = dg)
 }
 
@@ -982,19 +1043,22 @@ merge_all <- function(suffix, out) {
 }
 
 agreement <- function(all) {
-  ref <- all[all$source == "ecg" & all$version == "as_is", ]
+  ref_script <- all[all$source == "ecg" & all$version == "as_is", ]          # ECG through this script's maths
+  ref_kubios <- all[all$source == "ecg" & all$version == "kubios_report", ]  # ECG Kubios report
   out <- list()
   pdf(file.path(OUT_DIR, "all_hrv_agreement.pdf"), width = 11, height = 8.5)
   par(mfrow = c(2, 3), mar = c(4.5, 4.5, 3, 1))
-  for (src in SOURCES) for (v in c("as_is", "cleaned", "facereader_own")) {
+  for (src in SOURCES) for (v in c("as_is", "cleaned", "facereader_own", "kubios")) {
     s <- all[all$source == src & all$version == v, ]
     if (!nrow(s)) next
+    ref <- if (v == "kubios") ref_kubios else ref_script   # Kubios vs Kubios; otherwise same maths for both
     j <- merge(s, ref, by = c("pid", "block"), suffixes = c("", "_ecg"))
     for (m in c("mean_hr", "sdnn_ms", "rmssd_ms", "pnn50", "lf_hf", "hf_nu")) {
       x <- j[[paste0(m, "_ecg")]]; y <- j[[m]]; ok <- !is.na(x) & !is.na(y)
       if (sum(ok) < 2) next
       dd <- y[ok] - x[ok]
-      out[[length(out) + 1]] <- data.frame(source = src, version = v, metric = m, n_blocks = sum(ok),
+      out[[length(out) + 1]] <- data.frame(source = src, version = v,
+        reference = if (v == "kubios") "ECG Kubios report" else "ECG, this script", metric = m, n_blocks = sum(ok),
         n_participants = length(unique(j$pid[ok])), ecg_mean = mean(x[ok]), source_mean = mean(y[ok]),
         bias = mean(dd), loa_low = mean(dd) - 1.96 * sd(dd), loa_high = mean(dd) + 1.96 * sd(dd),
         mae = mean(abs(dd)), mape_pct = 100 * mean(abs(dd) / x[ok]),
@@ -1025,8 +1089,12 @@ main <- function() {
   GROUP_LABEL <<- if (!PS_OK) "all participants (participant_status.csv not read)" else if (INCLUDE_PILOTS) "main study + pilots" else "main study"
   pids <- if (length(args)) args else PIDS
   if (identical(pids, "--all")) {
-    f <- list.files(WEBCAM_HR_DIR, pattern = "_webcam_beats_(baseline|faceloss|optimized)\\.csv$")
-    pids <- unique(sub("_webcam_beats_.*$", "", f))
+    # Everyone with an ECG Kubios report, webcam beats or a FaceReader Kubios report - not only
+    # those with webcam beats (participants without them get ECG + Kubios rows).
+    f <- c(list.files(WEBCAM_HR_DIR, pattern = "_webcam_beats_(baseline|faceloss|optimized)\\.csv$"),
+           basename(find_files(KUBIOS_DIRS, "_hrv\\.csv$")),
+           basename(find_files(unique(c(FACEREADER_DIRS_ALL, file.path(FACEREADER_DIRS_ALL, "kubios"))), "facereader.*_hrv\\.csv$")))
+    pids <- unique(tolower(sub("_.*$", "", f)))
     dropped <- participants_dropped(pids, INCLUDE_PILOTS)
     if (nrow(dropped)) {
       say("Left out (participant_status.csv, INCLUDE_PILOTS = %s): %s", INCLUDE_PILOTS,
