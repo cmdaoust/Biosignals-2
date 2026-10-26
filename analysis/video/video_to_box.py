@@ -8,8 +8,16 @@ A participant is COMPLETE on Box when 3_Data/video holds all three (same rule as
     <id>_frames.zip            the PNG frames (the lossless original), zipped without compression
     <id>_1to1_ffv1.avi         1:1 lossless video (000_convert_png_to_avi.py --method 1to1)
     <id>_frame_timestamps.csv  one row per frame (written by the experiment)
-"On Box" means a file with that name AND the same size as the local file, so a half-finished
-upload never counts.
+"On Box" means a file with that name (in any upper/lower case: Box ignores case) whose size is
+right, so a half-finished upload never counts. The size is checked against, in order:
+  - the local copy, if it's still on the drive (exact);
+  - video_to_box_manifest.csv, the size recorded when this script uploaded it (exact);
+  - otherwise (e.g. uploaded by hand, then deleted from the drive) a plausibility check against
+    the participant's PNG frames, which are still on the drive: a zip must be >= 90% of the PNGs'
+    total size, a video >= 10% of the frames' raw size (frames x width x height x 3). A file that
+    fails is treated as missing and re-made; one that passes is accepted and noted in the log.
+The script's own uploads go to <name>.part and are only renamed once complete and size-checked,
+so an upload cut off part-way never appears under the real name.
 
 Participants: every <id>_frames folder + <id>_frame_timestamps.csv in WEBCAM_PNG_EXTERNAL_DIR
 (D:\Biosignals2_png_data) that isn't complete on Box. Two passes, so the videos (needed for the
@@ -20,6 +28,7 @@ PASS 1 - videos, for each participant:
   check   - the video's frame count must equal the number of PNGs and of timestamp rows
             (catches a video left half-written by an interrupted conversion)
   upload  - the timestamps CSV and the video
+  (a video already on Box is never re-made, even if it's no longer on the drive)
 PASS 2 - frames, for each participant whose pass 1 succeeded:
   zip     - <id>_frames.zip next to the frames folder (contains the <id>_frames folder, no
             compression: PNGs are already compressed), written as .part, CRC-tested, then renamed
@@ -255,8 +264,11 @@ class Box:
             raise RuntimeError(f"Box folder {c['remote_dir']} not found over SFTP - check BOX_VIDEO_REMOTE_DIR")
 
     def sizes(self):
-        """name -> size for every file in the remote folder (one listing)."""
-        return {a.filename: a.st_size for a in self.sftp.listdir_attr(self.c["remote_dir"])}
+        """lower-case name -> (name as on Box, size) for every file in the remote folder.
+        Box ignores case in file names (R2433_x.avi and r2433_x.avi are the same file), so
+        names are matched case-insensitively."""
+        return {a.filename.lower(): (a.filename, a.st_size)
+                for a in self.sftp.listdir_attr(self.c["remote_dir"])}
 
     def upload(self, local, sizes):
         name = os.path.basename(local)
@@ -271,12 +283,13 @@ class Box:
                 log(f"            {name}: {last[0]}%")
         t0 = time.time()
         self.sftp.put(local, part, callback=progress, confirm=True)
-        if name in sizes:   # an incomplete/older copy: replace it (Box keeps the old one as a version)
-            self.sftp.remove(remote)
+        if name.lower() in sizes:   # an incomplete/older copy: replace it (Box keeps the old one as a version)
+            self.sftp.remove(posixpath.join(self.c["remote_dir"], sizes[name.lower()][0]))
         self.sftp.rename(part, remote)
         got = self.sftp.stat(remote).st_size
         if got != size:
             raise RuntimeError(f"{name}: {human(got)} on Box but {human(size)} locally")
+        record_upload(name, size)
         mins = (time.time() - t0) / 60
         log(f"  upload  : {name} done ({human(size)}, {mins:.0f} min)")
 
@@ -287,8 +300,80 @@ class Box:
             self.transport.close()
 
 
+def box_size(name, sizes):
+    """Size of the file on Box with this name (any case), or None."""
+    hit = sizes.get(name.lower())
+    return hit[1] if hit else None
+
+
 def on_box(name, local, sizes):
-    return name in sizes and os.path.exists(local) and sizes[name] == os.path.getsize(local)
+    return os.path.exists(local) and box_size(name, sizes) == os.path.getsize(local)
+
+
+# Sizes of files this script uploaded (name -> bytes), so they can be checked exactly later,
+# after the local copy has been deleted.
+MANIFEST = {"path": None, "sizes": {}}
+
+def load_manifest(path):
+    MANIFEST["path"] = path
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as f:
+            for line in f.read().splitlines()[1:]:
+                parts = line.split(",")
+                if len(parts) >= 3 and parts[2].isdigit():
+                    MANIFEST["sizes"][parts[1].lower()] = int(parts[2])
+
+def record_upload(name, size):
+    new = not os.path.exists(MANIFEST["path"])
+    with open(MANIFEST["path"], "a", encoding="utf-8") as f:
+        if new:
+            f.write("uploaded_at,name,bytes\n")
+        f.write(f"{dt.datetime.now():%Y-%m-%d %H:%M:%S},{name},{size}\n")
+    MANIFEST["sizes"][name.lower()] = size
+
+
+ZIP_MIN_FRACTION = 0.90   # of the PNGs' total size
+AVI_MIN_FRACTION = 0.10   # of the frames' raw size (frames x width x height x 3 bytes)
+
+def png_stats(frames_dir, _cache={}):
+    """(number of PNGs, total bytes, width, height) - cached per folder."""
+    if frames_dir not in _cache:
+        pngs = [e for e in os.scandir(frames_dir) if e.is_file() and e.name.lower().endswith(".png")]
+        w = h = 0
+        if pngs:
+            with open(pngs[0].path, "rb") as f:
+                head = f.read(24)
+            if head[:8] == b"\x89PNG\r\n\x1a\n":
+                w, h = int.from_bytes(head[16:20], "big"), int.from_bytes(head[20:24], "big")
+        _cache[frames_dir] = (len(pngs), sum(e.stat().st_size for e in pngs), w, h)
+    return _cache[frames_dir]
+
+
+def box_check(name, local, sizes, frames_dir):
+    """('ok' | 'missing' | 'wrong size' | 'too small', message). See the docstring."""
+    size = box_size(name, sizes)
+    if size is None:
+        return "missing", "not on Box"
+    if os.path.exists(local):
+        if size == os.path.getsize(local):
+            return "ok", "same size as the local copy"
+        return "wrong size", f"{human(size)} on Box but {human(os.path.getsize(local))} locally"
+    if name.lower() in MANIFEST["sizes"]:
+        want = MANIFEST["sizes"][name.lower()]
+        if size == want:
+            return "ok", "same size as when uploaded"
+        return "wrong size", f"{human(size)} on Box but {human(want)} when uploaded"
+    n, total, w, h = png_stats(frames_dir)
+    if name.lower().endswith(".zip"):
+        need, basis = ZIP_MIN_FRACTION * total, "of the PNGs' total size"
+        frac = size / total if total else 0
+    else:
+        raw = n * w * h * 3
+        need, basis = AVI_MIN_FRACTION * raw, "of the frames' raw size"
+        frac = size / raw if raw else 0
+    if size < need or size == 0:
+        return "too small", f"only {human(size)} on Box ({frac:.0%} {basis}) - probably an unfinished upload"
+    return "ok", f"{human(size)}, {frac:.0%} {basis} (no local copy: checked for plausibility only)"
 
 
 # ── main ───────────────────────────────────────────────────────────────────────
@@ -315,6 +400,7 @@ def main():
     global LOG_FH
     log_dir = c["server_root"] if c["server_root"] and os.path.isdir(c["server_root"]) else c["png_dir"]
     LOG_FH = open(os.path.join(log_dir, "video_to_box_runs.log"), "a", encoding="utf-8")
+    load_manifest(os.path.join(log_dir, "video_to_box_manifest.csv"))
     log("=" * 70)
     log(f"video_to_box {'DRY RUN ' if a.dry_run else ''}started {dt.datetime.now():%Y-%m-%d %H:%M}")
     log(f"Drive: {c['png_dir']} | videos: {c['video_dir']} | Box: {c['host']}:{c['remote_dir']}")
@@ -337,8 +423,7 @@ def main():
             names = {f"{pid}_frames.zip": zpath, f"{pid}_1to1_ffv1.avi": avi,
                      os.path.basename(p["ts_csv"]): p["ts_csv"]}
             # Complete = all three names on Box. Sizes are compared for files that exist locally.
-            missing = [n for n, l in names.items()
-                       if n not in sizes or (os.path.exists(l) and sizes[n] != os.path.getsize(l))]
+            missing = [n for n, l in names.items() if box_check(n, l, sizes, p["frames_dir"])[0] != "ok"]
             if missing:
                 todo.append(pid)
         log(f"On the drive: {len(local)} | complete on Box: {len(local) - len(todo)} | to do: {len(todo)} {todo}")
@@ -349,7 +434,7 @@ def main():
         def upload_if_needed(local_path):
             name = os.path.basename(local_path)
             if on_box(name, local_path, sizes):
-                log(f"  upload  : {name} already on Box")
+                log(f"  upload  : {name} already on Box (same size)")
             elif a.dry_run:
                 size = human(os.path.getsize(local_path)) if os.path.exists(local_path) else "not made yet"
                 log(f"  upload  : would upload {name} ({size})")
@@ -364,11 +449,18 @@ def main():
             p = local[pid]
             log(f"── {pid} ──")
             try:
-                step_precheck(pid, p)
-                avi = step_video(pid, p, c["video_dir"], a.dry_run)
-                step_check(pid, p, avi, a.dry_run)
+                avi = os.path.join(c["video_dir"], f"{pid}_1to1_ffv1.avi")
                 upload_if_needed(p["ts_csv"])
-                upload_if_needed(avi)
+                vstate, vmsg = box_check(os.path.basename(avi), avi, sizes, p["frames_dir"])
+                if vstate == "ok":
+                    log(f"  video   : already on Box - kept ({vmsg})")
+                else:
+                    if vstate != "missing":
+                        log(f"  video   : problem on Box: {vmsg} - will replace it")
+                    step_precheck(pid, p)
+                    avi = step_video(pid, p, c["video_dir"], a.dry_run)
+                    step_check(pid, p, avi, a.dry_run)
+                    upload_if_needed(avi)
                 status[pid] = "ok"
             except Exception as e:
                 log(f"  FAILED  : {e}")
@@ -385,11 +477,12 @@ def main():
             try:
                 zname = f"{pid}_frames.zip"
                 zlocal = os.path.join(os.path.dirname(p["frames_dir"]), zname)
-                if zname in sizes and not os.path.exists(zlocal):
-                    # Already on Box (e.g. zipped and uploaded by hand) and no local copy to compare:
-                    # keep the Box copy rather than re-zipping and replacing it.
-                    log(f"  zip     : {zname} already on Box ({human(sizes[zname])}) - kept")
+                zstate, zmsg = box_check(zname, zlocal, sizes, p["frames_dir"])
+                if zstate == "ok":
+                    log(f"  zip     : already on Box - kept ({zmsg})")
                     continue
+                if zstate != "missing":
+                    log(f"  zip     : problem on Box: {zmsg} - will replace it")
                 zpath = step_zip(pid, p, a.dry_run)
                 upload_if_needed(zpath)
             except Exception as e:
