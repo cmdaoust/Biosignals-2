@@ -115,8 +115,13 @@ hrv <- hrv_raw |>
   pivot_longer(
     cols      = -pid,
     names_to  = c("segment", "metric"),
-    names_pattern = "^(S[1-5])_(.*)"
+    names_pattern = "^(S[1-5])_(.*)",
+    # Kubios mixes text (e.g. Onset-Offset times) and numeric columns;
+    # coerce everything to character so the columns can be stacked
+    values_transform = list(value = as.character)
   ) |>
+  # Drop segment time-stamp metadata — not an HRV feature
+  filter(metric != "Onset-Offset") |>
   mutate(
     condition = factor(seg_to_condition[segment], levels = CONDITION_LEVELS),
     # Clean metric names for use as column names
