@@ -46,6 +46,12 @@ VIDEO_EXTERNAL_DIR = r""  # e.g. r"D:\Biosignals2_video"   # external hard drive
 WEBCAM_BIOMETRICS_REPO = r""  # e.g. r"C:\Users\you\Documents\WebcamBiometrics"
 # Webcam, older sessions recorded straight to AVI (<id>_frame_timestamps.csv, <id>_recording.avi)
 VIDEO_BOX_DIR = os.path.join(SERVER_ROOT, "video")   # Box (same folder as VIDEO_BOX_DIR in config.R)
+
+# Box SFTP (analysis/video/video_to_box.py: end-of-day upload of videos, timestamps, frame zips).
+# The password is NOT stored here: run `python video_to_box.py --set-password` once (Windows Credential Manager).
+BOX_SFTP_HOST = "sftp.services.box.com"
+BOX_SFTP_USER = ""   # your Box login email (the username FileZilla uses)
+BOX_VIDEO_REMOTE_DIR = "/Project_Biosignals_study_2/3_Data/video"   # same folder as VIDEO_BOX_DIR, as seen over SFTP
 LEDALAB_RESULTS_DIR = os.path.join(SERVER_ROOT, "ledalab")
 # Ledalab input: EDA-only .mat files prepared for Ledalab
 LEDALAB_INPUT_DIR = os.path.join(SERVER_ROOT, "ledalab", "input")

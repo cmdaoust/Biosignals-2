@@ -257,15 +257,18 @@ if (OUTPUT_FORMAT %in% c("wide", "both")) {
 }
 
 # ── 6. SAVE ───────────────────────────────────────────────────────────────────
+# Dated copies (one per day; a re-run the same day replaces that day's file), so a
+# rebuild never changes a dataset someone is already working from.
+ML_STAMP <- format(Sys.Date(), "%Y-%m-%d")
 
 if (OUTPUT_FORMAT %in% c("long", "both")) {
-  out_long <- file.path(COMBINED_DATA_DIR, "biosignals2_ml_long.csv")
+  out_long <- file.path(COMBINED_DATA_DIR, paste0("biosignals2_ml_long_", ML_STAMP, ".csv"))
   write_csv(ml_long, out_long)
   cat("Saved:", out_long, "\n")
 }
 
 if (OUTPUT_FORMAT %in% c("wide", "both")) {
-  out_wide <- file.path(COMBINED_DATA_DIR, "biosignals2_ml_wide.csv")
+  out_wide <- file.path(COMBINED_DATA_DIR, paste0("biosignals2_ml_wide_", ML_STAMP, ".csv"))
   write_csv(ml_wide, out_wide)
   cat("Saved:", out_wide, "\n")
 }

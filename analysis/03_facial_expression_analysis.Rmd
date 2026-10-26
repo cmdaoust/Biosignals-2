@@ -95,7 +95,8 @@ file, like the other analysis Rmds). Variables used:
 |---|---|---|
 | `PSYCHOPY_DATA_DIR` | PsychoPy `.csv`, `*_biometrics.csv`, `*_clocksync.json` | required |
 | `FACEREADER_RESULTS_DIR` | FaceReader detailed logs (`.xlsx`/`.txt`) | required |
-| `VIDEO_BOX_DIR` | older sessions: `<id>_frame_timestamps.csv` | not searched |
+| `FRAME_TIMESTAMP_DIRS` | folders searched, in order, for `<id>_frame_timestamps.csv` | `VIDEO_BOX_DIR`, `VIDEO_EXTERNAL_DIR`, `WEBCAM_PNG_EXTERNAL_DIR` |
+| `VIDEO_BOX_DIR` | Box `3_Data/video`: `<id>_frame_timestamps.csv` for all sessions | not searched |
 | `VIDEO_EXTERNAL_DIR` | 1:1 videos: the `<id>_frame_timestamps.csv` copy next to the video | `D:/Biosignals2_video` |
 | `WEBCAM_PNG_EXTERNAL_DIR` | current sessions: the original `<id>_frame_timestamps.csv` | `D:/Biosignals2_png_data` |
 | `FACIAL_EXPRESSION_DIR` | outputs of this analysis | `SERVER_ROOT/facial_expression` |
@@ -138,10 +139,13 @@ if (length(missing_vars)) stop("config.R does not define: ", paste(missing_vars,
 psychopy_dir   <- PSYCHOPY_DATA_DIR
 facereader_dir <- FACEREADER_RESULTS_DIR
 legacy_dir     <- if (exists("VIDEO_BOX_DIR")) VIDEO_BOX_DIR else NA_character_
-# Folders searched (in this order) for <id>_frame_timestamps.csv - same as video/003_compare_hrv.R
-timestamp_dirs <- c(get0("VIDEO_EXTERNAL_DIR", ifnotfound = "D:/Biosignals2_video"),
-                    get0("WEBCAM_PNG_EXTERNAL_DIR", ifnotfound = "D:/Biosignals2_png_data"),
-                    legacy_dir)
+# Folders searched (in this order) for <id>_frame_timestamps.csv: FRAME_TIMESTAMP_DIRS in
+# config.R (Box 3_Data/video first); without it, Box then the external drive.
+timestamp_dirs <- get0("FRAME_TIMESTAMP_DIRS", ifnotfound = c(
+                    legacy_dir,
+                    get0("VIDEO_EXTERNAL_DIR", ifnotfound = "D:/Biosignals2_video"),
+                    get0("WEBCAM_PNG_EXTERNAL_DIR", ifnotfound = "D:/Biosignals2_png_data")))
+timestamp_dirs <- timestamp_dirs[!is.na(timestamp_dirs) & nzchar(timestamp_dirs)]
 timestamp_dirs <- unique(timestamp_dirs[!is.na(timestamp_dirs)])
 output_dir     <- if (exists("FACIAL_EXPRESSION_DIR")) FACIAL_EXPRESSION_DIR else
                     file.path(SERVER_ROOT, "facial_expression")

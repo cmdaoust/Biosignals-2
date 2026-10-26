@@ -39,3 +39,18 @@ Thumbs.db
 
 # Participant status list (pilot/test/excluded): lives on Box in 3_Data/raw_questionnaire.
 **/participant_status.csv
+
+# Follow-up email sender (participant contact workflow; keep out of git).
+analysis/send_followup_emails.R
+analysis/outlook_send_email.ps1
+analysis/run_followup_emails.bat
+analysis/run_qc_report.bat
+
+# Knitted analysis reports (may show real participant IDs). 07 (P-codes) and the QC reports stay tracked.
+analysis/02_ratings_analysis.html
+analysis/02_ratings_analysis_files/
+analysis/03_facial_expression_analysis.html
+analysis/03_facial_expression_analysis_files/
+analysis/05_analyse_ledalab_scr.html
+analysis/05_analyse_ledalab_scr_files/
+analysis/run_interim_pipeline.bat

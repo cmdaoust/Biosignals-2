@@ -254,6 +254,7 @@ const SECTIONS = [
     ["Set volume to 30", ""],
     ["Open PsychoPy", `<ol><li>Open PsychoPy v2026.</li><li>In the menu bar at the top, click <b>Window → Show Builder</b>.</li><li>In the new window, click <b>File → Open</b> and navigate to:</li></ol>` + code('C:\\Users\\irise_lab\\Documents\\Biosignals2\\Experiment\\Biosignals2_Psychopy_PNG2AVI.psyexp')],
     ["Open VS Code", p("Open Visual Studio Code using the blue shortcut on the Desktop.")],
+    ["Navigate to Webcambiometrics folder", p("Open -> Folder ") + code('C:\\Users\\irise_lab\\Documents\\Webcambiometrics')],
     ["Open terminal and run command", p("Go to the terminal panel at the bottom of the VS Code window. Press the <b>↑</b> arrow key until you find this command, or type it in, then press <b>Enter</b>:") + code('python -m http.server 8000') + img(IMG.terminal1, "VS Code terminal showing 'Serving HTTP on port 8000'")],
     ["Open second terminal and run command", p("Press the <b>+</b> sign in the terminal panel (see screenshot above) to open a second terminal. Press <b>↑</b> until you find this command, or type it in, then press <b>Enter</b>:") + code('& "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --disable-background-timer-throttling --disable-renderer-backgrounding --disable-backgrounding-occluded-windows') + img(IMG.terminal2, "Second PowerShell terminal with the Chrome launch command")],
     ["Set up Chrome", p("Chrome should open automatically. If the window doesn't show the Google search bar with shortcuts below it, open a new <b>tab</b> (<strong>not a new window</strong>).") + p("Click the blue <b>webcam-biometrics</b> icon below the Google search bar.") + img(IMG.chromeTile, "Chrome new tab page with the webcam-biometrics shortcut", "small")],
@@ -347,6 +348,7 @@ const SECTIONS = [
   ]},
   { id: "data", title: "Data saving", steps: [
     ["Check participant ID", p("Before saving or moving any files, confirm the participant ID from the PsychoPy experiment. Use this same ID for <b>all</b> participant data files.")],
+    ["Copy frame timestamps to Box", p("Copy the participant's <b>frame timestamps</b> file (one small .csv; not the frames folder) from:") + code('C:\\Users\\irise_lab\\Documents\\Biosignals2\\Experiment\\data\\webcam\\<ID>_frame_timestamps.csv') + p("to:") + code('C:\\Users\\irise_lab\\Box\\Project_Biosignals_study_2\\3_Data\\video') + p("Put it directly in the <b>video</b> folder, not a subfolder. The analysis scripts read it from there, so it must be on Box even though the frames themselves stay on the external hard drive.")],
     ["Save webcam data", p("Copy the webcam data to the external hard drive. Confirm the files copied successfully <b>before</b> deleting the originals from the Stimulus PC.")],
     ["Save AcqKnowledge data", p("Save the AcqKnowledge recording with the participant ID as the filename in:") + code('C:\\Users\\irise_lab\\Box\\Project_Biosignals_study_2\\3_Data\\raw_physiology')],
     ["Filter ECG channel", p("In AcqKnowledge, select the ECG channel and go to <b>Transform → Digital Filter → IIR → Bandpass Low + High</b>. Set the <b>low cutoff</b> and <b>high cutoff</b> as appropriate.")],
@@ -356,7 +358,7 @@ const SECTIONS = [
     ["Export Ledalab file", p("Select <b>File → Export → Export Other</b> and save as a <b>.mat</b> file.")],
     ["Save Ledalab file", p("Save it using only the participant ID as the filename in:") + code('C:\\Users\\irise_lab\\Box\\Project_Biosignals_study_2\\3_Data\\ledalab\\input')],
     ["Save PsychoPy data", p("Save or copy the participant's PsychoPy data files to:") + code('C:\\Users\\irise_lab\\Box\\Project_Biosignals_study_2\\3_Data\\psychopy')],
-    ["Final data check", p("Confirm that the webcam, AcqKnowledge, Ledalab and PsychoPy files have all been saved and use the correct participant ID.")]
+    ["Final data check", p("Confirm that the webcam data, the frame timestamps file on Box, and the AcqKnowledge, Ledalab and PsychoPy files have all been saved and use the correct participant ID.")]
   ]},
   { id: "processing", title: "Video & Kubios processing", steps: [
     ["Convert webcam PNG files to video", p("The webcam recordings are saved as individual PNG frames. Convert them into AVI video files before further processing.") +

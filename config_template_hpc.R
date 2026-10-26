@@ -44,6 +44,9 @@ VIDEO_EXTERNAL_DIR        <- ""  # not on the HPC; fill in if copied there; exte
 WEBCAM_BIOMETRICS_REPO    <- ""  # not on the HPC; fill in if cloned there
 # Webcam, older sessions recorded straight to AVI (<id>_frame_timestamps.csv, <id>_recording.avi)
 VIDEO_BOX_DIR             <- file.path(SERVER_ROOT, "video")   # Box
+# Where <id>_frame_timestamps.csv is looked for, in this order (first match wins;
+# the copies are identical). Box first, so the external drive isn't needed.
+FRAME_TIMESTAMP_DIRS      <- c(VIDEO_BOX_DIR, VIDEO_EXTERNAL_DIR, WEBCAM_PNG_EXTERNAL_DIR)
 LEDALAB_RESULTS_DIR       <- file.path(SERVER_ROOT, "ledalab")
 # Ledalab input: EDA-only .mat files prepared for Ledalab
 LEDALAB_INPUT_DIR         <- file.path(SERVER_ROOT, "ledalab", "input")
