@@ -105,7 +105,7 @@ if (length(csv_files) == 0) stop("No CSV files found in: ", psychopy_data_dir)
 # participants are KEPT in the combined data — the QC reports need them, and the analysis
 # scripts filter them out themselves.
 analysis_dir <- if (basename(project_dir) == "analysis") project_dir else file.path(project_dir, "analysis")
-PARTICIPANT_STATUS_PATH <- get0("PARTICIPANT_STATUS_PATH", ifnotfound = file.path(RAW_QUESTIONNAIRE_DIR, "participant_status.csv"))
+PARTICIPANT_STATUS_PATH <- get0("PARTICIPANT_STATUS_PATH", ifnotfound = file.path(SERVER_ROOT, "participant_status.csv"))
 source(file.path(analysis_dir, "participant_status.R"), local = TRUE)
 file_pids    <- norm_participant_id(sub("_.*", "", basename(csv_files)))
 dropped_test <- sort(unique(file_pids[file_pids %in% test_ids()]))

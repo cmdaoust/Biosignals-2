@@ -159,7 +159,7 @@ tibble(setting = c("config.R", "psychopy_dir", "facereader_dir",
 
 # Add participants left out by participant_status.csv (pilots unless INCLUDE_PILOTS,
 # test sessions, rejected participants). Entries above take precedence.
-PARTICIPANT_STATUS_PATH <- get0("PARTICIPANT_STATUS_PATH", ifnotfound = file.path(RAW_QUESTIONNAIRE_DIR, "participant_status.csv"))
+PARTICIPANT_STATUS_PATH <- get0("PARTICIPANT_STATUS_PATH", ifnotfound = file.path(SERVER_ROOT, "participant_status.csv"))
 source(file.path(analysis_dir, "participant_status.R"), local = TRUE)
 from_status <- PARTICIPANT_STATUS[!participant_keep(PARTICIPANT_STATUS$participant_id, INCLUDE_PILOTS), ]
 from_status <- setNames(paste0(from_status$status,

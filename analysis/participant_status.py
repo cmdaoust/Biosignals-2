@@ -1,9 +1,9 @@
 """
 participant_status.py - read participant_status.csv from Python scripts.
 
-The file lives on Box (3_Data/raw_questionnaire) and must NOT be committed to git; its
+The file lives on Box (3_Data) and must NOT be committed to git; its
 location comes from config.py at the repo root (PARTICIPANT_STATUS_PATH, else
-RAW_QUESTIONNAIRE_DIR, else SERVER_ROOT/raw_questionnaire).
+SERVER_ROOT/participant_status.csv).
 
     from participant_status import pilot_ids, excluded_ids, status_of
     if status_of(pid) != "main": ...
@@ -25,8 +25,7 @@ def _default_path():
     spec.loader.exec_module(cfg)
     if getattr(cfg, "PARTICIPANT_STATUS_PATH", None):
         return cfg.PARTICIPANT_STATUS_PATH
-    qdir = getattr(cfg, "RAW_QUESTIONNAIRE_DIR", None) or os.path.join(cfg.SERVER_ROOT, "raw_questionnaire")
-    return os.path.join(qdir, "participant_status.csv")
+    return os.path.join(cfg.SERVER_ROOT, "participant_status.csv")
 
 
 PATH = _default_path()

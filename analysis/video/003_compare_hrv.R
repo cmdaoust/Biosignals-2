@@ -178,8 +178,7 @@ if (!exists("SERVER_ROOT")) SERVER_ROOT <- "C:/Users/carme/Box/Project_Biosignal
 # If it can't be read, everyone is kept and a warning is printed (so 004 etc. still work).
 ps_helper <- file.path(dirname(HERE), "participant_status.R")
 PS_OK <- file.exists(ps_helper) && !inherits(tryCatch({
-  PARTICIPANT_STATUS_PATH <- get0("PARTICIPANT_STATUS_PATH", ifnotfound = file.path(get0("RAW_QUESTIONNAIRE_DIR",
-    ifnotfound = file.path(SERVER_ROOT, "raw_questionnaire")), "participant_status.csv"))
+  PARTICIPANT_STATUS_PATH <- get0("PARTICIPANT_STATUS_PATH", ifnotfound = file.path(SERVER_ROOT, "participant_status.csv"))
   source(ps_helper, local = TRUE)
 }, error = function(e) { warning("participant_status not used: ", conditionMessage(e)); e }), "error")
 if (!PS_OK) {

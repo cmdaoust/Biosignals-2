@@ -1,8 +1,8 @@
 # participant_status.R
-# Reads participant_status.csv (Box: 3_Data/raw_questionnaire; NOT in git): the ONE place to list participants who are
+# Reads participant_status.csv (Box: 3_Data; NOT in git): the ONE place to list participants who are
 # not normal main-study participants. Source this file from any R script or Rmd:
 #
-#   source("config.R")   # defines PARTICIPANT_STATUS_PATH (Box raw_questionnaire)
+#   source("config.R")   # defines PARTICIPANT_STATUS_PATH (Box 3_Data)
 #   source(file.path(analysis_dir, "participant_status.R"), local = TRUE)
 #   pilot_ids()      # pilot participants
 #   excluded_ids()   # test sessions + rejected participants (leave out of everything)
@@ -24,18 +24,16 @@
 PARTICIPANT_STATUS_VALUES <- c("pilot", "test", "excluded")
 
 # Set PARTICIPANT_STATUS_PATH before sourcing to point at the file; otherwise it is
-# taken from config.R (PARTICIPANT_STATUS_PATH, else RAW_QUESTIONNAIRE_DIR, else
-# SERVER_ROOT/raw_questionnaire). The file lives on Box and must NOT be committed to git.
+# taken from config.R (PARTICIPANT_STATUS_PATH, else SERVER_ROOT/participant_status.csv). The file lives on Box and must NOT be committed to git.
 if (!exists("PARTICIPANT_STATUS_PATH", inherits = TRUE)) {
   local({
-    qdir <- if (exists("RAW_QUESTIONNAIRE_DIR", inherits = TRUE)) RAW_QUESTIONNAIRE_DIR
-            else if (exists("SERVER_ROOT", inherits = TRUE)) file.path(SERVER_ROOT, "raw_questionnaire")
+    qdir <- if (exists("SERVER_ROOT", inherits = TRUE)) SERVER_ROOT
             else stop("participant_status.csv: source config.R first (or set PARTICIPANT_STATUS_PATH).")
     PARTICIPANT_STATUS_PATH <<- file.path(qdir, "participant_status.csv")
   })
 }
 if (!file.exists(PARTICIPANT_STATUS_PATH)) stop("participant_status.csv not found at ", PARTICIPANT_STATUS_PATH,
-                                                " (it lives in Box/.../3_Data/raw_questionnaire).")
+                                                " (it lives in Box/.../3_Data).")
 
 norm_participant_id <- function(x) toupper(gsub("\\s+", "", as.character(x)))
 
