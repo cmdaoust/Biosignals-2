@@ -43,7 +43,7 @@ source(config_path)
 # Main-study participants only by default; set TRUE to also analyse the pilots.
 INCLUDE_PILOTS <- FALSE
 analysis_dir <- local({ d <- dirname(normalizePath(config_path)); if (basename(d) == "analysis") d else file.path(d, "analysis") })
-PARTICIPANT_STATUS_PATH <- file.path(analysis_dir, "participant_status.csv")
+PARTICIPANT_STATUS_PATH <- get0("PARTICIPANT_STATUS_PATH", ifnotfound = file.path(RAW_QUESTIONNAIRE_DIR, "participant_status.csv"))
 source(file.path(analysis_dir, "participant_status.R"), local = TRUE)
 
 # Toggle output format: "long", "wide", or "both"

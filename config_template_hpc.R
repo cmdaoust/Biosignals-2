@@ -23,6 +23,7 @@ PHYSIOLOGY_EXPORTS_DIR <- file.path(PHYSIOLOGY_ROOT, "exports")                 
 RAW_PHYSIOLOGY_DIR        <- PHYSIOLOGY_TRIMMED_DIR
 PSYCHOPY_DATA_DIR         <- file.path(SERVER_ROOT, "raw_psychopy")
 RAW_QUESTIONNAIRE_DIR     <- file.path(SERVER_ROOT, "raw_questionnaire")
+PARTICIPANT_STATUS_PATH   <- file.path(RAW_QUESTIONNAIRE_DIR, "participant_status.csv")  # pilot/test/excluded list (Box, not git)
 COMBINED_DATA_DIR         <- file.path(SERVER_ROOT, "clean_combined_data")
 COMBINED_PSYCHO_DIR       <- file.path(COMBINED_DATA_DIR, "psychopy")
 COMBINED_QUEST_DIR        <- file.path(COMBINED_DATA_DIR, "questionnaires")

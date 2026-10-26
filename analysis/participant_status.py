@@ -1,5 +1,9 @@
 """
-participant_status.py - read analysis/participant_status.csv from Python scripts.
+participant_status.py - read participant_status.csv from Python scripts.
+
+The file lives on Box (3_Data/raw_questionnaire) and must NOT be committed to git; its
+location comes from config.py at the repo root (PARTICIPANT_STATUS_PATH, else
+RAW_QUESTIONNAIRE_DIR, else SERVER_ROOT/raw_questionnaire).
 
     from participant_status import pilot_ids, excluded_ids, status_of
     if status_of(pid) != "main": ...
@@ -11,7 +15,21 @@ import csv
 import os
 
 STATUS_VALUES = ("pilot", "test", "excluded")
-PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "participant_status.csv")
+def _default_path():
+    import importlib.util
+    cfg_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config.py")
+    if not os.path.isfile(cfg_path):
+        raise FileNotFoundError(f"participant_status.csv: no config.py at {cfg_path}")
+    spec = importlib.util.spec_from_file_location("_ps_config", cfg_path)
+    cfg = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cfg)
+    if getattr(cfg, "PARTICIPANT_STATUS_PATH", None):
+        return cfg.PARTICIPANT_STATUS_PATH
+    qdir = getattr(cfg, "RAW_QUESTIONNAIRE_DIR", None) or os.path.join(cfg.SERVER_ROOT, "raw_questionnaire")
+    return os.path.join(qdir, "participant_status.csv")
+
+
+PATH = _default_path()
 
 
 def norm_id(x):

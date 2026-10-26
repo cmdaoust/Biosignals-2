@@ -36,3 +36,6 @@ pilot_data/
 # ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+
+# Participant status list (pilot/test/excluded): lives on Box in 3_Data/raw_questionnaire.
+**/participant_status.csv

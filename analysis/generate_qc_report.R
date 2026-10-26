@@ -84,7 +84,7 @@ dir.create(dirname(OUTPUT_PATH), showWarnings = FALSE, recursive = TRUE)
 # that file, not this script. Test sessions and rejected participants are left out of
 # both reports; pilots go only in the pilot report (generate_qc_report_pilot.R); anyone
 # not listed is a main-study participant. Files on disk are never touched.
-PARTICIPANT_STATUS_PATH <- file.path(analysis_dir, "participant_status.csv")
+PARTICIPANT_STATUS_PATH <- get0("PARTICIPANT_STATUS_PATH", ifnotfound = file.path(RAW_QUESTIONNAIRE_DIR, "participant_status.csv"))
 source(file.path(analysis_dir, "participant_status.R"), local = TRUE)
 EXCLUDED_PIDS <- excluded_ids()
 PILOT_PIDS    <- pilot_ids()
