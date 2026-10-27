@@ -239,34 +239,59 @@ def step_zip(pid, p, dry):
 
 
 class Box:
+    """SFTP connection to Box that reconnects when needed. Conversions and zips take hours, and
+    an idle connection gets closed (by Box or the network) - so the connection is checked before
+    every listing/upload, kept alive while idle, and an upload cut off part-way is retried."""
+    RETRIES = 3
+
     def __init__(self, c, password):
-        import paramiko
-        self.c = c
-        self.transport = paramiko.Transport((c["host"], c["port"]))
-        self.transport.default_window_size = 64 * 1024 * 1024   # faster for large files
-        self.transport.start_client(timeout=30)
-        # Check it's really Box before sending the password (fingerprint published by Box:
-        # support.box.com "Using Box with SFTP"; override with BOX_SFTP_FINGERPRINT in config.py).
-        import base64, hashlib
-        key = self.transport.get_remote_server_key()
-        fp = base64.b64encode(hashlib.sha256(key.asbytes()).digest()).decode().rstrip("=")
-        if c["host"] == "sftp.services.box.com" and fp != c["fingerprint"]:
-            self.transport.close()
-            raise RuntimeError(f"server key fingerprint SHA256:{fp} is not Box's (SHA256:{c['fingerprint']}) - "
-                               "not sending the password. If Box has changed its key, update BOX_SFTP_FINGERPRINT.")
-        self.transport.auth_password(username=c["user"], password=password)
-        self.sftp = paramiko.SFTPClient.from_transport(self.transport)
-        self.sftp.get_channel().settimeout(300)
+        self.c, self.password = c, password
+        self.transport = self.sftp = None
+        self.connect()
         try:
             self.sftp.stat(c["remote_dir"])
         except IOError:
             self.close()
             raise RuntimeError(f"Box folder {c['remote_dir']} not found over SFTP - check BOX_VIDEO_REMOTE_DIR")
 
+    def connect(self):
+        import paramiko, base64, hashlib
+        c = self.c
+        self.close()
+        t = paramiko.Transport((c["host"], c["port"]))
+        t.default_window_size = 64 * 1024 * 1024   # faster for large files
+        t.start_client(timeout=30)
+        # Check it's really Box before sending the password (fingerprint published by Box:
+        # support.box.com "Using Box with SFTP"; override with BOX_SFTP_FINGERPRINT in config.py).
+        key = t.get_remote_server_key()
+        fp = base64.b64encode(hashlib.sha256(key.asbytes()).digest()).decode().rstrip("=")
+        if c["host"] == "sftp.services.box.com" and fp != c["fingerprint"]:
+            t.close()
+            raise RuntimeError(f"server key fingerprint SHA256:{fp} is not Box's (SHA256:{c['fingerprint']}) - "
+                               "not sending the password. If Box has changed its key, update BOX_SFTP_FINGERPRINT.")
+        t.auth_password(username=c["user"], password=self.password)
+        t.set_keepalive(30)
+        self.transport = t
+        self.sftp = paramiko.SFTPClient.from_transport(t)
+        self.sftp.get_channel().settimeout(300)
+
+    def ensure(self):
+        """Reconnect if the connection has dropped (e.g. while a video was converting)."""
+        alive = self.transport is not None and self.transport.is_active()
+        if alive:
+            try:
+                self.sftp.stat(self.c["remote_dir"])
+                return
+            except Exception:
+                pass
+        log("  (re)connecting to Box...")
+        self.connect()
+
     def sizes(self):
         """lower-case name -> (name as on Box, size) for every file in the remote folder.
         Box ignores case in file names (R2433_x.avi and r2433_x.avi are the same file), so
         names are matched case-insensitively."""
+        self.ensure()
         return {a.filename.lower(): (a.filename, a.st_size)
                 for a in self.sftp.listdir_attr(self.c["remote_dir"])}
 
@@ -282,11 +307,24 @@ class Box:
                 last[0] = pct - pct % 10
                 log(f"            {name}: {last[0]}%")
         t0 = time.time()
-        self.sftp.put(local, part, callback=progress, confirm=True)
+        for attempt in range(1, self.RETRIES + 1):
+            try:
+                self.ensure()
+                last[0] = 0
+                self.sftp.put(local, part, callback=progress, confirm=True)   # a retry overwrites the .part
+                break
+            except Exception as e:
+                if attempt == self.RETRIES:
+                    raise RuntimeError(f"upload of {name} failed {self.RETRIES} times (last error: {e})")
+                log(f"  upload  : {name} interrupted ({e}) - reconnecting and retrying ({attempt + 1}/{self.RETRIES})")
+                self.close()
+                time.sleep(30 * attempt)
+        self.ensure()
         if name.lower() in sizes:   # an incomplete/older copy: replace it (Box keeps the old one as a version)
             self.sftp.remove(posixpath.join(self.c["remote_dir"], sizes[name.lower()][0]))
         self.sftp.rename(part, remote)
         got = self.sftp.stat(remote).st_size
+        sizes[name.lower()] = (name, got)
         if got != size:
             raise RuntimeError(f"{name}: {human(got)} on Box but {human(size)} locally")
         record_upload(name, size)
@@ -294,10 +332,13 @@ class Box:
         log(f"  upload  : {name} done ({human(size)}, {mins:.0f} min)")
 
     def close(self):
-        try:
-            self.sftp.close()
-        finally:
-            self.transport.close()
+        for x in (self.sftp, self.transport):
+            try:
+                if x is not None:
+                    x.close()
+            except Exception:
+                pass
+        self.sftp = self.transport = None
 
 
 def box_size(name, sizes):
