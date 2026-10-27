@@ -2571,8 +2571,10 @@ raw_psy_inv <- tryCatch({
     filter(!is.na(pid), nzchar(pid), !is_excluded(pid))
 }, error = function(e) e)
 
-# Qualtrics: EVERY Biosignals2*.csv export in QUESTIONNAIRE_DIR (not just the newest), one row
-# per response, with the ID as typed (QID7_1) and whether it is complete (Finished = TRUE/1 and
+# Qualtrics: the NEWEST baseline export in QUESTIONNAIRE_DIR (QUESTIONNAIRE_BASELINE_PATTERN in
+# config.R, e.g. Demographics_*.csv; same choice as 04_questionnaire_analysis.Rmd; follow-up exports,
+# with "follow-up" in the name, are ignored here), so old exports left in the folder can't bring
+# back corrected IDs. One row per response, with the ID as typed (QID7_1) and whether it is complete (Finished = TRUE/1 and
 # Progress = 100, the same rule as 04_questionnaire_analysis.Rmd).
 read_qualtrics_ids <- function(path) {
   hdr <- read_csv(path, n_max = 3, col_names = FALSE,
@@ -2587,10 +2589,24 @@ read_qualtrics_ids <- function(path) {
   if ("progress" %in% names(raw_q)) done <- done & suppressWarnings(as.integer(raw_q$progress)) %in% 100L
   tibble(file = basename(path), typed_id = coalesce(raw_q$QID7_1, ""), complete = done)
 }
+# Newest Qualtrics export: by the date-time in the file name (Demographics_2026-10-27_060245006.csv),
+# else by modified date.
+newest_qualtrics_export <- function(files) {
+  stamp <- regmatches(basename(files), regexpr("[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6,9}", basename(files)))
+  if (length(stamp) == length(files)) files[order(stamp, decreasing = TRUE)][1]
+  else files[which.max(file.mtime(files))]
+}
+baseline_q_files <- function() {
+  q <- list.files(QUESTIONNAIRE_DIR, pattern = get0("QUESTIONNAIRE_BASELINE_PATTERN", ifnotfound = "^(Demographics|Biosignals2).*\\.csv$"), full.names = TRUE)
+  q[!grepl("follow[-_ ]?up", basename(q), ignore.case = TRUE)]
+}
 raw_q_inv <- tryCatch({
-  qfiles <- list.files(QUESTIONNAIRE_DIR, pattern = "^Biosignals2.*\\.csv$", full.names = TRUE)
-  if (length(qfiles) == 0) stop("NO_FILES: no Biosignals2*.csv export in QUESTIONNAIRE_DIR")
-  newest <- basename(qfiles[which.max(file.mtime(qfiles))])
+  qfiles <- baseline_q_files()
+  if (length(qfiles) == 0) stop("NO_FILES: no baseline export (e.g. Demographics_*.csv) in QUESTIONNAIRE_DIR")
+  newest <- basename(newest_qualtrics_export(qfiles))
+  if (length(qfiles) > 1)
+    message("Questionnaires: ", length(qfiles), " exports in QUESTIONNAIRE_DIR - using the newest: ", newest)
+  qfiles <- qfiles[basename(qfiles) == newest]
   map_dfr(qfiles, read_qualtrics_ids) |>
     mutate(newest_export = file == newest,
            pid = qc_norm_id(str_squish(typed_id))) |>
@@ -2849,8 +2865,8 @@ combined_html <- tryCatch({
   newest_raw <- function(kinds) if (ok_inv(raw_psy_inv)) {
     t <- filter(raw_psy_inv, kind %in% kinds)$mtime; if (length(t)) max(t) else NA } else NA
   newest_q <- tryCatch({
-    q <- list.files(QUESTIONNAIRE_DIR, pattern = "^Biosignals2.*\\.csv$", full.names = TRUE)
-    if (length(q)) max(file.mtime(q)) else NA }, error = function(e) NA)
+    q <- baseline_q_files()
+    if (length(q)) file.mtime(newest_qualtrics_export(q)) else NA }, error = function(e) NA)
   files_df <- tibble(
     dataset = c("Self-report ratings", "Webcam biometrics", "Scored questionnaires"),
     path    = c(DATA_PATH, BIOMETRICS_COMBINED_PATH, QUESTIONNAIRE_PATH),

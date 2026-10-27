@@ -83,21 +83,25 @@ OUTPUT_PATH <- file.path(COMBINED_PSYCHO_DIR, "biosignals2_questionnaires_scored
 Qualtrics exports a 3-row header: (1) short column names, (2) full question text, (3) ImportId JSON. We use the ImportId row for unique column names, then skip all three header rows to read the data.
 
 ```{r load-raw}
-# ── 2a. Find the most-recent questionnaire export ─────────────────────────────
-qfiles <- list.files(
-  QUESTIONNAIRE_DIR,
-  pattern = "^Biosignals2.*\\.csv$",
-  full.names = TRUE
-)
+# ── 2a. Find the most-recent baseline questionnaire export ─────────────────────
+# File names: QUESTIONNAIRE_BASELINE_PATTERN in config.R (Demographics_*.csv, older
+# Biosignals2*.csv); follow-up exports ("follow-up" in the name) are never used here.
+# Newest Qualtrics export: by the date-time in the file name (Demographics_2026-10-27_060245006.csv),
+# else by modified date.
+newest_qualtrics_export <- function(files) {
+  stamp <- regmatches(basename(files), regexpr("[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6,9}", basename(files)))
+  if (length(stamp) == length(files)) files[order(stamp, decreasing = TRUE)][1]
+  else files[which.max(file.mtime(files))]
+}
+qfiles <- list.files(QUESTIONNAIRE_DIR, pattern = get0("QUESTIONNAIRE_BASELINE_PATTERN", ifnotfound = "^(Demographics|Biosignals2).*\\.csv$"), full.names = TRUE)
+qfiles <- qfiles[!grepl("follow[-_ ]?up", basename(qfiles), ignore.case = TRUE)]
 
 if (length(qfiles) == 0)
-  stop("No Qualtrics CSV found in QUESTIONNAIRE_DIR: ", QUESTIONNAIRE_DIR)
+  stop("No baseline Qualtrics export (e.g. Demographics_*.csv) found in QUESTIONNAIRE_DIR: ", QUESTIONNAIRE_DIR)
 
-if (length(qfiles) > 1) {
-  qfiles <- qfiles[order(file.mtime(qfiles), decreasing = TRUE)]
-  message("Multiple files found – using most recent: ", basename(qfiles[1]))
-}
-qfile_path <- qfiles[1]
+qfile_path <- newest_qualtrics_export(qfiles)
+if (length(qfiles) > 1)
+  message("Multiple baseline exports found – using the newest: ", basename(qfile_path))
 message("Reading: ", basename(qfile_path))
 
 # ── 2b. Parse ImportIds for unique column names ────────────────────────────────

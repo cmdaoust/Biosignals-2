@@ -218,7 +218,7 @@ def main():
                     help="allow files for the new ID to exist already (one session split across two IDs); "
                          "still stops if any rename would overwrite a file")
     ap.add_argument("--scan-contents", action="store_true",
-                    help="also fix the ID inside text files whose name does not contain it")
+                    help="also fix the ID inside text files (and PsychoPy .psydat files) whose name does not contain it")
     args = ap.parse_args()
 
     old, new = args.old.strip(), args.new.strip()
@@ -294,7 +294,7 @@ def main():
                     print(f"  edit  {path}  ({n} replacement(s))")
 
             is_pickle = ext in PICKLE_EXT
-            if is_pickle and name_hit:
+            if is_pickle and (name_hit or args.scan_contents):
                 try:
                     n = fix_pickle(path, old, new, args.apply)
                     if n:
