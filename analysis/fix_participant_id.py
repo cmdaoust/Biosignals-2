@@ -39,6 +39,12 @@ Not changed:
 On --apply, every change is appended to id_changes_log.csv in SERVER_ROOT
 (or the first searched folder if SERVER_ROOT isn't there).
 The script stops before changing anything if files for the new ID already exist.
+When one session's files were saved under two IDs (e.g. PsychoPy under the wrong ID,
+BIOPAC under the right one), use --merge: files for the new ID may then exist, but it
+still stops before changing anything if any single rename would overwrite a file.
+
+    python fix_participant_id.py --old A5687 --new A6587 --merge            # preview
+    python fix_participant_id.py --old A5687 --new A6587 --merge --apply
 """
 import argparse
 import csv
@@ -208,6 +214,9 @@ def main():
     ap.add_argument("--new", required=True, help="correct ID from Qualtrics, e.g. S9686")
     ap.add_argument("--apply", action="store_true", help="make the changes (default: preview only)")
     ap.add_argument("--roots", nargs="+", help="folders to search instead of the config.py defaults")
+    ap.add_argument("--merge", action="store_true",
+                    help="allow files for the new ID to exist already (one session split across two IDs); "
+                         "still stops if any rename would overwrite a file")
     ap.add_argument("--scan-contents", action="store_true",
                     help="also fix the ID inside text files whose name does not contain it")
     args = ap.parse_args()
@@ -230,10 +239,30 @@ def main():
     clashes = []
     for dirpath, dirnames, filenames in walk(roots):
         clashes += [os.path.join(dirpath, n) for n in filenames + dirnames if pat_new.search(n)]
-    if clashes:
+    if clashes and not args.merge:
         print(f"\nSTOPPED: files for {new} already exist, so renaming could mix two people's data:")
         for c in clashes:
             print("  " + c)
+        print(f"\nIf these are the SAME session split across two IDs, run again with --merge.")
+        sys.exit(1)
+    if clashes:
+        print(f"\n--merge: {len(clashes)} file(s)/folder(s) for {new} already exist and are kept as they are:")
+        for c in clashes:
+            print("  " + c)
+
+    # Every rename is checked BEFORE anything changes: stop if any target already exists.
+    targets = []
+    for dirpath, dirnames, filenames in walk(roots):
+        for name in filenames + dirnames:
+            if pat_old.search(name) and not name.endswith(".idfix.tmp"):
+                tgt = os.path.join(dirpath, pat_old.sub(repl, name))
+                if os.path.exists(tgt):
+                    targets.append((os.path.join(dirpath, name), tgt))
+    if targets:
+        print("\nSTOPPED before changing anything: these renames would overwrite an existing file/folder:")
+        for a, b in targets:
+            print(f"  {a}\n      -> {b}")
+        print("Decide by hand which copy is right (and move the other out of the way), then run again.")
         sys.exit(1)
 
     changes = []      # (action, old_path, new_path, detail)
