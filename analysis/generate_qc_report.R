@@ -932,17 +932,43 @@ kub_num   <- function(x) suppressWarnings(as.numeric(str_trim(x)))
 kub_blank <- function(x) x[!is.na(x) & nzchar(x)]
 kub_pid   <- function(x) str_to_lower(str_extract(basename(as.character(x)), "^[^_]+"))
 
-# Batch summary KubiosHRVresults*.csv: "sep=," and a title line, then the header row; one row per
-# analysed file; samples S1..S5 unlabelled (taken in Kubios_Samples.csv order).
+# Batch summary KubiosHRVresults*.csv: a title line (sometimes preceded by "sep=,"), then the header
+# row; one row per analysed file; samples S1..S5 unlabelled (taken in Kubios_Samples.csv order).
+# The header is found by its FileName field rather than a fixed skip, because the number of lines above
+# it varies between exports (a fixed skip = 2 skipped the real header and dropped the whole file).
+# Lines can end in one or more empty trailing fields (trailing commas), inconsistently between rows and
+# the header, so readr's column-count guess raised spurious "parsing issues". The file is split by hand
+# instead (Kubios does not quote fields): empty trailing fields are dropped, each row is padded to the
+# header length, and a row with real values beyond the header is reported, since its metrics may be shifted.
+kubios_read_batch <- function(f) {
+  lines <- read_lines(f)
+  hdr   <- which(str_detect(lines, '^\\s*"?FileName"?\\s*(,|$)'))[1]
+  if (is.na(hdr)) return(NULL)
+  fields <- map(str_split(lines[hdr:length(lines)], ","), function(x) {
+    x <- str_trim(str_remove_all(x, '^\\s*"|"\\s*$'))
+    filled <- which(nzchar(x))
+    if (length(filled) == 0) character(0) else x[seq_len(max(filled))]
+  })
+  nm   <- fields[[1]]
+  n    <- length(nm)
+  rows <- keep(fields[-1], ~ length(.x) > 0)
+  long <- which(lengths(rows) > n)
+  if (length(long) > 0)
+    warning("Kubios batch summary ", basename(f), ": ", length(long),
+            " row(s) have more values than the header (", paste(map_chr(rows[long], 1), collapse = ", "),
+            "). Values past the last header column are dropped; check these rows are not shifted.",
+            call. = FALSE)
+  m <- matrix(c(character(0), unlist(map(rows, function(x) { length(x) <- n; x }))), ncol = n, byrow = TRUE)
+  m[!is.na(m) & m == ""] <- NA
+  colnames(m) <- make.unique(if_else(nzchar(nm), nm, paste0("...", seq_len(n))))
+  as_tibble(m)
+}
 kubios_read_summaries <- function(files) {
   empty <- tibble(pid = character(), file = character(), input_file = character(), stream = character(),
                   block = character(), mean_hr_bpm = numeric(), rmssd_ms = numeric(), sdnn_ms = numeric(),
                   mtime = as.POSIXct(character()))
   bind_rows(empty, map_dfr(files, function(f) {
-    # name_repair: every row ends in a trailing comma, giving one unnamed column
-    raw <- tryCatch(read_csv(f, skip = 2, col_types = cols(.default = col_character()),
-                             name_repair = "unique_quiet", show_col_types = FALSE),
-                    error = function(e) NULL)
+    raw <- tryCatch(kubios_read_batch(f), error = function(e) NULL)
     if (is.null(raw) || !"FileName" %in% names(raw)) return(tibble())
     raw <- raw |> filter(!is.na(FileName), nzchar(str_trim(FileName)))
     map_dfr(seq_along(KUBIOS_BLOCKS), function(i) {
@@ -2659,9 +2685,8 @@ completeness_html <- tryCatch({
     f_summary <- list.files(KUBIOS_RESULTS_DIR, pattern = "^KubiosHRVresults.*\\.csv$",
                             full.names = TRUE, ignore.case = TRUE)
     ids_summary <- unlist(map(f_summary, function(f) {
-      x <- read_csv(f, skip = 2, col_types = cols(.default = col_character()),
-                    name_repair = "unique_quiet", show_col_types = FALSE)
-      if ("FileName" %in% names(x)) str_extract(basename(x$FileName[!is.na(x$FileName)]), "^[^_]+")
+      x <- tryCatch(kubios_read_batch(f), error = function(e) NULL)
+      if (!is.null(x) && "FileName" %in% names(x)) str_extract(basename(x$FileName[!is.na(x$FileName)]), "^[^_]+")
       else character(0)
     }))
     c(ids_summary, ids_of_files(KUBIOS_RESULTS_DIR, "_hrv\\.csv$"))
@@ -2719,12 +2744,14 @@ completeness_html <- tryCatch({
     Ledalab        = ids_ledalab,
     Kubios         = ids_kubios,
     Video          = ids_video,
+    FaceReader     = ids_facereader,
+    `Kubios FaceReader` = if (QC_MODE == "main") ids_kubios_fr,
     `Webcam HR online`  = ids_raw_biometrics,
     `Webcam HR offline` = ids_webcam_offline,
-    FaceReader     = ids_facereader
+    `Kubios webcam`     = if (QC_MODE == "main") ids_kubios_wc
   )
-  if (QC_MODE == "main")
-    sources <- c(sources, list(`Kubios FaceReader` = ids_kubios_fr, `Kubios webcam` = ids_kubios_wc))
+  # Kubios FaceReader / Kubios webcam are main-mode only; drop them otherwise (they are NULL above)
+  if (QC_MODE != "main") sources <- sources[setdiff(names(sources), c("Kubios FaceReader", "Kubios webcam"))]
   partial <- list(Questionnaires = ids_raw_q_partial, Video = ids_video_partial)
   partial_note <- function(nm, pid)
     if (nm == "Video") video_missing(pid) else "incomplete Qualtrics response only"

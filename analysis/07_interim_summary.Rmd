@@ -33,7 +33,7 @@ output:
 # Knit: Rscript -e "rmarkdown::render('analysis/07_interim_summary.Rmd')"
 # The HTML is self-contained (one file). It prints no file paths, and participant IDs are
 # replaced by codes P01, P02, ... (in random order) when ANONYMISE_IDS is TRUE. The code -> real
-# ID key is kept only on Box (clean_combined_data/interim_report_private/), never in this
+# ID key is kept only on Box (3_Data/private/interim_report_id_key.csv), never in this
 # repository and never in the HTML; nothing in this code can rebuild it.
 # =============================================================================
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
@@ -478,10 +478,13 @@ ecg_corrected <- kubios_qc |> filter(stream == "ecg", pid %in% fr_missing$pid) |
 # free numbers in a RANDOM order, so nothing in this code (public on GitHub) can rebuild the key.
 # Codes are kept from knit to knit and never reused. (Only the batch a participant was added in
 # can be told from the number, e.g. P11+ joined after the first knit.)
-ID_KEY_PATH <- file.path(COMBINED_DATA_DIR, "interim_report_private", "interim_report_id_key.csv")
+ID_KEY_PATH <- file.path(SERVER_ROOT, "private", "interim_report_id_key.csv")
+# Earlier location: read from there once if the key hasn't been moved yet, so codes are kept
+ID_KEY_OLD_PATH <- file.path(SERVER_ROOT, "clean_combined_data", "interim_report_private", "interim_report_id_key.csv")
 all_pids <- sort(unique(c(ratings$pid, scr$pid, ecg_hr$pid, fr_hr$pid, aus$pid, fr_missing$pid)))
 if (ANONYMISE_IDS) {
-  key_old <- if (file.exists(ID_KEY_PATH)) read_csv(ID_KEY_PATH, col_types = cols(.default = col_character())) else tibble()
+  key_src <- if (file.exists(ID_KEY_PATH)) ID_KEY_PATH else if (file.exists(ID_KEY_OLD_PATH)) ID_KEY_OLD_PATH else NA
+  key_old <- if (!is.na(key_src)) read_csv(key_src, col_types = cols(.default = col_character())) else tibble()
   # A key from the earlier scheme (random P01-P99 numbers, no "scheme" column) is replaced
   key_old <- if (nrow(key_old) && "scheme" %in% names(key_old) && all(key_old$scheme == "sequential"))
                key_old |> transmute(Participant, participant_id = norm_pid(participant_id)) |> filter(!is.na(Participant))
@@ -577,6 +580,8 @@ if (ANONYMISE_IDS) {
 # An older version saved the key inside the repository: warn if that file is still there
 if (file.exists(file.path(analysis_dir, "07_interim_summary_id_key.csv")))
   message("Delete analysis/07_interim_summary_id_key.csv: the key now lives on Box only.")
+if (file.exists(ID_KEY_OLD_PATH) && file.exists(ID_KEY_PATH))
+  message("The ID key is now saved in 3_Data/private/. Delete the old copy: ", ID_KEY_OLD_PATH)
 ```
 
 ```{r dropped-blocks, results = "asis"}

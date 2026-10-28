@@ -65,14 +65,23 @@ NID mapping
 
 Usage
 -----
-  python 01_create_ledalab_events_biopac.py
+  python 01_create_ledalab_events_biopac.py                       new participants only
+  python 01_create_ledalab_events_biopac.py --rerun e5510 K6294   also redo these (any case)
+  python 01_create_ledalab_events_biopac.py --rerun-all           redo everyone
+
+  By default a participant is SKIPPED when a readable
+  {pid}_events_blocks_biopac_ledalab.txt already exists in BLOCK_ONSETS_DIR,
+  unless their .acq file was modified after that event file was written (then
+  it is redone automatically). When running inside an IDE without arguments,
+  set RERUN_ALL / RERUN_PARTICIPANTS in the CONFIG section instead; they are
+  combined with the command-line flags.
 
   Paths are read from config.py at the repo root.
   Exits non-zero if any participant fails validation.
 """
 
 import os
-import glob
+import argparse
 import sys
 import numpy as np
 import bioread
@@ -111,6 +120,10 @@ TRIGGER_MAP = {
 }
 
 EXPECTED_CONDITIONS = sorted(set(TRIGGER_MAP.values()))
+
+# Re-run controls (combined with --rerun-all / --rerun on the command line).
+RERUN_ALL          = False   # True = redo every participant, even if their event file exists
+RERUN_PARTICIPANTS = []      # e.g. ['e5510'] to redo just them (IDs ignore case)
 
 # Optional: override ACQ filename → participant ID mapping (file names compared ignoring case).
 # Leave empty to take the participant ID from the filename, which is everything
@@ -188,10 +201,43 @@ def validate_trimmed(rows):
     return problems
 
 
-def build_nid_map(all_rows):
-    """Assign stable integer IDs (alphabetical) to condition names."""
-    all_names = sorted({name for rows in all_rows for name, _ in rows})
-    return {name: i + 1 for i, name in enumerate(all_names)}
+def build_nid_map():
+    """Assign stable integer IDs (alphabetical) to condition names.
+
+    Built from EXPECTED_CONDITIONS rather than from this run's participants, so
+    the map stays the same when already-done participants are skipped. (Every
+    participant that passes validation has exactly these conditions anyway.)
+    """
+    return {name: i + 1 for i, name in enumerate(EXPECTED_CONDITIONS)}
+
+
+def event_file_path(pid):
+    return os.path.join(BLOCK_ONSETS_DIR, f'{pid}_events_blocks_biopac_ledalab.txt')
+
+
+def existing_is_current(pid, acq_path):
+    """Why `pid` can be skipped, or None if it needs (re)processing.
+
+    Skips only when the event file exists, has the expected header plus one row
+    per condition, and is newer than the .acq it was made from.
+    """
+    out_path = event_file_path(pid)
+    if not os.path.isfile(out_path):
+        return None
+    try:
+        with open(out_path) as f:
+            lines = [ln.strip() for ln in f if ln.strip()]
+    except OSError:
+        return None
+    if not lines or lines[0].split('\t') != ['time', 'nid'] \
+            or len(lines) - 1 != len(EXPECTED_CONDITIONS):
+        print(f'[RE-RUN] {pid}: existing {os.path.basename(out_path)} is incomplete or malformed')
+        return None
+    if os.path.getmtime(acq_path) > os.path.getmtime(out_path):
+        print(f'[RE-RUN] {pid}: {os.path.basename(acq_path)} changed after '
+              f'{os.path.basename(out_path)} was written')
+        return None
+    return 'already done'
 
 
 def save_ledalab_txt(rows, nid_map, filepath):
@@ -215,7 +261,8 @@ def save_nid_map(nid_map, filepath):
 
 # ── MAIN ──────────────────────────────────────────────────────────────────────
 
-def main():
+def main(rerun_all=False, rerun=()):
+    rerun = {str(p).strip().lower() for p in rerun}
     acq_files = find_acq_files(RAW_PHYSIOLOGY_DIR)
     if not acq_files:
         raise FileNotFoundError(
@@ -239,6 +286,27 @@ def main():
                   'Participant IDs ignore case; move the wrong one out of the folder.')
             skipped[pid] = ['several recordings: ' + names]
     acq_files = [x for x in acq_files if pid_from_filename(os.path.basename(x)) not in skipped]
+
+    # Skip participants whose event file already exists (unless asked to redo them).
+    known = set(by_pid)
+    for pid in sorted(rerun - known):
+        print(f'[WARNING] --rerun / RERUN_PARTICIPANTS lists "{pid}", but no '
+              f'*{ACQ_SUFFIX} for that participant was found')
+    already_done = []
+    if not rerun_all:
+        todo = []
+        for acq_path in acq_files:
+            pid = pid_from_filename(os.path.basename(acq_path))
+            if pid in rerun:
+                print(f'[RE-RUN] {pid}: listed in --rerun / RERUN_PARTICIPANTS')
+            elif existing_is_current(pid, acq_path):
+                already_done.append(pid)
+                continue
+            todo.append(acq_path)
+        acq_files = todo
+    print(f'\n{len(acq_files)} participant(s) to process'
+          + (f'; {len(already_done)} already done, skipped '
+             f'(use --rerun <id> or --rerun-all to redo them)' if already_done else ''))
 
     for acq_path in acq_files:
         acq_name = os.path.basename(acq_path)
@@ -283,11 +351,15 @@ def main():
         all_rows[pid] = rows
 
     if not all_rows:
-        print('\nNo participant passed validation — nothing written.')
-        return 1
+        if skipped:
+            print('\nNo participant passed validation — nothing written.')
+            print('Rejected participants: ' + ', '.join(sorted(skipped)))
+            return 1
+        print('\nNothing new to process.')
+        return 0
 
     # ── Build global NID map and write output ────────────────────────────────
-    nid_map = build_nid_map(all_rows.values())
+    nid_map = build_nid_map()
 
     print('\nNID map (consistent across participants):')
     for name, nid in sorted(nid_map.items(), key=lambda x: x[1]):
@@ -298,11 +370,12 @@ def main():
     print()
     for pid, rows in all_rows.items():
         print(f'PID : {pid}')
-        out_path = os.path.join(BLOCK_ONSETS_DIR, f'{pid}_events_blocks_biopac_ledalab.txt')
+        out_path = event_file_path(pid)
         save_ledalab_txt(rows, nid_map, out_path)
 
     print(f'\nOutput dir: {BLOCK_ONSETS_DIR}')
-    print(f'Written: {len(all_rows)}   Rejected: {len(skipped)}')
+    print(f'Written: {len(all_rows)}   Skipped (already done): {len(already_done)}   '
+          f'Rejected: {len(skipped)}')
     if skipped:
         print('Rejected participants: ' + ', '.join(sorted(skipped)))
         return 1
@@ -310,4 +383,13 @@ def main():
     return 0
 
 
-sys.exit(main())
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='Ledalab block event files from BIOPAC trigger channels. '
+                    'By default only participants without an event file are processed.')
+    parser.add_argument('--rerun', nargs='+', default=[], metavar='ID',
+                        help='also redo these participants (IDs ignore case)')
+    parser.add_argument('--rerun-all', action='store_true', help='redo every participant')
+    args, _unknown = parser.parse_known_args()   # tolerate IDE-injected args
+    sys.exit(main(rerun_all=RERUN_ALL or args.rerun_all,
+                  rerun=[*RERUN_PARTICIPANTS, *args.rerun]))

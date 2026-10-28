@@ -75,9 +75,11 @@ SUMMARY_FILES = [
     "all_participants_event_crosscheck.csv",     # video/001 step 3
     "ecg_video_offsets.csv",
 ]
-# Inside a SKIP_DIR but must follow the rename: the interim report's private ID key
+# Must follow the rename: the interim report's private ID key
 # (real ID -> P-code). Without this the participant would get a new P-code.
-ALWAYS_FILES = [os.path.join("clean_combined_data", "interim_report_private", "interim_report_id_key.csv")]
+ALWAYS_FILES = [os.path.join("private", "interim_report_id_key.csv"),
+                os.path.join("private", "combined_data_id_key.csv"),       # 08_combine_timeseries.R key
+                os.path.join("clean_combined_data", "interim_report_private", "interim_report_id_key.csv")]  # old location
 NEVER_EDIT = {"id_changes_log.csv"}
 
 
