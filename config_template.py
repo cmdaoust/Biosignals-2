@@ -52,6 +52,7 @@ VIDEO_BOX_DIR = os.path.join(SERVER_ROOT, "video")   # Box (same folder as VIDEO
 BOX_SFTP_HOST = "sftp.services.box.com"
 BOX_SFTP_USER = ""   # your Box login email (the username FileZilla uses)
 BOX_VIDEO_REMOTE_DIR = "/Project_Biosignals_study_2/3_Data/video"   # same folder as VIDEO_BOX_DIR, as seen over SFTP
+VIDEO_TRIM_MARGIN_S = 1.0   # video_to_box/000: if the LAST timestamp rows have no PNG, the video is cut at the last PNG only if the PNGs reach the end of the last recovery block + this many s
 LEDALAB_RESULTS_DIR = os.path.join(SERVER_ROOT, "ledalab")
 # Ledalab input: EDA-only .mat files prepared for Ledalab
 LEDALAB_INPUT_DIR = os.path.join(SERVER_ROOT, "ledalab", "input")
