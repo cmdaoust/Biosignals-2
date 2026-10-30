@@ -11,7 +11,7 @@
 
 <meta name="author" content />
 
-<meta name="date" content="2026-10-27" />
+<meta name="date" content="2026-10-29" />
 
 <title>Biosignals2 — Data Cleaning &amp; Concatenation</title>
 
@@ -1570,7 +1570,7 @@ border-radius: 0px;
 <h1 class="title toc-ignore">Biosignals2 — Data Cleaning &amp;
 Concatenation</h1>
 <h4 class="author"></h4>
-<h4 class="date">2026-10-27</h4>
+<h4 class="date">2026-10-29</h4>
 
 </div>
 
@@ -1585,10 +1585,11 @@ analysis-ready CSVs:</p>
 self-report ratings (valence, arousal, approach-avoidance, emotion
 label/intensity) in long format, with one row per experimental phase per
 participant.</li>
-<li><strong><code>biosignals2_webcambiometrics.csv</code></strong> —
-webcam biometrics (heart rate, facial action units, gaze) sampled
-continuously throughout the session, with each row labelled by
-experimental phase.</li>
+<li><strong><code>biosignals2_webcambiometrics_online.csv</code></strong>
+— ONLINE webcam biometrics (computed live by PsychoPy during the
+session, not the offline 002_run_webcam_biometrics.py results; heart
+rate, facial action units, gaze) sampled continuously throughout the
+session, with each row labelled by experimental phase.</li>
 </ul>
 <div id="experimental-design" class="section level3">
 <h3>Experimental design</h3>
@@ -1749,13 +1750,13 @@ raw_task       &lt;- load_csv_set(task_files)
 raw_biometrics &lt;- load_csv_set(biometrics_files)
 
 cat(&quot;Task files loaded      :&quot;, length(task_files), &quot;\n&quot;)</code></pre>
-<pre><code>## Task files loaded      : 21</code></pre>
+<pre><code>## Task files loaded      : 28</code></pre>
 <pre class="r"><code>cat(&quot;Task participants      :&quot;, paste(sort(unique(raw_task$participant_id)),       collapse = &quot;, &quot;), &quot;\n&quot;)</code></pre>
-<pre><code>## Task participants      : 7280, a6587, b9036, e5510, e9587, e9967, g2313, g9788, h9149, i4155, k6294, m9351, n2026, o8244, p7259, r2433, r4755, s0723, s0943, s1250, s9686</code></pre>
+<pre><code>## Task participants      : 7280, a5687, b365, b9036, d0866, d9466, d9858, e5510, e9587, e9967, g2313, g9788, h9149, i4155, k6294, m9351, n2026, n5879, o8244, p7259, r2433, r4755, s0723, s0943, s1250, s9642, s9686, un2956</code></pre>
 <pre class="r"><code>cat(&quot;Biometrics files loaded:&quot;, length(biometrics_files), &quot;\n&quot;)</code></pre>
-<pre><code>## Biometrics files loaded: 21</code></pre>
+<pre><code>## Biometrics files loaded: 29</code></pre>
 <pre class="r"><code>cat(&quot;Biometrics participants:&quot;, paste(sort(unique(raw_biometrics$participant_id)), collapse = &quot;, &quot;), &quot;\n&quot;)</code></pre>
-<pre><code>## Biometrics participants: 7280, a5687, b9036, e5510, e9587, e9967, g2313, h9149, i4155, k6294, m9351, n2026, p7259, r4755</code></pre>
+<pre><code>## Biometrics participants: 7280, a5687, b365, b9036, d0866, d9466, d9858, e5510, e9587, e9967, g2313, h9149, i4155, k6294, m9351, n2026, n5879, p7259, r4755, s6752, s9642, un2956</code></pre>
 <hr />
 </div>
 <div id="helper-functions" class="section level2">
@@ -1794,20 +1795,20 @@ format_map &lt;- raw_task |&gt;
   )
 
 print(format_map)</code></pre>
-<pre><code>## # A tibble: 21 × 2
+<pre><code>## # A tibble: 28 × 2
 ##    participant_id data_version
 ##    &lt;chr&gt;          &lt;chr&gt;       
 ##  1 7280           v2_jul      
-##  2 a6587          v2_jul      
-##  3 b9036          v2_jul      
-##  4 e5510          v2_jul      
-##  5 e9587          v2_jul      
-##  6 e9967          v2_jul      
-##  7 g2313          v2_jul      
-##  8 g9788          v2_jul      
-##  9 h9149          v2_jul      
-## 10 i4155          v2_jul      
-## # ℹ 11 more rows</code></pre>
+##  2 a5687          v2_jul      
+##  3 b365           v2_jul      
+##  4 b9036          v2_jul      
+##  5 d0866          v2_jul      
+##  6 d9466          v2_jul      
+##  7 d9858          v2_jul      
+##  8 e5510          v2_jul      
+##  9 e9587          v2_jul      
+## 10 e9967          v2_jul      
+## # ℹ 18 more rows</code></pre>
 <hr />
 </div>
 <div id="extract-psychopy-event-data" class="section level2">
@@ -1954,7 +1955,7 @@ stim_ratings &lt;- raw_task |&gt;
 
 cat(&quot;Rows:&quot;, nrow(clean_data), &quot;| Columns:&quot;, ncol(clean_data),
     &quot;| Participants:&quot;, n_distinct(clean_data$participant_id), &quot;\n&quot;)</code></pre>
-<pre><code>## Rows: 84 | Columns: 36 | Participants: 21</code></pre>
+<pre><code>## Rows: 112 | Columns: 36 | Participants: 28</code></pre>
 <hr />
 </div>
 <div id="label-biometrics-with-experimental-conditions" class="section level2">
@@ -2141,11 +2142,11 @@ cat(&quot;Task rows by condition:\n&quot;)</code></pre>
 <pre><code>## # A tibble: 5 × 2
 ##   condition                            n
 ##   &lt;fct&gt;                            &lt;int&gt;
-## 1 baseline                            21
-## 2 negative_induction                  42
-## 3 post_negative_induction_recovery    21
-## 4 positive_induction                  42
-## 5 post_positive_induction_recovery    21</code></pre>
+## 1 baseline                            28
+## 2 negative_induction                  56
+## 3 post_negative_induction_recovery    28
+## 4 positive_induction                  56
+## 5 post_positive_induction_recovery    28</code></pre>
 <hr />
 </div>
 <div id="quality-checks" class="section level2">
@@ -2169,55 +2170,55 @@ cat(&quot;Task rows by condition:\n&quot;)</code></pre>
 <tbody>
 <tr class="odd">
 <td align="left">block_start_valence</td>
-<td align="right">126</td>
+<td align="right">168</td>
 </tr>
 <tr class="even">
 <td align="left">block_start_arousal</td>
-<td align="right">126</td>
+<td align="right">168</td>
 </tr>
 <tr class="odd">
 <td align="left">trigger_name</td>
-<td align="right">64</td>
+<td align="right">85</td>
 </tr>
 <tr class="even">
 <td align="left">video_id</td>
-<td align="right">63</td>
+<td align="right">84</td>
 </tr>
 <tr class="odd">
 <td align="left">stim_valence</td>
-<td align="right">63</td>
+<td align="right">84</td>
 </tr>
 <tr class="even">
 <td align="left">stim_valence_rt</td>
-<td align="right">63</td>
+<td align="right">84</td>
 </tr>
 <tr class="odd">
 <td align="left">stim_arousal</td>
-<td align="right">63</td>
+<td align="right">84</td>
 </tr>
 <tr class="even">
 <td align="left">stim_arousal_rt</td>
-<td align="right">63</td>
+<td align="right">84</td>
 </tr>
 <tr class="odd">
 <td align="left">stim_approach</td>
-<td align="right">63</td>
+<td align="right">84</td>
 </tr>
 <tr class="even">
 <td align="left">stim_approach_rt</td>
-<td align="right">63</td>
+<td align="right">84</td>
 </tr>
 <tr class="odd">
 <td align="left">stim_emotion_label</td>
-<td align="right">63</td>
+<td align="right">84</td>
 </tr>
 <tr class="even">
 <td align="left">stim_emotion_intensity</td>
-<td align="right">63</td>
+<td align="right">84</td>
 </tr>
 <tr class="odd">
 <td align="left">stim_emotion_intensity_rt</td>
-<td align="right">63</td>
+<td align="right">84</td>
 </tr>
 </tbody>
 </table>
@@ -2298,41 +2299,41 @@ cat(&quot;Task rows by condition:\n&quot;)</code></pre>
 <tr class="even">
 <td align="left">v2_jul</td>
 <td align="left">baseline</td>
-<td align="right">19</td>
-<td align="right">4.37</td>
-<td align="right">3.47</td>
+<td align="right">26</td>
+<td align="right">4.31</td>
+<td align="right">3.77</td>
 <td align="right">NaN</td>
 </tr>
 <tr class="odd">
 <td align="left">v2_jul</td>
 <td align="left">negative_induction</td>
-<td align="right">38</td>
-<td align="right">2.53</td>
-<td align="right">4.58</td>
-<td align="right">2.18</td>
+<td align="right">52</td>
+<td align="right">2.31</td>
+<td align="right">4.85</td>
+<td align="right">2.02</td>
 </tr>
 <tr class="even">
 <td align="left">v2_jul</td>
 <td align="left">post_negative_induction_recovery</td>
-<td align="right">19</td>
-<td align="right">3.68</td>
-<td align="right">3.89</td>
+<td align="right">26</td>
+<td align="right">3.58</td>
+<td align="right">3.92</td>
 <td align="right">NaN</td>
 </tr>
 <tr class="odd">
 <td align="left">v2_jul</td>
 <td align="left">positive_induction</td>
-<td align="right">38</td>
-<td align="right">5.21</td>
-<td align="right">4.53</td>
-<td align="right">5.24</td>
+<td align="right">52</td>
+<td align="right">5.23</td>
+<td align="right">4.42</td>
+<td align="right">5.27</td>
 </tr>
 <tr class="even">
 <td align="left">v2_jul</td>
 <td align="left">post_positive_induction_recovery</td>
-<td align="right">19</td>
-<td align="right">4.53</td>
-<td align="right">3.42</td>
+<td align="right">26</td>
+<td align="right">4.42</td>
+<td align="right">3.50</td>
 <td align="right">NaN</td>
 </tr>
 </tbody>
@@ -2348,14 +2349,14 @@ cat(&quot;Task rows by condition:\n&quot;)</code></pre>
 clean_data_long &lt;- select(clean_data_long, -data_version)
 
 write_csv(clean_data_long,          file.path(clean_data_dir, &quot;biosignals2_selfreport_ratings.csv&quot;))
-write_csv(raw_biometrics_labelled,  file.path(clean_data_dir, &quot;biosignals2_webcambiometrics.csv&quot;))
+write_csv(raw_biometrics_labelled,  file.path(clean_data_dir, &quot;biosignals2_webcambiometrics_online.csv&quot;))
 
 cat(&quot;Saved to:&quot;, clean_data_dir, &quot;\n&quot;)</code></pre>
 <pre><code>## Saved to: C:/Users/carme/Box/Project_Biosignals_study_2/3_Data/clean_combined_data/psychopy</code></pre>
 <pre class="r"><code>cat(&quot;  biosignals2_selfreport_ratings.csv —&quot;, nrow(clean_data_long), &quot;rows\n&quot;)</code></pre>
-<pre><code>##   biosignals2_selfreport_ratings.csv — 147 rows</code></pre>
-<pre class="r"><code>cat(&quot;  biosignals2_webcambiometrics.csv   —&quot;, nrow(raw_biometrics_labelled), &quot;rows\n&quot;)</code></pre>
-<pre><code>##   biosignals2_webcambiometrics.csv   — 133788 rows</code></pre>
+<pre><code>##   biosignals2_selfreport_ratings.csv — 196 rows</code></pre>
+<pre class="r"><code>cat(&quot;  biosignals2_webcambiometrics_online.csv   —&quot;, nrow(raw_biometrics_labelled), &quot;rows\n&quot;)</code></pre>
+<pre><code>##   biosignals2_webcambiometrics_online.csv   — 133788 rows</code></pre>
 <hr />
 </div>
 <div id="session-info" class="section level2">

@@ -3,9 +3,9 @@
 # Merges EDA (SCR), HRV, and self-report ratings into a single ML-ready dataset.
 #
 # Inputs (from COMBINED_DATA_DIR defined in config.R):
-#   biosignals2_eda.csv                           — SCR/EDA summary (from 04_analyse_ledalab_scr.Rmd)
-#   biosignals2_KubiosHRVresults.csv              — Kubios HRV batch results (all segments)
-#   psychopy/biosignals2_selfreport_ratings.csv   — Self-report ratings (block + stimulus level)
+#   temp/biosignals2_eda.csv                      — SCR/EDA summary (from 05_analyse_ledalab_scr.Rmd)
+#   kubios/KubiosHRVresults.csv (KUBIOS_RESULTS_DIR) — Kubios ECG HRV batch export (all segments)
+#   temp/biosignals2_selfreport_ratings.csv       — Self-report ratings (block + stimulus level)
 #
 # Output (saved to COMBINED_DATA_DIR):
 #   biosignals2_ml_long.csv  — one row per participant × condition (5 rows per participant)
@@ -75,7 +75,7 @@ clean_colname <- function(x) {
 
 cat("Loading EDA data...\n")
 
-eda_path <- file.path(COMBINED_DATA_DIR, "biosignals2_eda.csv")
+eda_path <- file.path(get0("COMBINED_PSYCHO_DIR", ifnotfound = file.path(COMBINED_DATA_DIR, "temp")), "biosignals2_eda.csv")
 stopifnot(file.exists(eda_path))
 
 eda <- read_csv(eda_path, show_col_types = FALSE) |>
@@ -91,11 +91,38 @@ cat("  EDA:", nrow(eda), "rows,", n_distinct(eda$pid), "participants\n")
 
 cat("Loading HRV data...\n")
 
-hrv_path <- file.path(COMBINED_DATA_DIR, "biosignals2_KubiosHRVresults.csv")
-stopifnot(file.exists(hrv_path))
+# Current ECG batch export in Box 3_Data/kubios (the copy in clean_combined_data is older and
+# misses participants). Same file as biosignals2_block_ecg_kubios.csv in 08_combine_timeseries.R.
+KUBIOS_RESULTS_DIR <- get0("KUBIOS_RESULTS_DIR", ifnotfound = file.path(SERVER_ROOT, "kubios"))
+hrv_path <- file.path(KUBIOS_RESULTS_DIR, "KubiosHRVresults.csv")
+if (!file.exists(hrv_path)) stop("Kubios batch export not found: ", hrv_path)
+cat("  reading", hrv_path, "\n")
 
-# Kubios batch file has 2 header lines before the column names row
-hrv_raw <- read_csv(hrv_path, skip = 2, show_col_types = FALSE)
+# Header = the line starting with FileName (no fixed skip: the file may or may not start with a
+# "sep=," line). Kubios doesn't quote and rows end in a varying number of empty fields, so lines
+# are split by hand and padded/cut to the header length.
+read_kubios_batch <- function(path) {
+  L <- readLines(path, warn = FALSE, encoding = "UTF-8"); L[1] <- sub("^\ufeff", "", L[1])
+  split <- function(l) trimws(gsub('^"|"$', "", strsplit(l, ",", fixed = TRUE)[[1]]))
+  h <- which(startsWith(sub('^"', "", L), "FileName"))[1]
+  if (is.na(h)) stop(path, ": no header line starting with FileName")
+  hdr <- split(L[h]); while (length(hdr) && !nzchar(hdr[length(hdr)])) hdr <- hdr[-length(hdr)]
+  rows <- lapply(L[-seq_len(h)], function(l) {
+    x <- split(l)
+    if (length(x) > length(hdr) && any(nzchar(x[-seq_along(hdr)])))
+      warning("Kubios batch row '", x[1], "' has values beyond the last header column - check for a column shift")
+    length(x) <- length(hdr); x[is.na(x)] <- ""; x })
+  rows <- rows[vapply(rows, function(x) nzchar(x[1]), TRUE)]
+  if (!length(rows)) stop(path, ": no data rows below the FileName header")
+  m <- matrix(unlist(rows), ncol = length(hdr), byrow = TRUE, dimnames = list(NULL, make.unique(hdr)))
+  as_tibble(as.data.frame(m, stringsAsFactors = FALSE, check.names = FALSE))
+}
+hrv_raw <- read_kubios_batch(hrv_path) |>
+  mutate(FileName = basename(gsub("\\\\", "/", FileName))) |>   # FileName may be a full path
+  filter(!str_detect(FileName, regex("facereader|heart beat log|webcam", ignore_case = TRUE)))  # ECG rows only
+# Several rows for one participant: the last one is used (as in 08)
+dup <- hrv_raw |> mutate(pid = tolower(str_extract(FileName, "^[^_.]+"))) |> count(pid) |> filter(n > 1)
+if (nrow(dup)) cat("  Kubios batch: several rows for", paste(dup$pid, collapse = ", "), "- the last one is used\n")
 
 # Segment → condition mapping (S1-S5 order from Kubios Samples output)
 seg_to_condition <- c(
@@ -108,7 +135,8 @@ seg_to_condition <- c(
 
 hrv <- hrv_raw |>
   # Extract participant ID from filename (e.g. "g2313_physiology_trimmed.acq" → "g2313")
-  mutate(pid = tolower(str_extract(FileName, "^[^_]+"))) |>   # IDs ignore case
+  mutate(pid = tolower(str_extract(FileName, "^[^_.]+"))) |>   # IDs ignore case
+  group_by(pid) |> slice_tail(n = 1) |> ungroup() |>
   select(pid, starts_with("S1_"), starts_with("S2_"), starts_with("S3_"),
          starts_with("S4_"), starts_with("S5_")) |>
   # Pivot to long: one row per pid × segment × metric
@@ -140,7 +168,7 @@ cat("  HRV:", nrow(hrv), "rows,", n_distinct(hrv$pid), "participants,",
 
 cat("Loading self-report ratings...\n")
 
-ratings_path <- file.path(COMBINED_DATA_DIR, "psychopy", "biosignals2_selfreport_ratings.csv")
+ratings_path <- file.path(get0("COMBINED_PSYCHO_DIR", ifnotfound = file.path(COMBINED_DATA_DIR, "temp")), "biosignals2_selfreport_ratings.csv")
 stopifnot(file.exists(ratings_path))
 
 # Remap condition names to match HRV/EDA convention

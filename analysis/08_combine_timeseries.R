@@ -6,25 +6,35 @@
 # MAIN-STUDY participant into one file per data source. Pilots, test sessions
 # and excluded participants (participant_status.csv) are left out.
 #
-# OUTPUT  (COMBINED_DATA_DIR = Box 3_Data/clean_combined_data)
-#   1. biosignals2_ts_ecg_kubios.csv          ECG: Kubios per-beat RR series, all 5 blocks
-#   2. biosignals2_ts_facereader_kubios.csv   FaceReader heart beats: Kubios per-beat RR series
-#      biosignals2_ts_facereader_au.csv       FaceReader action units, one row per video frame, on
+# OUTPUT  (SHAREABLE_DATA_DIR = Box 3_Data/clean_combined_data/shareable) - the files to share
+#   biosignals2_questionnaires_scores.csv     Questionnaire scores (from 04), minus DROP_COLUMNS
+#   biosignals2_self-report_rating.csv        Self-report ratings (from 01), minus trigger_name
+#   biosignals2_ts_webcambiometrics_offline.csv  Webcam beats from 002_run_webcam_biometrics.py (OFFLINE,
+#                                             variant WEBCAM_OFFLINE_VARIANT), one row per beat, by block
+#   (off) biosignals2_ts_webcambiometrics_online.csv  PsychoPy's live (ONLINE) stream from 01
+#   biosignals2_ts_ecg_kubios.csv             ECG: Kubios per-beat RR series, all 5 blocks
+#   biosignals2_ts_facereader_kubios.csv      FaceReader heart beats: Kubios per-beat RR series
+#   biosignals2_ts_facereader_au.csv          FaceReader action units, one row per video frame, on
 #                                             the recording clock, labelled with block + video
-#   3. biosignals2_ts_psychopy.csv            Cleaned PsychoPy webcam-biometrics stream, labelled
-#                                             by phase (from 01_data_cleaning.Rmd)
-#   4. biosignals2_ts_ledalab_scr.csv         Ledalab: every detected SCR (onset, amplitude, ...),
+#   biosignals2_ts_eda_ledalab.csv            Ledalab: every detected SCR (onset, amplitude, ...),
 #                                             labelled with the block it falls in
-#      biosignals2_ts_ledalab_continuous.csv  Ledalab: the continuous decomposition (conductance,
-#                                             tonic, phasic, driver) from <pid>.mat - only if the
-#                                             R.matlab package is installed (LEDALAB_CONTINUOUS)
-#      biosignals2_ts_*_kubios_spectrum.csv   Only if the Kubios reports hold spectrum columns
-#                                             (frequency / PSD) next to the RR data
-#   Participant IDs are replaced by codes P001, P002, ... (PSEUDONYMISE_IDS); the key and the two
-#   check files below are saved in 3_Data/private/ instead (they hold real IDs).
+#   Block level (one row per participant x block):
+#   biosignals2_block_eda_ledalab.csv         Ledalab ERA per block  <- clean_combined_data/temp/biosignals2_eda.csv (05)
+#   biosignals2_block_ecg_kubios.csv          ECG Kubios per block   <- kubios/KubiosHRVresults.csv (batch export)
+#   biosignals2_block_facereader_kubios.csv   FaceReader Kubios per block <- facereader/KubiosHRVresults.csv (batch export)
+#   biosignals2_clock_offsets.csv             Webcam -> BIOPAC clock offset per participant <- 3_Data/ecg_video_offsets.csv (002)
+#   biosignals2_README.md + biosignals2_data_dictionary.csv  What every file / column is, clocks,
+#                                             caveats - generated each run from data_dictionary.R
+#   Every file: participant_id (code) + block (BLOCK_LEVELS in data_dictionary.R) first.
+#   Switched off for now (toggles below): Kubios spectrum (KUBIOS_SPECTRUM), demographics
+#   (WRITE_DEMOGRAPHICS), Ledalab continuous decomposition (LEDALAB_CONTINUOUS).
+#   Columns removed before writing: DROP_COLUMNS below.
+#   Participant IDs are replaced by codes P01, P02, ... from the ONE key shared with the interim
+#   report (07): 3_Data/private/interim_report_id_key.csv, see analysis/id_key.R. The two check
+#   files below are saved in 3_Data/private/ too (they hold real IDs).
 #      biosignals2_ts_sources.csv             Which input file each participant's rows came from,
 #                                             and what was skipped and why
-#   5. biosignals2_ts_demographics.csv        Baseline (Demographics) survey: participant_id + the survey
+#   (off) biosignals2_ts_demographics.csv     Baseline (Demographics) survey: participant_id + the survey
 #                                             answers only - no Qualtrics metadata (dates, IP, location,
 #                                             ResponseId, recipient fields) and nothing email-related
 #                                             Answer codes turned into answer text (DEMOGRAPHICS_LABELS)
@@ -43,7 +53,10 @@
 #                             <pid>_frame_timestamps.csv (FRAME_TIMESTAMP_DIRS). Realtime videos: as is.
 #                             Labels from FACEREADER_ONSETS_DIR/<pid>_video_events.csv (onset_s/offset_s).
 #                             .xlsx needs readxl.
-#   PsychoPy                  COMBINED_PSYCHO_DIR/biosignals2_webcambiometrics.csv (run 01 first)
+#   Webcam ONLINE             COMBINED_PSYCHO_DIR/biosignals2_webcambiometrics_online.csv (run 01 first)
+#   Webcam OFFLINE            WEBCAM_HR_DIR/<pid>_webcam_beats_<variant>.csv (002_run_webcam_biometrics.py)
+#   Self-report ratings       COMBINED_PSYCHO_DIR/biosignals2_selfreport_ratings.csv (run 01 first)
+#   Questionnaire scores      COMBINED_PSYCHO_DIR/biosignals2_questionnaires_scored.csv (run 04 first)
 #   Ledalab                   LEDALAB_RESULTS_DIR/<pid>_scrlist.txt (+ <pid>.mat for continuous)
 #                             BLOCK_ONSETS_DIR/<pid>_events_blocks_biopac_ledalab.txt and
 #                             nid_map_biopac_ledalab.txt (block onsets used to label the SCRs)
@@ -70,8 +83,40 @@
 #   "Has data" = a usable file was read for that source (Ledalab: an SCR list, even if it holds
 #   no SCRs). It does not check that all 5 blocks are present - see n_blocks in the coverage file.
 COMPLETE_CASES_ONLY <- TRUE
-REQUIRED_SOURCES    <- c("ecg_kubios", "facereader_kubios", "facereader_au", "psychopy", "ledalab_scr",
-                         "demographics")
+REQUIRED_SOURCES    <- c("ecg_kubios", "facereader_kubios", "facereader_au",
+                         "ledalab_scr", "questionnaires", "ratings",
+                         "block_eda", "block_kubios_ecg", "block_kubios_facereader")
+#   webcam offline is not required (or written) while WRITE_WEBCAM_OFFLINE is FALSE - when it is
+#   turned on, add "webcambiometrics_offline" here too
+#   add "demographics" here only if WRITE_DEMOGRAPHICS is TRUE
+
+# Which outputs are made (FALSE = not read, not written, not counted for complete cases)
+WRITE_DEMOGRAPHICS <- FALSE  # biosignals2_ts_demographics.csv (+ _questions.csv)
+# Webcam biometrics: ONLINE = computed live by PsychoPy during the session (01's
+# biosignals2_webcambiometrics_online.csv); OFFLINE = 002_run_webcam_biometrics.py on the 1:1 video.
+WRITE_WEBCAM_ONLINE    <- FALSE        # biosignals2_ts_webcambiometrics_online.csv (01 labels pilots only)
+WRITE_WEBCAM_OFFLINE   <- FALSE        # biosignals2_ts_webcambiometrics_offline.csv - off until the offline
+                                       # beats are less noisy (Carmen, 29 Oct); TRUE + add to REQUIRED_SOURCES
+WEBCAM_OFFLINE_VARIANT <- "optimized"  # which 002 code version: baseline / faceloss / optimized
+KUBIOS_SPECTRUM    <- FALSE  # biosignals2_ts_*_kubios_spectrum.csv - to revisit later
+
+# Columns removed from each shared file. A listed column that isn't in the data is reported
+# in the console (so a typo or a renamed column shows up), never an error.
+kubios_drop <- c("source_file", "ecg_mv", "marker", "block_order", "block_start_s", "block_end_s",
+                 "t_from_block_start_s")
+DROP_COLUMNS <- list(
+  "biosignals2_questionnaires_scores.csv" = c("gad7_severity", "phq9_severity", "gad7_n_missing",
+      "phq9_n_missing", "aq10_n_missing", "paq_n_missing", "das_sf1_n_missing", "das_sf2_n_missing",
+      "phq9_item9_flagged"),
+  "biosignals2_self-report_rating.csv"    = c("trigger_name", "conditionOrder"),  # conditionOrder: same for everyone (always negative first)
+  "biosignals2_ts_ecg_kubios.csv"         = kubios_drop,
+  "biosignals2_ts_facereader_kubios.csv"  = kubios_drop,
+  "biosignals2_ts_facereader_au.csv"      = c("source_file", "block_order"),
+  "biosignals2_ts_webcambiometrics_offline.csv" = c("source_file"),
+  "biosignals2_ts_eda_ledalab.csv"        = c("source_file"),
+  "biosignals2_block_ecg_kubios.csv"        = c("block_order"),
+  "biosignals2_block_facereader_kubios.csv" = c("block_order")
+)
 #   add "ledalab_continuous" to also require the Ledalab .mat decomposition (needs R.matlab)
 
 # Demographics survey (Qualtrics)
@@ -121,19 +166,17 @@ DEMOGRAPHICS_CODE_LABELS <- list(
 )
 
 # Participant codes instead of IDs (PSEUDONYMISE_IDS = TRUE)
-#   In every data file the participant ID (e.g. s1250) becomes a code P001, P002, ... - in the
+#   In every data file the participant ID (e.g. s1250) becomes a code P01, P02, ... - in the
 #   participant_id column AND anywhere else it appears (e.g. file names in source_file).
-#   Codes are given in a RANDOM order (not by ID or recruitment date), kept from run to run and
-#   never reused; new participants get the next free numbers. The code <-> ID key is saved only in
-#   3_Data/private/ (ID_KEY_PATH), never in the repository; nothing in this code can rebuild it.
+#   The key is the interim report's (07) key, 3_Data/private/interim_report_id_key.csv, handled by
+#   analysis/id_key.R: one code per person in every output. Codes are kept from run to run and never
+#   reused; new participants get the next free numbers in a random order. The run stops rather than
+#   start a new key if the key is missing (with backups present), unreadable or inconsistent.
 #   The two check files (sources, coverage) list real IDs and file names, so they are saved in
 #   3_Data/private/ too, not in clean_combined_data.
-#   This key is separate from the interim report's key (private/interim_report_id_key.csv), so a
-#   participant's code here is not the same as their code in the interim report.
 PSEUDONYMISE_IDS <- TRUE
-ID_KEY_FILE      <- "combined_data_id_key.csv"   # in 3_Data/private/
 
-LEDALAB_CONTINUOUS <- TRUE  # also export the Ledalab decomposition from <pid>.mat (needs R.matlab)
+LEDALAB_CONTINUOUS <- FALSE # also export the Ledalab decomposition from <pid>.mat (needs R.matlab)
 BLOCK_WINDOW_S     <- 180    # Ledalab block length used to label SCRs / samples (= ERA window 0-180 s)
 FR_EXTRA_COLUMNS   <- FALSE  # TRUE = also keep FaceReader emotions, valence and arousal next to the AUs
 MIN_VIDEO_FPS      <- 5      # a FaceReader 'Frame rate' below this is a reduced export rate (as in 03)
@@ -168,7 +211,7 @@ KUBIOS_RESULTS_DIR     <- get0("KUBIOS_RESULTS_DIR",     ifnotfound = file.path(
 RAW_PHYSIOLOGY_DIR     <- get0("RAW_PHYSIOLOGY_DIR",     ifnotfound = file.path(SERVER_ROOT, "raw_physiology", "experimental_protocol_duration"))
 FACEREADER_RESULTS_DIR <- get0("FACEREADER_RESULTS_DIR", ifnotfound = file.path(SERVER_ROOT, "facereader"))
 COMBINED_DATA_DIR      <- get0("COMBINED_DATA_DIR",      ifnotfound = file.path(SERVER_ROOT, "clean_combined_data"))
-COMBINED_PSYCHO_DIR    <- get0("COMBINED_PSYCHO_DIR",    ifnotfound = file.path(COMBINED_DATA_DIR, "psychopy"))
+COMBINED_PSYCHO_DIR    <- get0("COMBINED_PSYCHO_DIR",    ifnotfound = file.path(COMBINED_DATA_DIR, "temp"))
 LEDALAB_RESULTS_DIR    <- get0("LEDALAB_RESULTS_DIR",    ifnotfound = file.path(SERVER_ROOT, "ledalab"))
 BLOCK_ONSETS_DIR       <- get0("BLOCK_ONSETS_DIR",       ifnotfound = file.path(SERVER_ROOT, "event_onsets", "blocks"))
 FACEREADER_ONSETS_DIR  <- get0("FACEREADER_ONSETS_DIR",  ifnotfound = file.path(SERVER_ROOT, "event_onsets", "facereader_video"))
@@ -176,10 +219,13 @@ FRAME_TIMESTAMP_DIRS   <- get0("FRAME_TIMESTAMP_DIRS",   ifnotfound = c(file.pat
                                                                        "D:/Biosignals2_video", "D:/Biosignals2_png_data"))
 QUESTIONNAIRE_DIR      <- get0("QUESTIONNAIRE_DIR",      ifnotfound = file.path(SERVER_ROOT, "raw_questionnaire", "combined"))
 
-OUT_DIR <- COMBINED_DATA_DIR   # Box 3_Data/clean_combined_data (from config.R)
+SHAREABLE_DATA_DIR     <- get0("SHAREABLE_DATA_DIR",     ifnotfound = file.path(COMBINED_DATA_DIR, "shareable"))
+OUT_DIR <- SHAREABLE_DATA_DIR  # Box 3_Data/clean_combined_data/shareable (from config.R)
 dir.create(OUT_DIR, showWarnings = FALSE, recursive = TRUE)
 PRIVATE_DIR <- file.path(SERVER_ROOT, "private")          # ID key + check files with real IDs
-ID_KEY_PATH <- file.path(PRIVATE_DIR, ID_KEY_FILE)
+source(file.path(analysis_dir, "id_key.R"), local = TRUE)
+source(file.path(analysis_dir, "data_dictionary.R"), local = TRUE)   # README + data dictionary, canon_block()
+ID_KEY_PATH <- id_key_path(SERVER_ROOT)                   # shared with 07_interim_summary.Rmd
 LOG_DIR     <- if (PSEUDONYMISE_IDS) PRIVATE_DIR else OUT_DIR
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -189,7 +235,7 @@ pid_of <- function(f) tolower(sub("_.*$", "", sub("\\.[^.]*$", "", basename(f)))
 
 list_files <- function(dirs, pattern) {
   dirs <- unique(dirs[dir.exists(dirs)])
-  unique(unlist(lapply(dirs, list.files, pattern = pattern, ignore.case = TRUE, full.names = TRUE)))
+  as.character(unique(unlist(lapply(dirs, list.files, pattern = pattern, ignore.case = TRUE, full.names = TRUE))))
 }
 
 clean_names <- function(x) {
@@ -239,7 +285,8 @@ write_file <- function(df, name, dir = OUT_DIR) {
   if (!nrow(df)) { say("  %s: no rows - not written", name); return(invisible(NULL)) }
   if (requireNamespace("data.table", quietly = TRUE)) data.table::fwrite(df, path)
   else utils::write.csv(df, path, row.names = FALSE, na = "")
-  say("  -> %s  (%d rows, %d participants)", name, nrow(df), length(unique(df$participant_id)))
+  if ("participant_id" %in% names(df)) say("  -> %s  (%d rows, %d participants)", name, nrow(df), length(unique(df$participant_id)))
+  else say("  -> %s  (%d rows)", name, nrow(df))
 }
 
 # Source log: one row per participant x source.
@@ -365,7 +412,7 @@ combine_kubios <- function(files, source, out_name) {
   b <- rbind_fill(beats)
   if (nrow(b)) say("  columns: %s", paste(setdiff(names(b), c("participant_id", "source_file")), collapse = ", "))
   write_out(b, out_name, source)
-  if (length(spec)) write_out(rbind_fill(spec), sub("\\.csv$", "_spectrum.csv", out_name), source)
+  if (KUBIOS_SPECTRUM && length(spec)) write_out(rbind_fill(spec), sub("\\.csv$", "_spectrum.csv", out_name), source)
   invisible(b)
 }
 
@@ -518,18 +565,23 @@ if (nrow(fr_idx)) for (p in unique(fr_idx$pid)) {
 }
 write_out(rbind_fill(fr_out), "biosignals2_ts_facereader_au.csv", "facereader_au")
 
-# ── 3. PsychoPy (cleaned webcam-biometrics stream) ────────────────────────────
-say("\n== psychopy")
-pp_path <- file.path(COMBINED_PSYCHO_DIR, "biosignals2_webcambiometrics.csv")
-if (!file.exists(pp_path)) {
+# ── 3. Webcam biometrics ONLINE (computed live by PsychoPy; cleaned + labelled by 01) ──
+# Off by default (WRITE_WEBCAM_ONLINE): 01 labels it for the pilots only, and the main study uses
+# the OFFLINE results (section 3b).
+pp_path <- file.path(COMBINED_PSYCHO_DIR, "biosignals2_webcambiometrics_online.csv")
+if (!WRITE_WEBCAM_ONLINE) {
+  say("\n== webcambiometrics_online: switched off (WRITE_WEBCAM_ONLINE = FALSE)")
+} else if (!file.exists(pp_path)) {
+  say("\n== webcambiometrics_online")
   say("  %s not found - run 01_data_cleaning.Rmd first", pp_path)
-  log_src("psychopy", NA, "skipped (file missing)", basename(pp_path))
+  log_src("webcambiometrics_online", NA, "skipped (file missing)", basename(pp_path))
 } else {
+  say("\n== webcambiometrics_online")
   pp <- if (requireNamespace("data.table", quietly = TRUE)) data.table::fread(pp_path, data.table = FALSE)
         else utils::read.csv(pp_path, stringsAsFactors = FALSE, check.names = FALSE)
   pp$participant_id <- tolower(trimws(as.character(pp$participant_id)))
   keep <- is_main(pp$participant_id)
-  for (p in unique(pp$participant_id[!keep])) log_src("psychopy", p, "left out", note = participant_status_of(p))
+  for (p in unique(pp$participant_id[!keep])) log_src("webcambiometrics_online", p, "left out", note = participant_status_of(p))
   pp <- pp[keep, , drop = FALSE]
   # time order within participant (mono_time = biometrics clock, seconds)
   if ("mono_time" %in% names(pp)) {
@@ -537,11 +589,63 @@ if (!file.exists(pp_path)) {
     pp$t_from_first_sample_s <- ave(num(pp$mono_time), pp$participant_id, FUN = function(x) x - min(x, na.rm = TRUE))
   }
   for (p in unique(pp$participant_id))
-    log_src("psychopy", p, "included", basename(pp_path), sprintf("%d samples", sum(pp$participant_id == p)))
-  write_out(pp, "biosignals2_ts_psychopy.csv", "psychopy")
+    log_src("webcambiometrics_online", p, "included", basename(pp_path), sprintf("%d samples", sum(pp$participant_id == p)))
+  write_out(pp, "biosignals2_ts_webcambiometrics_online.csv", "webcambiometrics_online")
 }
 
+# ── 3b. Webcam biometrics OFFLINE (002_run_webcam_biometrics.py on the 1:1 video) ──
+# WEBCAM_HR_DIR/<pid>_webcam_beats_<WEBCAM_OFFLINE_VARIANT>.csv: one row per detected beat, already
+# labelled with its block by 002 (Baseline / Negative Induction ...). Raw beats, no artefact
+# correction; near_gap flags beats next to a face-loss gap (nothing removed). See 002's docstring.
+if (!WRITE_WEBCAM_OFFLINE) {
+  say("\n== webcambiometrics_offline: switched off (WRITE_WEBCAM_OFFLINE = FALSE)")
+} else {
+say("\n== webcambiometrics_offline (variant %s)", WEBCAM_OFFLINE_VARIANT)
+WEBCAM_HR_DIR <- get0("WEBCAM_HR_DIR", ifnotfound = file.path(SERVER_ROOT, "webcam_biometrics"))
+wc_files <- list_files(WEBCAM_HR_DIR, paste0("^[^_]+_webcam_beats_", WEBCAM_OFFLINE_VARIANT, "\\.csv$"))
+wc_out <- list()
+for (p in names(wc_pick <- pick_per_pid(wc_files, "webcambiometrics_offline"))) {
+  f <- wc_pick[[p]]
+  d <- tryCatch(utils::read.csv(f, stringsAsFactors = FALSE, check.names = FALSE, na.strings = c("", "NA")),
+                error = function(e) e)
+  if (inherits(d, "error")) { log_src("webcambiometrics_offline", p, "skipped (unreadable)", basename(f), conditionMessage(d)); next }
+  if (!nrow(d)) { log_src("webcambiometrics_offline", p, "skipped (no beats)", basename(f)); next }
+  if ("block" %in% names(d)) d$block <- ifelse(is.na(d$block) | !nzchar(trimws(d$block)), NA_character_, norm_block(d$block))
+  wc_out[[p]] <- cbind(participant_id = p, source_file = basename(f), d, stringsAsFactors = FALSE)
+  log_src("webcambiometrics_offline", p, "included", basename(f),
+          sprintf("%d beats, %d blocks", nrow(d), length(unique(na.omit(wc_out[[p]]$block)))))
+}
+say("  %d participant(s) with %s beats in %s", length(wc_out), WEBCAM_OFFLINE_VARIANT, WEBCAM_HR_DIR)
+write_out(rbind_fill(wc_out), "biosignals2_ts_webcambiometrics_offline.csv", "webcambiometrics_offline")
+}
+
+# ── 3a. Self-report ratings and questionnaire scores (one file each, from 01 / 04) ──
+read_table_file <- function(path, source, out_name) {
+  say("\n== %s", source)
+  if (!file.exists(path)) {
+    say("  %s not found - run %s first", path, if (source == "ratings") "01_data_cleaning.Rmd" else "04_questionnaire_analysis.Rmd")
+    log_src(source, NA, "skipped (file missing)", basename(path)); return(invisible(NULL))
+  }
+  d <- utils::read.csv(path, stringsAsFactors = FALSE, check.names = FALSE, na.strings = c("", "NA"))
+  if (!"participant_id" %in% names(d)) stop(basename(path), ": no participant_id column")
+  d$participant_id <- tolower(trimws(as.character(d$participant_id)))
+  d <- d[!is.na(d$participant_id) & nzchar(d$participant_id), , drop = FALSE]
+  # 01 calls the block "condition" (post_negative_induction_recovery ...): same name as everywhere else
+  if ("condition" %in% names(d) && !"block" %in% names(d)) names(d)[names(d) == "condition"] <- "block"
+  keep <- is_main(d$participant_id)
+  for (p in unique(d$participant_id[!keep])) log_src(source, p, "left out", note = participant_status_of(p))
+  d <- d[keep, , drop = FALSE]
+  for (p in unique(d$participant_id))
+    log_src(source, p, "included", basename(path), sprintf("%d rows", sum(d$participant_id == p)))
+  write_out(d, out_name, source)
+}
+read_table_file(file.path(COMBINED_PSYCHO_DIR, "biosignals2_selfreport_ratings.csv"), "ratings",
+                "biosignals2_self-report_rating.csv")
+read_table_file(file.path(COMBINED_PSYCHO_DIR, "biosignals2_questionnaires_scored.csv"), "questionnaires",
+                "biosignals2_questionnaires_scores.csv")
+
 # ── 3b. Demographics survey (survey answers + participant ID only) ────────────
+# Only when WRITE_DEMOGRAPHICS is TRUE (switched off: the questionnaire scores file is shared instead).
 # Qualtrics CSV: row 1 = column names (Q51, QID7_1, StartDate, ...), row 2 = question text,
 # row 3 = ImportId JSON ({"ImportId":"QID7_1"}). Survey answers are the columns whose ImportId starts
 # with "QID"; everything else is Qualtrics metadata or embedded data (StartDate, EndDate, IPAddress,
@@ -577,12 +681,15 @@ read_qsf_labels <- function(path) {
   out
 }
 
-say("\n== demographics")
 dem_path <- file.path(QUESTIONNAIRE_DIR, DEMOGRAPHICS_FILE)
-if (!file.exists(dem_path)) {
+if (!WRITE_DEMOGRAPHICS) {
+  say("\n== demographics: switched off (WRITE_DEMOGRAPHICS = FALSE)")
+} else if (!file.exists(dem_path)) {
+  say("\n== demographics")
   say("  %s not found - run combine_qualtrics_exports.R first", dem_path)
   log_src("demographics", NA, "skipped (file missing)", basename(dem_path))
 } else {
+  say("\n== demographics")
   q <- utils::read.csv(dem_path, header = FALSE, colClasses = "character", na.strings = character(0),
                        fileEncoding = "UTF-8-BOM", check.names = FALSE)
   if (nrow(q) < 3 || !any(grepl('"ImportId"', unlist(q[3, ]), fixed = TRUE)))
@@ -739,7 +846,7 @@ for (p in names(scr_files)) {
                     stringsAsFactors = FALSE)
   log_src("ledalab_scr", p, "included", basename(f), sprintf("%d SCRs", nrow(d)))
 }
-write_out(rbind_fill(scr), "biosignals2_ts_ledalab_scr.csv", "ledalab_scr")
+write_out(rbind_fill(scr), "biosignals2_ts_eda_ledalab.csv", "ledalab_scr")
 
 # 4b. Continuous decomposition from <pid>.mat (Ledalab 3.49: data.time/conductance, analysis.*)
 if (LEDALAB_CONTINUOUS && !requireNamespace("R.matlab", quietly = TRUE)) {
@@ -776,12 +883,133 @@ if (LEDALAB_CONTINUOUS && !requireNamespace("R.matlab", quietly = TRUE)) {
   write_out(rbind_fill(cont), "biosignals2_ts_ledalab_continuous.csv", "ledalab_continuous")
 }
 
+# ── 5. Block-level files (one row per participant x block) ────────────────────
+# 5a. Ledalab ERA summary per block, as written by 05_analyse_ledalab_scr.Rmd
+say("\n== block_eda")
+eda_path <- file.path(COMBINED_PSYCHO_DIR, "biosignals2_eda.csv")
+if (!file.exists(eda_path)) {
+  say("  %s not found - run 05_analyse_ledalab_scr.Rmd first", eda_path)
+  log_src("block_eda", NA, "skipped (file missing)", basename(eda_path))
+} else {
+  d <- utils::read.csv(eda_path, stringsAsFactors = FALSE, check.names = FALSE, na.strings = c("", "NA"))
+  idc <- intersect(c("participant_id", "pid"), names(d))[1]
+  if (is.na(idc)) stop(basename(eda_path), ": no pid / participant_id column")
+  d$participant_id <- tolower(trimws(as.character(d[[idc]])))
+  # 05 calls the block "condition" with short names (neg_induction); use 08's "block" + names
+  # (negative_induction) so every shared file labels blocks the same way
+  if ("condition" %in% names(d) && !"block" %in% names(d)) names(d)[names(d) == "condition"] <- "block"
+  if ("block" %in% names(d)) d$block <- norm_block(d$block)
+  d <- d[, c("participant_id", intersect("block", names(d)),
+             setdiff(names(d), c("participant_id", "pid", "block"))), drop = FALSE]
+  keep <- is_main(d$participant_id)
+  for (p in unique(d$participant_id[!keep])) log_src("block_eda", p, "left out", note = participant_status_of(p))
+  d <- d[keep, , drop = FALSE]
+  for (p in unique(d$participant_id))
+    log_src("block_eda", p, "included", basename(eda_path), sprintf("%d rows", sum(d$participant_id == p)))
+  write_out(d, "biosignals2_block_eda_ledalab.csv", "block_eda")
+}
+
+# Kubios block values: the same layout for ECG and FaceReader - participant_id, block,
+# block_order, then one column per Kubios measure (names cleaned, e.g. "S1_Mean HR (bpm)" -> mean_hr_bpm).
+BLOCK_ORDER <- c("baseline", "negative_induction", "negative_recovery", "positive_induction", "positive_recovery")
+
+# 5b/5c. Kubios batch summaries (Carmen, 29 Oct): ECG = KUBIOS_RESULTS_DIR/KubiosHRVresults.csv
+# (Box 3_Data/kubios), FaceReader = FACEREADER_RESULTS_DIR/KubiosHRVresults.csv (Box 3_Data/facereader).
+# Samples S1..S5 = BLOCK_ORDER (the Kubios_Samples.csv order, as in 06/07). Header = the line
+# starting with FileName (no fixed skip: no "sep=," line, rows end in a varying number of empty
+# fields). Participant = FileName up to the first _ or . (FileName may be a full Windows path).
+# Rows from the other stream (ECG in the FaceReader file or the reverse) are left out.
+read_kubios_batch_blocks <- function(path, source, other_stream_rx) {
+  say("\n== %s", source)
+  if (!file.exists(path)) {
+    say("  %s not found", path)
+    log_src(source, NA, "skipped (file missing)", basename(path)); return(data.frame())
+  }
+  say("  reading %s", path)
+  L <- readLines(path, warn = FALSE, encoding = "UTF-8"); L[1] <- sub("^﻿", "", L[1])
+  split <- function(l) trimws(gsub('^"|"$', "", strsplit(l, ",", fixed = TRUE)[[1]]))
+  h <- which(startsWith(sub('^"', "", L), "FileName"))[1]
+  if (is.na(h)) stop(path, ": no header line starting with FileName")
+  hdr <- split(L[h]); while (length(hdr) && !nzchar(hdr[length(hdr)])) hdr <- hdr[-length(hdr)]
+  rows <- lapply(L[-seq_len(h)], function(l) {
+    x <- split(l)
+    if (length(x) > length(hdr) && any(nzchar(x[-seq_along(hdr)])))
+      say("  WARNING: row '%s' has values beyond the last header column - check for a column shift", x[1])
+    length(x) <- length(hdr); x[is.na(x)] <- ""; x })
+  rows <- rows[vapply(rows, function(x) nzchar(x[1]), TRUE)]
+  fname <- basename(gsub("\\\\", "/", vapply(rows, `[`, "", 1)))
+  other <- grepl(other_stream_rx, fname, ignore.case = TRUE)
+  if (any(other)) say("  %d row(s) from the other stream left out: %s", sum(other), paste(fname[other], collapse = ", "))
+  rows <- rows[!other]; fname <- fname[!other]
+  pids <- tolower(sub("[_.].*$", "", fname))
+  out <- list()
+  for (p in unique(pids)) {
+    if (!is_main(p)) { log_src(source, p, "left out", note = participant_status_of(p)); next }
+    r <- which(pids == p)
+    if (length(r) > 1) log_src(source, p, "not used (older duplicate)", basename(path),
+                               sprintf("%d rows for this participant - the last one is used", length(r)))
+    x <- rows[[r[length(r)]]]
+    per <- lapply(seq_along(BLOCK_ORDER), function(i) {
+      k <- which(startsWith(hdr, paste0("S", i, "_")))
+      if (!length(k)) return(NULL)
+      v <- x[k]; vn <- num(v)
+      vals <- lapply(seq_along(k), function(j) if (is.na(vn[j]) && nzchar(v[j])) v[j] else vn[j])
+      d <- as.data.frame(setNames(vals, clean_names(sub("^S\\d+_", "", hdr[k]))), stringsAsFactors = FALSE)
+      cbind(participant_id = p, block = BLOCK_ORDER[i], block_order = i, d, stringsAsFactors = FALSE)
+    })
+    out[[p]] <- rbind_fill(per)
+    log_src(source, p, "included", basename(path), sprintf("%d blocks (%s)", nrow(out[[p]]), fname[r[length(r)]]))
+  }
+  d <- rbind_fill(out)
+  if (nrow(d)) say("  %d participants; measures: %s", length(out),
+                   paste(setdiff(names(d), c("participant_id", "block", "block_order")), collapse = ", "))
+  d
+}
+write_out(read_kubios_batch_blocks(file.path(KUBIOS_RESULTS_DIR, "KubiosHRVresults.csv"), "block_kubios_ecg",
+                                   "facereader|heart beat log|webcam"),
+          "biosignals2_block_ecg_kubios.csv", "block_kubios_ecg")
+write_out(read_kubios_batch_blocks(file.path(FACEREADER_RESULTS_DIR, "KubiosHRVresults.csv"), "block_kubios_facereader",
+                                   "physiology|webcam"),
+          "biosignals2_block_facereader_kubios.csv", "block_kubios_facereader")
+
+# ── 6. Clock offsets: webcam clock -> BIOPAC clock (one row per participant) ──
+# From 3_Data/ecg_video_offsets.csv (pid, offset_s), written by video/002_run_webcam_biometrics.py
+# from the trigger events: BIOPAC time = webcam time + offset_s. Not a required source: a participant
+# without an offset is simply not in this file (it doesn't drop them from the others).
+say("\n== clock_offsets")
+OFFSETS_PATH <- get0("ECG_VIDEO_OFFSETS_PATH", ifnotfound = file.path(SERVER_ROOT, "ecg_video_offsets.csv"))
+if (!file.exists(OFFSETS_PATH)) {
+  say("  %s not found - run video/002_run_webcam_biometrics.py first", OFFSETS_PATH)
+  log_src("clock_offsets", NA, "skipped (file missing)", basename(OFFSETS_PATH))
+} else {
+  o <- tryCatch(utils::read.csv(OFFSETS_PATH, colClasses = "character", strip.white = TRUE, check.names = FALSE),
+                error = function(e) e)
+  if (inherits(o, "error") || !all(c("pid", "offset_s") %in% names(o))) {
+    say("  %s: unreadable or no pid / offset_s column - not written", basename(OFFSETS_PATH))
+    log_src("clock_offsets", NA, "skipped (unreadable)", basename(OFFSETS_PATH))
+  } else {
+    d <- data.frame(participant_id = tolower(trimws(o$pid)), offset_s = num(o$offset_s), stringsAsFactors = FALSE)
+    d <- d[nzchar(d$participant_id) & !is.na(d$offset_s), , drop = FALSE]
+    d <- d[!duplicated(d$participant_id, fromLast = TRUE), , drop = FALSE]   # last row wins, as in 002
+    keep <- is_main(d$participant_id)
+    for (p in d$participant_id[!keep]) log_src("clock_offsets", p, "left out", note = participant_status_of(p))
+    d <- d[keep, , drop = FALSE]
+    for (p in d$participant_id) log_src("clock_offsets", p, "included", basename(OFFSETS_PATH))
+    say("  %d main-study participant(s) with an offset", nrow(d))
+    write_out(d, "biosignals2_clock_offsets.csv", "clock_offsets")
+  }
+}
+
 # ── Coverage: who has what ────────────────────────────────────────────────────
 say("\n== coverage")
 src <- rbind_fill(sources)
 if (nrow(src)) { src <- src[order(src$source, src$participant_id), ]; write_file(src, "biosignals2_ts_sources.csv", LOG_DIR) }
-all_sources <- c("ecg_kubios", "facereader_kubios", "facereader_au", "psychopy", "ledalab_scr",
-                 if (LEDALAB_CONTINUOUS) "ledalab_continuous", "demographics")
+all_sources <- c("ecg_kubios", "facereader_kubios", "facereader_au",
+                 if (WRITE_WEBCAM_OFFLINE) "webcambiometrics_offline",
+                 if (WRITE_WEBCAM_ONLINE) "webcambiometrics_online", "ledalab_scr",
+                 "questionnaires", "ratings", "block_eda", "block_kubios_ecg", "block_kubios_facereader",
+                 "clock_offsets",
+                 if (LEDALAB_CONTINUOUS) "ledalab_continuous", if (WRITE_DEMOGRAPHICS) "demographics")
 bad_req <- setdiff(REQUIRED_SOURCES, all_sources)
 if (length(bad_req)) stop("REQUIRED_SOURCES: unknown or switched-off source(s): ", paste(bad_req, collapse = ", "),
                           ". Use any of: ", paste(all_sources, collapse = ", "))
@@ -824,42 +1052,22 @@ if (COMPLETE_CASES_ONLY) {
 }
 
 # ── Participant codes ─────────────────────────────────────────────────────────
-# Key columns: participant_code, participant_id, date_assigned, scheme. Saved BEFORE any data file,
-# and the run stops if it can't be saved, so no file ever holds codes that aren't recorded.
 written_ids <- sort(unique(unlist(lapply(PENDING, function(x) {
   d <- x$df; if (!nrow(d)) return(NULL)
   ids <- unique(d$participant_id); if (COMPLETE_CASES_ONLY) intersect(ids, keep_ids) else ids
 }))))
 if (PSEUDONYMISE_IDS) {
   say("\n== participant codes")
-  key <- if (file.exists(ID_KEY_PATH)) utils::read.csv(ID_KEY_PATH, colClasses = "character") else
-           data.frame(participant_code = character(), participant_id = character(),
-                      date_assigned = character(), scheme = character())
-  if (!all(c("participant_code", "participant_id") %in% names(key)))
-    stop(ID_KEY_PATH, " has no participant_code / participant_id columns - not a key from this script")
-  key$participant_id <- tolower(trimws(key$participant_id))
-  if (anyDuplicated(key$participant_id) || anyDuplicated(key$participant_code))
-    stop(ID_KEY_PATH, ": an ID or code is listed twice - fix the key by hand before running again")
-  new_ids <- setdiff(written_ids, key$participant_id)
-  if (length(new_ids)) {
-    next_n  <- if (nrow(key)) max(as.integer(sub("^P", "", key$participant_code))) + 1L else 1L
-    set.seed(NULL)                                       # fresh randomness, never a fixed seed
-    new_ids <- new_ids[sample.int(length(new_ids))]      # random order within the new batch
-    key <- rbind(key[, c("participant_code", "participant_id", "date_assigned", "scheme")],
-                 data.frame(participant_code = sprintf("P%03d", next_n + seq_along(new_ids) - 1L),
-                            participant_id = new_ids, date_assigned = format(Sys.Date()),
-                            scheme = "sequential-random-order"))
-    ok <- tryCatch({ dir.create(PRIVATE_DIR, showWarnings = FALSE, recursive = TRUE)
-                     utils::write.csv(key, ID_KEY_PATH, row.names = FALSE); TRUE },
-                   error = function(e) { say("  %s", conditionMessage(e)); FALSE })
-    if (!ok) stop("Could not save the participant ID key to ", ID_KEY_PATH,
-                  " - nothing written (is Box running?)")
-    say("  %d new code(s) added to the key (%d in total) - %s", length(new_ids), nrow(key), ID_KEY_PATH)
-  } else say("  all %d participants already have a code in %s", length(written_ids), ID_KEY_PATH)
-  code_of <- setNames(key$participant_code, key$participant_id)
+  # One key for 07 and 08 (id_key.R). New participants are added and the key saved first; the run
+  # stops if that fails, so no file ever holds codes that aren't recorded.
+  code_of <- id_key_codes(written_ids, ID_KEY_PATH)
+  if (anyNA(code_of)) stop("No code for: ", paste(names(code_of)[is.na(code_of)], collapse = ", "))
+  say("  %d participants coded from %s", length(code_of), ID_KEY_PATH)
+  names(code_of) <- tolower(names(code_of))
 
   # whole ID only (as in fix_participant_id.py): not after a letter/digit, not before a digit
-  id_rx <- function(id) paste0("(?<![A-Za-z0-9])", gsub("([][{}()+*^$|\\\\?.])", "\\\\\\1", id), "(?![0-9])")
+  # (nor before ".<digit>", so a number stored as text, e.g. "7280.5", is never touched)
+  id_rx <- function(id) paste0("(?<![A-Za-z0-9.])", gsub("([][{}()+*^$|\\\\?.])", "\\\\\\1", id), "(?![0-9]|\\.[0-9])")
   pseudonymise <- function(d, name) {
     d$participant_id <- unname(code_of[d$participant_id])
     ids <- names(code_of)[names(code_of) %in% written_ids]
@@ -879,11 +1087,50 @@ if (PSEUDONYMISE_IDS) {
 
 # ── Write the data files ──────────────────────────────────────────────────────
 say("\n== writing")
+written <- list(); dict <- list(); unknown_blocks <- list()
 for (name in names(PENDING)) {
   d <- PENDING[[name]]$df
   if (COMPLETE_CASES_ONLY && nrow(d)) d <- d[d$participant_id %in% keep_ids, , drop = FALSE]
+  drop <- DROP_COLUMNS[[name]]
+  if (length(drop) && nrow(d)) {
+    gone <- intersect(drop, names(d))
+    if (length(gone)) d <- d[, setdiff(names(d), gone), drop = FALSE]
+    say("  %s: removed %s%s", name, if (length(gone)) paste(gone, collapse = ", ") else "nothing",
+        if (length(setdiff(drop, gone))) paste0(" (not in the data: ", paste(setdiff(drop, gone), collapse = ", "), ")") else "")
+  }
+  # Same keys in every file: block labels -> BLOCK_LEVELS (data_dictionary.R), participant_id + block first
+  if ("block" %in% names(d) && nrow(d)) {
+    b <- canon_block(d$block)
+    bad <- unique(d$block[!is.na(d$block) & nzchar(trimws(as.character(d$block))) & is.na(b)])
+    if (length(bad)) {
+      say("  WARNING %s: block label(s) not recognised, set to empty: %s", name, paste(bad, collapse = ", "))
+      unknown_blocks[[name]] <- bad
+    }
+    d$block <- b
+  }
+  d <- d[, c(intersect(c("participant_id", "block"), names(d)), setdiff(names(d), c("participant_id", "block"))), drop = FALSE]
   if (PSEUDONYMISE_IDS && nrow(d)) d <- pseudonymise(d, name)
   write_file(d, name)
+  if (nrow(d)) {
+    written[[name]] <- list(rows = nrow(d), participants = length(unique(d$participant_id)), columns = ncol(d))
+    dict[[name]] <- dictionary_rows(d, name)
+  }
+}
+
+# ── README + data dictionary (describe exactly the files written in this run) ──
+say("\n== README + data dictionary")
+dict_df <- rbind_fill(dict)
+if (nrow(dict_df)) {
+  write_file(dict_df, "biosignals2_data_dictionary.csv")
+  write_readme(file.path(OUT_DIR, "biosignals2_README.md"), written)
+  say("  -> biosignals2_README.md")
+  todo <- dict_df[dict_df$description == "NOT DESCRIBED YET", c("file", "column")]
+  if (nrow(todo)) {
+    say("  %d column(s) have no description yet - add them to data_dictionary.R:", nrow(todo))
+    for (f in unique(todo$file)) say("    %s: %s", f, paste(todo$column[todo$file == f], collapse = ", "))
+  }
+  nofile <- setdiff(names(written), names(FILE_INFO))
+  if (length(nofile)) say("  no README text for: %s (add to FILE_INFO in data_dictionary.R)", paste(nofile, collapse = ", "))
 }
 
 # ── Source log ────────────────────────────────────────────────────────────────

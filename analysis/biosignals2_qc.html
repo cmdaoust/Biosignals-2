@@ -170,14 +170,14 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
   </nav>
 
   <div id="tab-completeness" class="tab-content active"><div class="note"><strong>Main study:</strong> pilot participants (<span class="mono">E5510, E9967, G2313, N2026, P7259, R2433, S0943</span>) are left out; they are in <code>biosignals2_qc_pilot.html</code>.<br>Left out of both reports: <span class='mono'>I4155</span> (excluded: participant repositioned their chair outside camera FOV); <span class='mono'>S0723</span> (excluded: Session error: inductions only); <span class='mono'>001</span> (test: Early pilot; pre-dates the emotion label question); <span class='mono'>002</span> (test: Early pilot; pre-dates the emotion label question); <span class='mono'>003</span> (test: Test session); <span class='mono'>123</span> (test: questionnaire test run); <span class='mono'>1234</span> (test: questionnaire test run); <span class='mono'>234</span> (test: questionnaire test run); <span class='mono'>CARMEN</span> (test: Carmen's own test sessions); <span class='mono'>P1234</span> (test: questionnaire test run). <br>Edit <code>analysis/participant_status.csv</code> to change who is pilot, test or excluded. Files are untouched on disk.</div><div class="status-row">
-    <div class="tile blue"><div class="tile-value">19</div>
+    <div class="tile blue"><div class="tile-value">20</div>
       <div class="tile-label">Unique participant<br>IDs observed</div></div>
     <div class="tile warn">
-      <div class="tile-value">0/19</div>
+      <div class="tile-value">0/20</div>
       <div class="tile-label">Participants with<br>complete dataset</div></div>
-    <div class="tile blue"><div class="tile-value">19/19/18/16</div>
+    <div class="tile blue"><div class="tile-value">20/20/19/17</div>
       <div class="tile-label">PsychoPy / Quest. /<br>Ledalab / Kubios IDs</div></div>
-    <div class="tile blue"><div class="tile-value">15/19/8</div>
+    <div class="tile blue"><div class="tile-value">18/20/8</div>
       <div class="tile-label">Video / Biometrics /<br>FaceReader IDs</div></div>
   </div>
 
@@ -199,55 +199,57 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
          <code>{id}_recording.avi</code> + timestamps); with only some of them it shows as partial
          (hover for what is missing).</p>
     </div>
-    <div class="note"><strong>19 participant(s) missing data from at least one source:</strong>
-           <ul style="margin-top:.5rem;margin-left:1.2rem;line-height:1.8;"><li><span class='mono'>7280</span> &mdash; missing: FaceReader, Kubios FaceReader, Webcam HR offline, Kubios webcam</li>
-<li><span class='mono'>A5687</span> &mdash; missing: FaceReader, Kubios FaceReader, Webcam HR offline, Kubios webcam</li>
-<li><span class='mono'>B365</span> &mdash; missing: FaceReader, Kubios FaceReader, Webcam HR offline, Kubios webcam</li>
-<li><span class='mono'>B9036</span> &mdash; missing: Physiology, Ledalab, Kubios, FaceReader, Kubios FaceReader, Webcam HR offline, Kubios webcam</li>
-<li><span class='mono'>D0866</span> &mdash; missing: FaceReader, Kubios FaceReader, Webcam HR offline, Kubios webcam</li>
-<li><span class='mono'>D9466</span> &mdash; missing: Video (no frames.zip), FaceReader, Kubios FaceReader, Webcam HR offline, Kubios webcam</li>
-<li><span class='mono'>D9858</span> &mdash; missing: Kubios, FaceReader, Kubios FaceReader, Webcam HR offline, Kubios webcam</li>
-<li><span class='mono'>E9587</span> &mdash; missing: Webcam HR offline, Kubios webcam</li>
-<li><span class='mono'>G9788</span> &mdash; missing: Webcam HR offline, Kubios webcam</li>
-<li><span class='mono'>H9149</span> &mdash; missing: Webcam HR offline, Kubios webcam</li>
+    <div class="note"><strong>20 participant(s) missing data from at least one source:</strong>
+           <ul style="margin-top:.5rem;margin-left:1.2rem;line-height:1.8;"><li><span class='mono'>7280</span> &mdash; missing: FaceReader, Kubios FaceReader, Kubios webcam</li>
+<li><span class='mono'>A5687</span> &mdash; missing: FaceReader, Kubios FaceReader, Kubios webcam</li>
+<li><span class='mono'>B365</span> &mdash; missing: FaceReader, Kubios FaceReader, Kubios webcam</li>
+<li><span class='mono'>B9036</span> &mdash; missing: Physiology, Ledalab, Kubios, FaceReader, Kubios FaceReader, Kubios webcam</li>
+<li><span class='mono'>D0866</span> &mdash; missing: FaceReader, Kubios FaceReader, Kubios webcam</li>
+<li><span class='mono'>D9466</span> &mdash; missing: FaceReader, Kubios FaceReader, Kubios webcam</li>
+<li><span class='mono'>D9858</span> &mdash; missing: Kubios, FaceReader, Kubios FaceReader, Kubios webcam</li>
+<li><span class='mono'>E9587</span> &mdash; missing: Kubios webcam</li>
+<li><span class='mono'>G9788</span> &mdash; missing: Kubios webcam</li>
+<li><span class='mono'>H9149</span> &mdash; missing: Kubios webcam</li>
 <li><span class='mono'>K6294</span> &mdash; missing: Kubios webcam</li>
 <li><span class='mono'>M9351</span> &mdash; missing: Kubios webcam</li>
+<li><span class='mono'>N5879</span> &mdash; missing: Video, FaceReader, Kubios FaceReader, Webcam HR offline, Kubios webcam</li>
 <li><span class='mono'>O8244</span> &mdash; missing: Kubios webcam</li>
-<li><span class='mono'>R4755</span> &mdash; missing: Video (no 1to1_ffv1.avi), FaceReader, Kubios FaceReader, Webcam HR offline, Kubios webcam</li>
+<li><span class='mono'>R4755</span> &mdash; missing: FaceReader, Kubios FaceReader, Kubios webcam</li>
 <li><span class='mono'>S1250</span> &mdash; missing: Kubios webcam</li>
 <li><span class='mono'>S6752</span> &mdash; missing: Video (no frames.zip, no 1to1_ffv1.avi), FaceReader, Kubios FaceReader, Webcam HR offline, Kubios webcam</li>
-<li><span class='mono'>S9642</span> &mdash; missing: Kubios, FaceReader, Kubios FaceReader, Webcam HR offline, Kubios webcam</li>
+<li><span class='mono'>S9642</span> &mdash; missing: Kubios, FaceReader, Kubios FaceReader, Kubios webcam</li>
 <li><span class='mono'>S9686</span> &mdash; missing: Kubios webcam</li>
-<li><span class='mono'>UN2956</span> &mdash; missing: Video (no frames.zip), FaceReader, Kubios FaceReader, Webcam HR offline, Kubios webcam</li></ul></div>
+<li><span class='mono'>UN2956</span> &mdash; missing: FaceReader, Kubios FaceReader, Kubios webcam</li></ul></div>
     <div class="table-wrap" style="margin-top:1rem;"><table>
       <thead><tr><th>Participant</th><th>PsychoPy</th><th>Questionnaires</th><th>Physiology</th><th>Ledalab</th><th>Kubios</th><th>Video</th><th>FaceReader</th><th>Kubios FaceReader</th><th>Webcam HR online</th><th>Webcam HR offline</th><th>Kubios webcam</th><th>Sources</th><th>Status</th></tr></thead>
-      <tbody><tr><td class='mono'>7280</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>7/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
-<tr><td class='mono'>A5687</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>7/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
-<tr><td class='mono'>B365</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>7/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
-<tr><td class='mono'>B9036</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>4/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
-<tr><td class='mono'>D0866</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>7/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
-<tr><td class='mono'>D9466</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center' title='no frames.zip'>&#9680; partial</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>6/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
-<tr><td class='mono'>D9858</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>6/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
-<tr><td class='mono'>E9587</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>9/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
-<tr><td class='mono'>G9788</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>9/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
-<tr><td class='mono'>H9149</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>9/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
+      <tbody><tr><td class='mono'>7280</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>8/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>A5687</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>8/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>B365</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>8/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>B9036</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>5/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>D0866</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>8/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>D9466</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>8/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>D9858</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>7/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>E9587</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>10/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>G9788</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>10/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>H9149</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>10/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
 <tr><td class='mono'>K6294</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>10/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
 <tr><td class='mono'>M9351</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>10/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>N5879</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>6/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
 <tr><td class='mono'>O8244</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>10/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
-<tr><td class='mono'>R4755</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center' title='no 1to1_ffv1.avi'>&#9680; partial</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>6/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>R4755</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>8/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
 <tr><td class='mono'>S1250</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>10/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
 <tr><td class='mono'>S6752</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center' title='no frames.zip, no 1to1_ffv1.avi'>&#9680; partial</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>6/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
-<tr><td class='mono'>S9642</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>6/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
+<tr><td class='mono'>S9642</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>7/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
 <tr><td class='mono'>S9686</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>10/11</td><td class='status-warn'>&#9888; incomplete</td></tr>
-<tr><td class='mono'>UN2956</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center' title='no frames.zip'>&#9680; partial</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>6/11</td><td class='status-warn'>&#9888; incomplete</td></tr></tbody>
+<tr><td class='mono'>UN2956</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>8/11</td><td class='status-warn'>&#9888; incomplete</td></tr></tbody>
     </table></div>
   </section></div>
   <div id="tab-combined" class="tab-content"><div class="status-row">
-    <div class="tile blue"><div class="tile-value">19/12</div>
+    <div class="tile blue"><div class="tile-value">20/19</div>
       <div class="tile-label">PsychoPy IDs<br>raw / combined</div></div>
-    <div class="tile blue"><div class="tile-value">19/0</div>
+    <div class="tile blue"><div class="tile-value">20/0</div>
       <div class="tile-label">Biometrics IDs<br>raw / combined</div></div>
-    <div class="tile blue"><div class="tile-value">19/12</div>
+    <div class="tile blue"><div class="tile-value">20/19</div>
       <div class="tile-label">Questionnaire IDs<br>raw / combined</div></div>
     <div class="tile warn"><div class="tile-value">20</div>
       <div class="tile-label">Participants<br>out of sync</div></div>
@@ -262,9 +264,9 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     </div>
     <div class="table-wrap"><table>
       <thead><tr><th>Dataset</th><th>File</th><th>Written</th><th>Newest raw file</th><th>IDs</th><th>Status</th></tr></thead>
-      <tbody><tr><td>Self-report ratings</td><td class='mono'>biosignals2_selfreport_ratings.csv</td><td>27 Oct 2026 10:28</td><td>28 Oct 2026 15:33</td><td>12</td><td class='status-warn'>&#10227; older than newest raw file &mdash; re-knit <code>01_data_cleaning.Rmd</code></td></tr>
-<tr><td>Webcam biometrics</td><td class='mono'>biosignals2_webcambiometrics.csv</td><td>27 Oct 2026 10:28</td><td>28 Oct 2026 15:33</td><td>0</td><td class='status-warn'>&#10227; older than newest raw file &mdash; re-knit <code>01_data_cleaning.Rmd</code></td></tr>
-<tr><td>Scored questionnaires</td><td class='mono'>biosignals2_questionnaires_scored.csv</td><td>27 Oct 2026 10:28</td><td>29 Oct 2026 07:00</td><td>12</td><td class='status-warn'>&#10227; older than newest raw file &mdash; re-knit <code>04_questionnaire_analysis.Rmd</code></td></tr></tbody>
+      <tbody><tr><td>Self-report ratings</td><td class='mono'>biosignals2_selfreport_ratings.csv</td><td>29 Oct 2026 21:00</td><td>29 Oct 2026 14:48</td><td>19</td><td class='status-ok'>&#10003; up to date</td></tr>
+<tr><td>Webcam biometrics</td><td class='mono'>biosignals2_webcambiometrics_online.csv</td><td>29 Oct 2026 21:00</td><td>29 Oct 2026 14:48</td><td>0</td><td class='status-ok'>&#10003; up to date</td></tr>
+<tr><td>Scored questionnaires</td><td class='mono'>biosignals2_questionnaires_scored.csv</td><td>29 Oct 2026 21:01</td><td>30 Oct 2026 07:00</td><td>19</td><td class='status-warn'>&#10227; older than newest raw file &mdash; re-knit <code>04_questionnaire_analysis.Rmd</code></td></tr></tbody>
     </table></div>
   </section>
 
@@ -282,35 +284,35 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
         <th>Biometrics raw</th><th>Biometrics CSV</th><th>Quest. raw</th><th>Scored quest. CSV</th>
         <th>Status</th></tr></thead>
       <tbody><tr><td class='mono'>7280</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
-<tr><td class='mono'>A5687</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
-<tr><td class='mono'>A6587</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td style='text-align:center;color:var(--text-3)'>&mdash;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td style='text-align:center;color:var(--text-3)'>&mdash;</td><td class='status-warn'>&#9888; in combined CSV but no raw file found</td></tr>
-<tr><td class='mono'>B365</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>&#9888; re-knit 01; re-knit 04</td></tr>
+<tr><td class='mono'>A5687</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
+<tr><td class='mono'>B365</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
 <tr><td class='mono'>B9036</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
-<tr><td class='mono'>D0866</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>&#9888; re-knit 01; re-knit 04</td></tr>
-<tr><td class='mono'>D9466</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>&#9888; re-knit 01; re-knit 04</td></tr>
-<tr><td class='mono'>D9858</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>&#9888; re-knit 01; re-knit 04</td></tr>
+<tr><td class='mono'>D0866</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
+<tr><td class='mono'>D9466</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
+<tr><td class='mono'>D9858</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
 <tr><td class='mono'>E9587</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
 <tr><td class='mono'>G9788</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
 <tr><td class='mono'>H9149</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
 <tr><td class='mono'>K6294</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
 <tr><td class='mono'>M9351</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
+<tr><td class='mono'>N5879</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>&#9888; re-knit 01; re-knit 04</td></tr>
 <tr><td class='mono'>O8244</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
 <tr><td class='mono'>R4755</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
 <tr><td class='mono'>S1250</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
-<tr><td class='mono'>S6752</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>&#9888; 01 can't read it: no PsychoPy CSV, only .psydat/.log; re-knit 01; re-knit 04</td></tr>
-<tr><td class='mono'>S9642</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>&#9888; re-knit 01; re-knit 04</td></tr>
+<tr><td class='mono'>S6752</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn'>&#9888; 01 can't read it: no PsychoPy CSV, only .psydat/.log; re-knit 01</td></tr>
+<tr><td class='mono'>S9642</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
 <tr><td class='mono'>S9686</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn'>&#9888; re-knit 01</td></tr>
-<tr><td class='mono'>UN2956</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>&#9888; re-knit 01; re-knit 04</td></tr></tbody>
+<tr><td class='mono'>UN2956</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn'>&#9888; re-knit 01</td></tr></tbody>
     </table></div>
   </section></div>
   <div id="tab-psychopy" class="tab-content"><div class="status-row">
-    <div class="tile blue"><div class="tile-value">12</div>
+    <div class="tile blue"><div class="tile-value">19</div>
       <div class="tile-label">Sessions<br>recorded</div></div>
-    <div class="tile blue"><div class="tile-value">48</div>
+    <div class="tile blue"><div class="tile-value">76</div>
       <div class="tile-label">Video rating<br>rows</div></div>
-    <div class="tile warn"><div class="tile-value">47/48</div>
+    <div class="tile warn"><div class="tile-value">75/76</div>
       <div class="tile-label">Trigger names<br>captured</div></div>
-    <div class="tile warn"><div class="tile-value">17/24</div>
+    <div class="tile warn"><div class="tile-value">28/38</div>
       <div class="tile-label">Manipulation<br>checks passed</div></div>
   </div>
 
@@ -325,21 +327,28 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
       <thead><tr><th>Participant</th><th>Condition order</th>
         <th>Positive videos</th><th>Negative videos</th><th>Total stim rows</th></tr></thead>
       <tbody><tr><td class='mono'>7280</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr>
-<tr><td class='mono'>a6587</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr>
+<tr><td class='mono'>a5687</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr>
+<tr><td class='mono'>b365</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr>
 <tr><td class='mono'>b9036</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr>
+<tr><td class='mono'>d0866</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr>
+<tr><td class='mono'>d9466</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr>
+<tr><td class='mono'>d9858</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr>
 <tr><td class='mono'>e9587</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr>
 <tr><td class='mono'>g9788</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr>
 <tr><td class='mono'>h9149</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr>
 <tr><td class='mono'>k6294</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr>
 <tr><td class='mono'>m9351</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr>
+<tr><td class='mono'>n5879</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr>
 <tr><td class='mono'>o8244</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr>
 <tr><td class='mono'>r4755</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr>
 <tr><td class='mono'>s1250</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr>
-<tr><td class='mono'>s9686</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr></tbody>
+<tr><td class='mono'>s9642</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr>
+<tr><td class='mono'>s9686</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr>
+<tr><td class='mono'>un2956</td><td>neg_first</td><td>2 (P01, P0141)</td><td>2 (N007, N01)</td><td>4</td></tr></tbody>
     </table></div>
     <div style="margin-top:1.5rem;">
       <div class="section-label" style="margin-bottom:.6rem;">
-        Trigger name lookup — all 48 stimulus rows</div>
+        Trigger name lookup — all 76 stimulus rows</div>
       <div class="table-wrap"><table>
         <thead><tr><th>Participant</th><th>Video ID</th><th>Condition</th>
           <th>Trigger name</th><th>Status</th></tr></thead>
@@ -347,14 +356,30 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
 <tr><td class='mono'>7280</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
 <tr><td class='mono'>7280</td><td class='mono'>P01</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
 <tr><td class='mono'>7280</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
-<tr><td class='mono'>a6587</td><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
-<tr><td class='mono'>a6587</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
-<tr><td class='mono'>a6587</td><td class='mono'>P01</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
-<tr><td class='mono'>a6587</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>a5687</td><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>a5687</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>a5687</td><td class='mono'>P01</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>a5687</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>b365</td><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>b365</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>b365</td><td class='mono'>P01</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>b365</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
 <tr><td class='mono'>b9036</td><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
 <tr><td class='mono'>b9036</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
 <tr><td class='mono'>b9036</td><td class='mono'>P01</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
 <tr><td class='mono'>b9036</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>d0866</td><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>d0866</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>d0866</td><td class='mono'>P01</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>d0866</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>d9466</td><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>d9466</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>d9466</td><td class='mono'>P01</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>d9466</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>d9858</td><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>d9858</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>d9858</td><td class='mono'>P01</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>d9858</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
 <tr><td class='mono'>e9587</td><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
 <tr><td class='mono'>e9587</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
 <tr><td class='mono'>e9587</td><td class='mono'>P01</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
@@ -375,6 +400,10 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
 <tr><td class='mono'>m9351</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
 <tr><td class='mono'>m9351</td><td class='mono'>P01</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
 <tr><td class='mono'>m9351</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>n5879</td><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>n5879</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>n5879</td><td class='mono'>P01</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>n5879</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
 <tr><td class='mono'>o8244</td><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
 <tr><td class='mono'>o8244</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
 <tr><td class='mono'>o8244</td><td class='mono'>P01</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
@@ -387,12 +416,20 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
 <tr><td class='mono'>s1250</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
 <tr><td class='mono'>s1250</td><td class='mono'>P01</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
 <tr><td class='mono'>s1250</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>s9642</td><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>s9642</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>s9642</td><td class='mono'>P01</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>s9642</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
 <tr><td class='mono'>s9686</td><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
 <tr><td class='mono'>s9686</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
 <tr><td class='mono'>s9686</td><td class='mono'>P01</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
-<tr><td class='mono'>s9686</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr></tbody>
+<tr><td class='mono'>s9686</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>un2956</td><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim1_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>un2956</td><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td class='mono'>Nstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>un2956</td><td class='mono'>P01</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim2_trig</td><td class='status-ok'>✓ captured</td></tr>
+<tr><td class='mono'>un2956</td><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td class='mono'>Pstim1_trig</td><td class='status-ok'>✓ captured</td></tr></tbody>
       </table></div>
-      <div class="note-ok">47/48 trigger–video pairings resolved successfully.</div>
+      <div class="note-ok">75/76 trigger–video pairings resolved successfully.</div>
     </div>
   </section>
 
@@ -405,23 +442,23 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     <div class="table-wrap"><table>
       <thead><tr><th>Scale</th><th>N responses</th><th>Observed min</th>
         <th>Observed max</th><th>Expected range</th><th>Out of range</th></tr></thead>
-      <tbody><tr><td class='mono'>stim_valence</td><td>48</td><td>1</td><td>7</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
-<tr><td class='mono'>stim_arousal</td><td>48</td><td>1</td><td>7</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
-<tr><td class='mono'>stim_approach</td><td>48</td><td>1</td><td>7</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
-<tr><td class='mono'>postind_valence (block_end)</td><td>48</td><td>1</td><td>6</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
-<tr><td class='mono'>postind_arousal (block_end)</td><td>48</td><td>1</td><td>7</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
-<tr><td class='mono'>postrec_valence (block_end)</td><td>24</td><td>3</td><td>6</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
-<tr><td class='mono'>postrec_arousal (block_end)</td><td>24</td><td>1</td><td>6</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
-<tr><td class='mono'>prebl_valence (block_start)</td><td>12</td><td>3</td><td>6</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
-<tr><td class='mono'>prebl_arousal (block_start)</td><td>12</td><td>2</td><td>6</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
-<tr><td class='mono'>postbl_valence (block_end)</td><td>12</td><td>3</td><td>6</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
-<tr><td class='mono'>postbl_arousal (block_end)</td><td>12</td><td>1</td><td>6</td><td>1–7</td><td class='status-ok'>✓ none</td></tr></tbody>
+      <tbody><tr><td class='mono'>stim_valence</td><td>76</td><td>1</td><td>7</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
+<tr><td class='mono'>stim_arousal</td><td>76</td><td>1</td><td>7</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
+<tr><td class='mono'>stim_approach</td><td>76</td><td>1</td><td>7</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
+<tr><td class='mono'>postind_valence (block_end)</td><td>76</td><td>1</td><td>6</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
+<tr><td class='mono'>postind_arousal (block_end)</td><td>76</td><td>1</td><td>7</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
+<tr><td class='mono'>postrec_valence (block_end)</td><td>38</td><td>1</td><td>6</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
+<tr><td class='mono'>postrec_arousal (block_end)</td><td>38</td><td>1</td><td>6</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
+<tr><td class='mono'>prebl_valence (block_start)</td><td>19</td><td>1</td><td>6</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
+<tr><td class='mono'>prebl_arousal (block_start)</td><td>19</td><td>2</td><td>7</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
+<tr><td class='mono'>postbl_valence (block_end)</td><td>19</td><td>2</td><td>6</td><td>1–7</td><td class='status-ok'>✓ none</td></tr>
+<tr><td class='mono'>postbl_arousal (block_end)</td><td>19</td><td>1</td><td>7</td><td>1–7</td><td class='status-ok'>✓ none</td></tr></tbody>
     </table></div>
     <div style="margin-top:1.5rem;">
       <div class="section-label" style="margin-bottom:.5rem;">
         Stimulus reaction time ranges (seconds) — no fast responses (&lt; 0.5 s) detected</div>
-      <div class="rt-grid"><div class='rt-tile'><span class='rt-name'>stim_valence_rt</span><span class='rt-range'>1.77–37.16</span></div>
-<div class='rt-tile'><span class='rt-name'>stim_arousal_rt</span><span class='rt-range'>3.23–22.33</span></div>
+      <div class="rt-grid"><div class='rt-tile'><span class='rt-name'>stim_valence_rt</span><span class='rt-range'>1.55–37.16</span></div>
+<div class='rt-tile'><span class='rt-name'>stim_arousal_rt</span><span class='rt-range'>2.28–22.33</span></div>
 <div class='rt-tile'><span class='rt-name'>stim_approach_rt</span><span class='rt-range'>1.15–8.85</span></div></div>
     </div>
   </section>
@@ -437,10 +474,10 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
         <div class="manip-cond pos">Positive condition</div>
         <div class="manip-deltas">
           <div class="manip-delta-item">
-            <div class="delta-val pos-val">+0.8</div>
+            <div class="delta-val pos-val">+0.9</div>
             <div class="delta-lbl">&#916; valence</div></div>
           <div class="manip-delta-item">
-            <div class="delta-val pos-val">+0.6</div>
+            <div class="delta-val pos-val">+0.2</div>
             <div class="delta-lbl">&#916; arousal</div></div></div>
         <div class="check-row">
           <span class="check-icon">&#10003;</span>
@@ -449,10 +486,10 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
         <div class="manip-cond neg">Negative condition</div>
         <div class="manip-deltas">
           <div class="manip-delta-item">
-            <div class="delta-val neg-val">-1.8</div>
+            <div class="delta-val neg-val">-2</div>
             <div class="delta-lbl">&#916; valence</div></div>
           <div class="manip-delta-item">
-            <div class="delta-val pos-val">+1.2</div>
+            <div class="delta-val pos-val">+1.1</div>
             <div class="delta-lbl">&#916; arousal</div></div></div>
         <div class="check-row">
           <span class="check-icon">&#10003;</span>
@@ -464,10 +501,18 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
         <th>&#916; valence</th><th>Direction correct</th></tr></thead>
       <tbody><tr><td class='mono'>7280</td><td><span class='cond-neg'>negative</span></td><td>3</td><td>3</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>+0</td><td class='status-warn'>✗ FALSE</td></tr>
 <tr><td class='mono'>7280</td><td><span class='cond-pos'>positive</span></td><td>3</td><td>5</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+2</td><td class='status-ok'>✓ TRUE</td></tr>
-<tr><td class='mono'>a6587</td><td><span class='cond-neg'>negative</span></td><td>4</td><td>3</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-1</td><td class='status-ok'>✓ TRUE</td></tr>
-<tr><td class='mono'>a6587</td><td><span class='cond-pos'>positive</span></td><td>4</td><td>6</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+2</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>a5687</td><td><span class='cond-neg'>negative</span></td><td>4</td><td>3</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-1</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>a5687</td><td><span class='cond-pos'>positive</span></td><td>4</td><td>6</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+2</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>b365</td><td><span class='cond-neg'>negative</span></td><td>2</td><td>1</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-1</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>b365</td><td><span class='cond-pos'>positive</span></td><td>2</td><td>4</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+2</td><td class='status-ok'>✓ TRUE</td></tr>
 <tr><td class='mono'>b9036</td><td><span class='cond-neg'>negative</span></td><td>5</td><td>3</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-2</td><td class='status-ok'>✓ TRUE</td></tr>
 <tr><td class='mono'>b9036</td><td><span class='cond-pos'>positive</span></td><td>5</td><td>5</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+0</td><td class='status-warn'>✗ FALSE</td></tr>
+<tr><td class='mono'>d0866</td><td><span class='cond-neg'>negative</span></td><td>4</td><td>2</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-2</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>d0866</td><td><span class='cond-pos'>positive</span></td><td>4</td><td>6</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+2</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>d9466</td><td><span class='cond-neg'>negative</span></td><td>3</td><td>1</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-2</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>d9466</td><td><span class='cond-pos'>positive</span></td><td>3</td><td>6</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+3</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>d9858</td><td><span class='cond-neg'>negative</span></td><td>6</td><td>2</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-4</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>d9858</td><td><span class='cond-pos'>positive</span></td><td>6</td><td>6</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+0</td><td class='status-warn'>✗ FALSE</td></tr>
 <tr><td class='mono'>e9587</td><td><span class='cond-neg'>negative</span></td><td>6</td><td>3</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-3</td><td class='status-ok'>✓ TRUE</td></tr>
 <tr><td class='mono'>e9587</td><td><span class='cond-pos'>positive</span></td><td>6</td><td>5</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>-1</td><td class='status-warn'>✗ FALSE</td></tr>
 <tr><td class='mono'>g9788</td><td><span class='cond-neg'>negative</span></td><td>4</td><td>2</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-2</td><td class='status-ok'>✓ TRUE</td></tr>
@@ -478,16 +523,22 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
 <tr><td class='mono'>k6294</td><td><span class='cond-pos'>positive</span></td><td>3</td><td>4</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+1</td><td class='status-ok'>✓ TRUE</td></tr>
 <tr><td class='mono'>m9351</td><td><span class='cond-neg'>negative</span></td><td>3</td><td>2</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-1</td><td class='status-ok'>✓ TRUE</td></tr>
 <tr><td class='mono'>m9351</td><td><span class='cond-pos'>positive</span></td><td>3</td><td>6</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+3</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>n5879</td><td><span class='cond-neg'>negative</span></td><td>6</td><td>1</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-5</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>n5879</td><td><span class='cond-pos'>positive</span></td><td>6</td><td>5</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>-1</td><td class='status-warn'>✗ FALSE</td></tr>
 <tr><td class='mono'>o8244</td><td><span class='cond-neg'>negative</span></td><td>5</td><td>3</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-2</td><td class='status-ok'>✓ TRUE</td></tr>
 <tr><td class='mono'>o8244</td><td><span class='cond-pos'>positive</span></td><td>5</td><td>5</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+0</td><td class='status-warn'>✗ FALSE</td></tr>
 <tr><td class='mono'>r4755</td><td><span class='cond-neg'>negative</span></td><td>4</td><td>2</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-2</td><td class='status-ok'>✓ TRUE</td></tr>
 <tr><td class='mono'>r4755</td><td><span class='cond-pos'>positive</span></td><td>4</td><td>5</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+1</td><td class='status-ok'>✓ TRUE</td></tr>
 <tr><td class='mono'>s1250</td><td><span class='cond-neg'>negative</span></td><td>4</td><td>1</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-3</td><td class='status-ok'>✓ TRUE</td></tr>
 <tr><td class='mono'>s1250</td><td><span class='cond-pos'>positive</span></td><td>4</td><td>5</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+1</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>s9642</td><td><span class='cond-neg'>negative</span></td><td>5</td><td>3</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-2</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>s9642</td><td><span class='cond-pos'>positive</span></td><td>5</td><td>5</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+0</td><td class='status-warn'>✗ FALSE</td></tr>
 <tr><td class='mono'>s9686</td><td><span class='cond-neg'>negative</span></td><td>4</td><td>4</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>+0</td><td class='status-warn'>✗ FALSE</td></tr>
-<tr><td class='mono'>s9686</td><td><span class='cond-pos'>positive</span></td><td>4</td><td>4</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+0</td><td class='status-warn'>✗ FALSE</td></tr></tbody>
+<tr><td class='mono'>s9686</td><td><span class='cond-pos'>positive</span></td><td>4</td><td>4</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+0</td><td class='status-warn'>✗ FALSE</td></tr>
+<tr><td class='mono'>un2956</td><td><span class='cond-neg'>negative</span></td><td>3</td><td>2</td><td style='color:var(--neg); font-weight:600; font-variant-numeric:tabular-nums;'>-1</td><td class='status-ok'>✓ TRUE</td></tr>
+<tr><td class='mono'>un2956</td><td><span class='cond-pos'>positive</span></td><td>3</td><td>5</td><td style='color:var(--pos); font-weight:600; font-variant-numeric:tabular-nums;'>+2</td><td class='status-ok'>✓ TRUE</td></tr></tbody>
     </table></div>
-    <div class="note-ok">17/24 manipulation checks in the expected direction.</div>
+    <div class="note-ok">28/38 manipulation checks in the expected direction.</div>
   </section>
 
   <section>
@@ -503,10 +554,10 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     <div style="margin-top:1.25rem;" class="table-wrap"><table>
       <thead><tr><th>Video</th><th>Condition</th>
         <th>Valence</th><th>Arousal</th><th>Approach</th></tr></thead>
-      <tbody><tr><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td>2</td><td>5.8</td><td>2.5</td></tr>
-<tr><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td>2.2</td><td>5</td><td>1.8</td></tr>
-<tr><td class='mono'>P01</td><td><span class='cond-pos'>positive</span></td><td>5.2</td><td>3.7</td><td>5.2</td></tr>
-<tr><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td>5.8</td><td>3.8</td><td>5.2</td></tr></tbody>
+      <tbody><tr><td class='mono'>N007</td><td><span class='cond-neg'>negative</span></td><td>1.9</td><td>5.8</td><td>2.1</td></tr>
+<tr><td class='mono'>N01</td><td><span class='cond-neg'>negative</span></td><td>1.9</td><td>4.8</td><td>1.7</td></tr>
+<tr><td class='mono'>P01</td><td><span class='cond-pos'>positive</span></td><td>5.3</td><td>3.9</td><td>5.4</td></tr>
+<tr><td class='mono'>P0141</td><td><span class='cond-pos'>positive</span></td><td>5.6</td><td>3.9</td><td>5.1</td></tr></tbody>
     </table></div>
   </section>
 
@@ -535,7 +586,7 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
       <thead><tr><th>Condition order</th><th>Sessions recorded</th>
         <th>% of pilot</th><th>Status</th></tr></thead>
       <tbody><tr><td class='mono'>pos_first</td><td>0</td><td>0%</td><td class='status-warn'>⚠ not yet recorded</td></tr>
-<tr><td class='mono'>neg_first</td><td>12</td><td>100%</td><td class='status-warn'>⚠ only group seen</td></tr></tbody>
+<tr><td class='mono'>neg_first</td><td>19</td><td>100%</td><td class='status-warn'>⚠ only group seen</td></tr></tbody>
     </table></div>
     <div class="note">
       <strong>Counterbalancing:</strong> Models include <code>conditionOrder</code> as a covariate.
@@ -559,9 +610,9 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
       data: {
         labels: ["Valence","Arousal","Approach"],
         datasets: [
-          {label:"Positive", data:[5.5, 3.75, 5.2], backgroundColor:POS+"33",
+          {label:"Positive", data:[5.45, 3.9, 5.25], backgroundColor:POS+"33",
            borderColor:POS, borderWidth:1.5, borderRadius:2},
-          {label:"Negative", data:[2.1, 5.4, 2.15], backgroundColor:NEG+"33",
+          {label:"Negative", data:[1.9, 5.3, 1.9], backgroundColor:NEG+"33",
            borderColor:NEG, borderWidth:1.5, borderRadius:2}
         ]
       },
@@ -595,15 +646,15 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
               title:{display:true,text:"Rating (1–7)",color:T2,font:{size:10}}}}}
       });
     }
-    makeTraj("valenceChart", [4.33, 4.25, 5.08, 4.5],[4.33, 4.25, 2.5, 3.75]);
-    makeTraj("arousalChart", [3.92, 3.42, 4, 3],[3.92, 3.42, 4.58, 3.75]);
+    makeTraj("valenceChart", [4.21, 4.21, 5.16, 4.37],[4.21, 4.21, 2.21, 3.58]);
+    makeTraj("arousalChart", [4.42, 3.84, 4.05, 3.26],[4.42, 3.84, 4.95, 3.84]);
   })();
   </script></div>
   <div id="tab-ledalab"  class="tab-content"><div class="note"><strong>Follow-up notes</strong> (from <code>qc_notes.csv</code>)<ul style="margin:.4rem 0 0 1.2rem;padding:0"><li><strong>O8244</strong>: Discuss artifact correction with Liat <span class='mono'>(2026-10-13)</span></li></ul></div><div class="status-row">
-    <div class="tile blue"><div class="tile-value">18</div>
+    <div class="tile blue"><div class="tile-value">19</div>
       <div class="tile-label">Participants<br>with ERA files</div></div>
     <div class="tile warn">
-      <div class="tile-value">2/18</div>
+      <div class="tile-value">2/19</div>
       <div class="tile-label">Low / non-<br>responders</div></div>
     <div class="tile ok">
       <div class="tile-value">0</div>
@@ -635,6 +686,7 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
 <tr><td class='mono'>h9149</td><td>5</td><td class='status-ok'>✓ complete</td></tr>
 <tr><td class='mono'>k6294</td><td>5</td><td class='status-ok'>✓ complete</td></tr>
 <tr><td class='mono'>m9351</td><td>5</td><td class='status-ok'>✓ complete</td></tr>
+<tr><td class='mono'>n5879</td><td>5</td><td class='status-ok'>✓ complete</td></tr>
 <tr><td class='mono'>o8244</td><td>5</td><td class='status-ok'>✓ complete</td></tr>
 <tr><td class='mono'>r4755</td><td>5</td><td class='status-ok'>✓ complete</td></tr>
 <tr><td class='mono'>s1250</td><td>5</td><td class='status-ok'>✓ complete</td></tr>
@@ -655,11 +707,11 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     <div class="table-wrap"><table>
       <thead><tr><th>Condition</th><th>N participants</th>
         <th>Mean CDA.SCR (µS)</th><th>Mean CDA.nSCR</th></tr></thead>
-      <tbody><tr><td class='mono'>baseline</td><td>18</td><td>0.02647</td><td>36.67</td></tr>
-<tr><td class='mono'>neg_induction</td><td>18</td><td>0.05463</td><td>53</td></tr>
-<tr><td class='mono'>neg_recovery</td><td>18</td><td>0.02614</td><td>40.83</td></tr>
-<tr><td class='mono'>pos_induction</td><td>18</td><td>0.03439</td><td>50.94</td></tr>
-<tr><td class='mono'>pos_recovery</td><td>18</td><td>0.02408</td><td>41.11</td></tr></tbody>
+      <tbody><tr><td class='mono'>baseline</td><td>19</td><td>0.02585</td><td>35.79</td></tr>
+<tr><td class='mono'>neg_induction</td><td>19</td><td>0.05382</td><td>52.89</td></tr>
+<tr><td class='mono'>neg_recovery</td><td>19</td><td>0.02593</td><td>40.84</td></tr>
+<tr><td class='mono'>pos_induction</td><td>19</td><td>0.03407</td><td>50.68</td></tr>
+<tr><td class='mono'>pos_recovery</td><td>19</td><td>0.02371</td><td>40.47</td></tr></tbody>
     </table></div>
   </section>
 
@@ -690,6 +742,7 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
 <tr><td class='mono'>h9149</td><td>5</td><td>43</td><td>28</td><td>0</td><td class='mono' style='font-size:.78rem'>—</td><td class='status-ok'>✓ ok</td></tr>
 <tr><td class='mono'>k6294</td><td>5</td><td>55.8</td><td>39</td><td>0</td><td class='mono' style='font-size:.78rem'>—</td><td class='status-ok'>✓ ok</td></tr>
 <tr><td class='mono'>m9351</td><td>5</td><td>52.6</td><td>26</td><td>0</td><td class='mono' style='font-size:.78rem'>—</td><td class='status-ok'>✓ ok</td></tr>
+<tr><td class='mono'>n5879</td><td>5</td><td>37.4</td><td>20</td><td>0</td><td class='mono' style='font-size:.78rem'>—</td><td class='status-ok'>✓ ok</td></tr>
 <tr><td class='mono'>o8244</td><td>5</td><td>71</td><td>33</td><td>0</td><td class='mono' style='font-size:.78rem'>—</td><td class='status-ok'>✓ ok</td></tr>
 <tr><td class='mono'>s1250</td><td>5</td><td>55.2</td><td>26</td><td>0</td><td class='mono' style='font-size:.78rem'>—</td><td class='status-ok'>✓ ok</td></tr>
 <tr><td class='mono'>s6752</td><td>5</td><td>86.4</td><td>70</td><td>0</td><td class='mono' style='font-size:.78rem'>—</td><td class='status-ok'>✓ ok</td></tr>
@@ -709,7 +762,7 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
       <tbody>
         <tr>
           <td class="mono">CDA.SCR</td>
-          <td>90</td>
+          <td>95</td>
           <td>9e-04</td>
           <td>0.2513</td>
           <td>0 – ~5 µS</td>
@@ -719,13 +772,13 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     </table></div>
   </section></div>
   <div id="tab-kubios"   class="tab-content"><div class="status-row">
-    <div class="tile blue"><div class="tile-value">16</div>
+    <div class="tile blue"><div class="tile-value">17</div>
       <div class="tile-label">Participants<br>with Kubios files</div></div>
     <div class="tile warn">
-      <div class="tile-value">15/16</div>
+      <div class="tile-value">16/17</div>
       <div class="tile-label">In batch summary<br>and _hrv files</div></div>
     <div class="tile ok">
-      <div class="tile-value">16/16</div>
+      <div class="tile-value">17/17</div>
       <div class="tile-label">Complete<br>block sets</div></div>
     <div class="tile ok">
       <div class="tile-value">✓</div>
@@ -755,6 +808,7 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
 <tr><td class='mono'>g9788</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>h9149</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>m9351</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>n5879</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>o8244</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>r4755</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>s1250</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>both</td><td>_hrv file</td><td>5</td><td class='status-ok'>✓ OK</td></tr>
@@ -773,18 +827,18 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     <div class="table-wrap"><table>
       <thead><tr><th>Block</th><th>N participants</th><th>Mean HR (bpm)</th>
         <th>Mean RMSSD (ms)</th><th>Mean SDNN (ms)</th></tr></thead>
-      <tbody><tr><td class='mono'>baseline</td><td>16</td><td>81.8</td><td>34.3</td><td>38.4</td></tr>
-<tr><td class='mono'>negative_induction</td><td>16</td><td>83</td><td>34.3</td><td>40.1</td></tr>
-<tr><td class='mono'>negative_recovery</td><td>16</td><td>83.3</td><td>32.5</td><td>39.9</td></tr>
-<tr><td class='mono'>positive_induction</td><td>16</td><td>81.6</td><td>29.9</td><td>34</td></tr>
-<tr><td class='mono'>positive_recovery</td><td>16</td><td>83.3</td><td>28.3</td><td>34.4</td></tr></tbody>
+      <tbody><tr><td class='mono'>baseline</td><td>17</td><td>81.6</td><td>33.9</td><td>38.2</td></tr>
+<tr><td class='mono'>negative_induction</td><td>17</td><td>82.8</td><td>33.7</td><td>39.5</td></tr>
+<tr><td class='mono'>negative_recovery</td><td>17</td><td>83</td><td>32.1</td><td>39.4</td></tr>
+<tr><td class='mono'>positive_induction</td><td>17</td><td>81.3</td><td>29.6</td><td>33.8</td></tr>
+<tr><td class='mono'>positive_recovery</td><td>17</td><td>83.1</td><td>28</td><td>34.6</td></tr></tbody>
     </table></div>
     <div class="table-wrap" style="margin-top:1rem;"><table>
       <thead><tr><th>Metric</th><th>N values</th><th>Min</th><th>Max</th>
         <th>Expected range</th><th>Anomalies</th></tr></thead>
       <tbody>
-        <tr><td class="mono">mean_hr_bpm</td><td>80</td><td>53.9</td><td>104.7</td><td>40–120 bpm</td><td class='status-ok'>✓ none</td></tr>
-        <tr><td class="mono">rmssd_ms</td><td>80</td><td>10.3</td><td>109.9</td><td>5–200 ms</td><td class='status-ok'>✓ none</td></tr>
+        <tr><td class="mono">mean_hr_bpm</td><td>85</td><td>53.9</td><td>104.7</td><td>40–120 bpm</td><td class='status-ok'>✓ none</td></tr>
+        <tr><td class="mono">rmssd_ms</td><td>85</td><td>10.3</td><td>109.9</td><td>5–200 ms</td><td class='status-ok'>✓ none</td></tr>
       </tbody>
     </table></div>
   </section>
@@ -843,6 +897,11 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
 <tr><td class='mono'>m9351</td><td class='mono'>negative_recovery</td><td>219</td><td class='status-ok'>✓</td></tr>
 <tr><td class='mono'>m9351</td><td class='mono'>positive_induction</td><td>239</td><td class='status-ok'>✓</td></tr>
 <tr><td class='mono'>m9351</td><td class='mono'>positive_recovery</td><td>226</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>n5879</td><td class='mono'>baseline</td><td>234</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>n5879</td><td class='mono'>negative_induction</td><td>233</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>n5879</td><td class='mono'>negative_recovery</td><td>231</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>n5879</td><td class='mono'>positive_induction</td><td>240</td><td class='status-ok'>✓</td></tr>
+<tr><td class='mono'>n5879</td><td class='mono'>positive_recovery</td><td>240</td><td class='status-ok'>✓</td></tr>
 <tr><td class='mono'>o8244</td><td class='mono'>baseline</td><td>234</td><td class='status-ok'>✓</td></tr>
 <tr><td class='mono'>o8244</td><td class='mono'>negative_induction</td><td>221</td><td class='status-ok'>✓</td></tr>
 <tr><td class='mono'>o8244</td><td class='mono'>negative_recovery</td><td>234</td><td class='status-ok'>✓</td></tr>
@@ -876,16 +935,16 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
         </table></div>
       </section></div>
   <div id="tab-kubios-video" class="tab-content"><div class="status-row">
-    <div class="tile blue"><div class="tile-value">8</div>
+    <div class="tile blue"><div class="tile-value">18</div>
       <div class="tile-label">Participants with<br>video heart beats</div></div>
     <div class="tile warn">
-      <div class="tile-value">15/16</div>
+      <div class="tile-value">26/36</div>
       <div class="tile-label">Kubios input +<br>5 sample windows</div></div>
     <div class="tile warn">
-      <div class="tile-value">8/16</div>
+      <div class="tile-value">8/36</div>
       <div class="tile-label">Kubios results<br>for 5 blocks</div></div>
     <div class="tile warn">
-      <div class="tile-value">10</div>
+      <div class="tile-value">30</div>
       <div class="tile-label">Participant × source<br>rows with issues</div></div>
   </div>
 
@@ -909,16 +968,36 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
       <thead><tr><th>Participant</th><th>Source</th><th>Raw beats</th><th>Kubios input</th>
         <th>Samples</th><th>Kubios results</th><th>From</th><th>Block HR (bpm)</th>
         <th>RMSSD (ms)</th><th>Max |ΔHR| vs ECG</th><th>Artefacts (%)</th><th>Status</th></tr></thead>
-      <tbody><tr><td class='mono'>e9587</td><td>Webcam (optimized)</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no Kubios results</td></tr>
-<tr><td class='mono'>g9788</td><td>FaceReader</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>_hrv report</td><td>75.6–80.4</td><td>8.3–55.2</td><td>1.4</td><td>41.0</td><td class='status-warn'>⚠ not in Kubios_Samples.csv; < 100 beats: negative_recovery, positive_recovery</td></tr>
+      <tbody><tr><td class='mono'>7280</td><td>FaceReader</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no heart beat log</td></tr>
+<tr><td class='mono'>7280</td><td>Webcam (optimized)</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no Kubios results</td></tr>
+<tr><td class='mono'>a5687</td><td>FaceReader</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no heart beat log</td></tr>
+<tr><td class='mono'>a5687</td><td>Webcam (optimized)</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no Kubios results</td></tr>
+<tr><td class='mono'>b365</td><td>FaceReader</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no heart beat log</td></tr>
+<tr><td class='mono'>b365</td><td>Webcam (optimized)</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no Kubios results</td></tr>
+<tr><td class='mono'>b9036</td><td>FaceReader</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no heart beat log</td></tr>
+<tr><td class='mono'>b9036</td><td>Webcam (optimized)</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no Kubios results</td></tr>
+<tr><td class='mono'>d0866</td><td>FaceReader</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no heart beat log</td></tr>
+<tr><td class='mono'>d0866</td><td>Webcam (optimized)</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no Kubios results</td></tr>
+<tr><td class='mono'>d9466</td><td>FaceReader</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no heart beat log</td></tr>
+<tr><td class='mono'>d9466</td><td>Webcam (optimized)</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no Kubios results</td></tr>
+<tr><td class='mono'>d9858</td><td>FaceReader</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no heart beat log</td></tr>
+<tr><td class='mono'>d9858</td><td>Webcam (optimized)</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no Kubios results</td></tr>
+<tr><td class='mono'>e9587</td><td>Webcam (optimized)</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no Kubios results</td></tr>
+<tr><td class='mono'>g9788</td><td>FaceReader</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>_hrv report</td><td>75.6–80.4</td><td>8.3–55.2</td><td>1.4</td><td>41.0</td><td class='status-warn'>⚠ < 100 beats: negative_recovery, positive_recovery</td></tr>
 <tr><td class='mono'>g9788</td><td>Webcam (optimized)</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no Kubios results</td></tr>
 <tr><td class='mono'>h9149</td><td>Webcam (optimized)</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no Kubios results</td></tr>
 <tr><td class='mono'>k6294</td><td>Webcam (optimized)</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no Kubios results</td></tr>
 <tr><td class='mono'>m9351</td><td>Webcam (optimized)</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no Kubios results</td></tr>
 <tr><td class='mono'>o8244</td><td>Webcam (optimized)</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no Kubios results</td></tr>
+<tr><td class='mono'>r4755</td><td>FaceReader</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no heart beat log</td></tr>
+<tr><td class='mono'>r4755</td><td>Webcam (optimized)</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no Kubios results</td></tr>
 <tr><td class='mono'>s1250</td><td>FaceReader</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>_hrv report</td><td>85.6–91.4</td><td>20.4–35.9</td><td>11.0</td><td>20.0</td><td class='status-warn'>⚠ block HR up to 11.0 bpm from ECG</td></tr>
 <tr><td class='mono'>s1250</td><td>Webcam (optimized)</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no Kubios results</td></tr>
+<tr><td class='mono'>s9642</td><td>FaceReader</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no heart beat log</td></tr>
+<tr><td class='mono'>s9642</td><td>Webcam (optimized)</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no Kubios results</td></tr>
 <tr><td class='mono'>s9686</td><td>Webcam (optimized)</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no Kubios results</td></tr>
+<tr><td class='mono'>un2956</td><td>FaceReader</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no heart beat log</td></tr>
+<tr><td class='mono'>un2956</td><td>Webcam (optimized)</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class='status-warn'>⚠ no Kubios results</td></tr>
 <tr><td class='mono'>e9587</td><td>FaceReader</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>_hrv report</td><td>53.9–65.7</td><td>71.7–121.8</td><td>1.0</td><td>2.4</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>h9149</td><td>FaceReader</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>_hrv report</td><td>89.2–95.4</td><td>28.3–42.2</td><td>0.7</td><td>13.6</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>k6294</td><td>FaceReader</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>_hrv report</td><td>95.3–103.5</td><td>36.4–47.6</td><td>4.6</td><td>2.0</td><td class='status-ok'>✓ OK</td></tr>
@@ -949,16 +1028,16 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
   <div id="tab-biometrics" class="tab-content"><div class="note">Online = heart rate computed <strong>live during the
   session</strong> and saved by PsychoPy in <code>raw_psychopy</code>. The heart rate recomputed afterwards
   from the video (002) is in the <strong>Webcam HR (offline)</strong> tab.</div><div class="status-row">
-    <div class="tile blue"><div class="tile-value">19</div>
+    <div class="tile blue"><div class="tile-value">20</div>
       <div class="tile-label">Sessions in<br>raw_psychopy</div></div>
     <div class="tile ok">
-      <div class="tile-value">19/19</div>
+      <div class="tile-value">20/20</div>
       <div class="tile-label">With<br>_biometrics.csv</div></div>
     <div class="tile warn">
-      <div class="tile-value">18/19</div>
+      <div class="tile-value">19/20</div>
       <div class="tile-label">With<br>_clocksync.json</div></div>
     <div class="tile warn">
-      <div class="tile-value">19</div>
+      <div class="tile-value">20</div>
       <div class="tile-label">Sessions<br>with issues</div></div>
   </div>
 
@@ -970,7 +1049,7 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
          streamed during the experiment) and <code>{pid}_*_clocksync.json</code> (clock readings
          needed to align them: t_main, t_wall, t_mono, mono_reset, global_reset). Sessions with a
          PsychoPy data file but no biometrics are listed too. Files under 1 MB are flagged as almost empty. <em>In combined</em> = participant appears in
-         <code>biosignals2_webcambiometrics.csv</code>.</p>
+         <code>biosignals2_webcambiometrics_online.csv</code>.</p>
     </div>
     <div class="table-wrap"><table>
       <thead><tr><th>Participant</th><th>_biometrics.csv</th><th>Size (MB)</th>
@@ -987,6 +1066,7 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
 <tr><td class='mono'>h9149</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>50.9</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ not in combined file</td></tr>
 <tr><td class='mono'>k6294</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>41.4</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ not in combined file</td></tr>
 <tr><td class='mono'>m9351</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>51.8</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ not in combined file</td></tr>
+<tr><td class='mono'>n5879</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>45.8</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ not in combined file</td></tr>
 <tr><td class='mono'>o8244</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>0.0</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ _biometrics.csv only 1 KB (almost no frames); not in combined file</td></tr>
 <tr><td class='mono'>r4755</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>46.0</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ not in combined file</td></tr>
 <tr><td class='mono'>s1250</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>0.0</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn'>⚠ _biometrics.csv only 1 KB (almost no frames); not in combined file</td></tr>
@@ -1012,7 +1092,7 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     <div class="section-head">
       <div class="section-label">Combined File — Frame Counts &amp; Signal Quality</div>
       <h2>Frames per participant per condition</h2>
-      <p>From <code>biosignals2_webcambiometrics.csv</code>. Low frame count (&lt; 500) may indicate
+      <p>From <code>biosignals2_webcambiometrics_online.csv</code>. Low frame count (&lt; 500) may indicate
          recording gaps. Peak rate &lt; 1% suggests rPPG peak detection failed for that phase.</p>
     </div>
     <div class="table-wrap"><table>
@@ -1026,16 +1106,16 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     </table></div>
   </section></div>
   <div id="tab-biometrics-offline" class="tab-content"><div class="status-row">
-    <div class="tile blue"><div class="tile-value">8</div>
+    <div class="tile blue"><div class="tile-value">18</div>
       <div class="tile-label">Participants<br>analysed offline</div></div>
-    <div class="tile warn">
-      <div class="tile-value">5/8</div>
+    <div class="tile ok">
+      <div class="tile-value">18/18</div>
       <div class="tile-label">Frames, events &amp; beats<br>(optimized)</div></div>
     <div class="tile warn">
-      <div class="tile-value">4/8</div>
+      <div class="tile-value">17/18</div>
       <div class="tile-label">ECG→video<br>offset</div></div>
     <div class="tile warn">
-      <div class="tile-value">5</div>
+      <div class="tile-value">4</div>
       <div class="tile-label">Participants<br>with issues</div></div>
   </div>
 
@@ -1058,21 +1138,31 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
       <thead><tr><th>Participant</th><th>Versions found</th><th>Required files</th><th>Offset</th>
         <th>Blocks</th><th>Min coverage</th><th>Block HR (bpm)</th><th>Beats</th>
         <th>Near gap</th><th>Status</th></tr></thead>
-      <tbody><tr><td class='mono'>e9587</td><td class='mono' style='font-size:.78rem'>baseline, faceloss, optimized</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>1328</td><td>0.2%</td><td class='status-warn'>⚠ optimized: no events; no ECG->video offset; beats have no ECG-clock times</td></tr>
-<tr><td class='mono'>g9788</td><td class='mono' style='font-size:.78rem'>baseline, faceloss, optimized</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>1477</td><td>0.0%</td><td class='status-warn'>⚠ optimized: no events; no ECG->video offset; beats have no ECG-clock times</td></tr>
-<tr><td class='mono'>h9149</td><td class='mono' style='font-size:.78rem'>baseline, faceloss, optimized</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>—</td><td>—</td><td>—</td><td>2037</td><td>0.0%</td><td class='status-warn'>⚠ optimized: no events; no ECG->video offset; beats have no ECG-clock times</td></tr>
-<tr><td class='mono'>m9351</td><td class='mono' style='font-size:.78rem'>baseline, faceloss, optimized</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>5</td><td>1.00</td><td>71.5–77.0</td><td>1699</td><td>0.2%</td><td class='status-warn'>⚠ no ECG->video offset; beats have no ECG-clock times</td></tr>
+      <tbody><tr><td class='mono'>7280</td><td class='mono' style='font-size:.78rem'>baseline, faceloss, optimized</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>5</td><td>0.74</td><td>75.1–86.1</td><td>1487</td><td>1.7%</td><td class='status-warn'>⚠ coverage < 0.8: Baseline, Positive Recovery</td></tr>
+<tr><td class='mono'>b365</td><td class='mono' style='font-size:.78rem'>baseline, faceloss, optimized</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>5</td><td>0.57</td><td>74.6–77.6</td><td>1251</td><td>4.3%</td><td class='status-warn'>⚠ coverage < 0.8: Baseline, Negative Induction, Negative Recovery, Positive Recovery</td></tr>
+<tr><td class='mono'>b9036</td><td class='mono' style='font-size:.78rem'>baseline, faceloss, optimized</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td>5</td><td>1.00</td><td>75.9–84.5</td><td>1492</td><td>0.3%</td><td class='status-warn'>⚠ no ECG->video offset; beats have no ECG-clock times</td></tr>
 <tr><td class='mono'>s1250</td><td class='mono' style='font-size:.78rem'>baseline, faceloss, optimized</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>5</td><td>0.74</td><td>85.3–91.6</td><td>1616</td><td>0.8%</td><td class='status-warn'>⚠ coverage < 0.8: Negative Induction</td></tr>
+<tr><td class='mono'>a5687</td><td class='mono' style='font-size:.78rem'>baseline, faceloss, optimized</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>5</td><td>0.86</td><td>71.9–82.7</td><td>1553</td><td>0.6%</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>d0866</td><td class='mono' style='font-size:.78rem'>baseline, faceloss, optimized</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>5</td><td>1.00</td><td>86.9–90.6</td><td>1711</td><td>0.0%</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>d9466</td><td class='mono' style='font-size:.78rem'>baseline, faceloss, optimized</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>5</td><td>1.00</td><td>63.7–65.8</td><td>1362</td><td>0.1%</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>d9858</td><td class='mono' style='font-size:.78rem'>baseline, faceloss, optimized</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>5</td><td>1.00</td><td>77.3–84.9</td><td>1648</td><td>0.3%</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>e9587</td><td class='mono' style='font-size:.78rem'>baseline, faceloss, optimized</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>5</td><td>1.00</td><td>53.8–62.8</td><td>1328</td><td>0.2%</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>g9788</td><td class='mono' style='font-size:.78rem'>baseline, faceloss, optimized</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>5</td><td>1.00</td><td>75.9–78.9</td><td>1477</td><td>0.0%</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>h9149</td><td class='mono' style='font-size:.78rem'>baseline, faceloss, optimized</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>5</td><td>1.00</td><td>89.2–95.7</td><td>2037</td><td>0.0%</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>k6294</td><td class='mono' style='font-size:.78rem'>baseline, faceloss, optimized</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>5</td><td>1.00</td><td>95.4–105.2</td><td>1729</td><td>0.2%</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>m9351</td><td class='mono' style='font-size:.78rem'>baseline, faceloss, optimized</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>5</td><td>1.00</td><td>71.5–77.0</td><td>1699</td><td>0.2%</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>o8244</td><td class='mono' style='font-size:.78rem'>baseline, faceloss, optimized</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>5</td><td>1.00</td><td>73.5–78.2</td><td>1655</td><td>0.2%</td><td class='status-ok'>✓ OK</td></tr>
-<tr><td class='mono'>s9686</td><td class='mono' style='font-size:.78rem'>baseline, faceloss, optimized</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>5</td><td>1.00</td><td>84.4–86.6</td><td>1605</td><td>0.2%</td><td class='status-ok'>✓ OK</td></tr></tbody>
+<tr><td class='mono'>r4755</td><td class='mono' style='font-size:.78rem'>baseline, faceloss, optimized</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>5</td><td>1.00</td><td>87.2–89.9</td><td>1801</td><td>0.1%</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>s9642</td><td class='mono' style='font-size:.78rem'>baseline, faceloss, optimized</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>5</td><td>1.00</td><td>66.5–73.1</td><td>1513</td><td>0.5%</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>s9686</td><td class='mono' style='font-size:.78rem'>baseline, faceloss, optimized</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>5</td><td>1.00</td><td>84.4–86.6</td><td>1605</td><td>0.2%</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>un2956</td><td class='mono' style='font-size:.78rem'>baseline, faceloss, optimized</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>5</td><td>1.00</td><td>85.1–91.9</td><td>1774</td><td>0.2%</td><td class='status-ok'>✓ OK</td></tr></tbody>
     </table></div>
   </section></div>
   <div id="tab-video"    class="tab-content"><div class="status-row">
     <div class="tile blue"><div class="tile-value">19</div>
       <div class="tile-label">Participants<br>in video folder</div></div>
     <div class="tile warn">
-      <div class="tile-value">15/19</div>
+      <div class="tile-value">18/19</div>
       <div class="tile-label">PNG participants with<br>zip + 1:1 AVI + timestamps</div></div>
     <div class="tile blue"><div class="tile-value">0</div>
       <div class="tile-label">Old AVI<br>sessions</div></div>
@@ -1097,15 +1187,13 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
       <thead><tr><th>Participant</th><th>Type</th><th>Frames zip</th><th>1:1 FFV1 AVI</th>
         <th>Timestamps</th><th>Zip (GB)</th><th>AVI (GB)</th><th>Frames</th><th>Duration (min)</th>
         <th>Camera fps</th><th>Status</th></tr></thead>
-      <tbody><tr><td class='mono'>d9466</td><td>PNG</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>—</td><td>5.36</td><td>37,625</td><td>20.9</td><td>30.02</td><td class='status-warn'>⚠ no frames zip</td></tr>
-<tr><td class='mono'>r4755</td><td>PNG</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>10.04</td><td>—</td><td>37,583</td><td>20.9</td><td>30.02</td><td class='status-warn'>⚠ no 1to1_ffv1.avi</td></tr>
-<tr><td class='mono'>s6752</td><td>PNG</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>—</td><td>—</td><td>33,684</td><td>18.8</td><td>29.85</td><td class='status-warn'>⚠ no frames zip; no 1to1_ffv1.avi</td></tr>
-<tr><td class='mono'>un2956</td><td>PNG</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>—</td><td>5.24</td><td>37,145</td><td>20.6</td><td>29.99</td><td class='status-warn'>⚠ no frames zip</td></tr>
+      <tbody><tr><td class='mono'>s6752</td><td>PNG</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-warn' style='text-align:center'>&#10007;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>—</td><td>—</td><td>33,684</td><td>18.8</td><td>29.85</td><td class='status-warn'>⚠ no frames zip; no 1to1_ffv1.avi</td></tr>
 <tr><td class='mono'>7280</td><td>PNG</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>9.46</td><td>5.13</td><td>35,457</td><td>19.8</td><td>29.82</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>a5687</td><td>PNG</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>10.12</td><td>5.62</td><td>38,195</td><td>21.2</td><td>29.99</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>b365</td><td>PNG</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>8.32</td><td>4.40</td><td>33,651</td><td>18.7</td><td>30.01</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>b9036</td><td>PNG</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>9.36</td><td>5.10</td><td>34,490</td><td>19.1</td><td>30.04</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>d0866</td><td>PNG</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>9.39</td><td>5.13</td><td>34,642</td><td>19.2</td><td>30.03</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>d9466</td><td>PNG</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>9.92</td><td>5.36</td><td>37,625</td><td>20.9</td><td>30.02</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>d9858</td><td>PNG</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>9.88</td><td>5.34</td><td>37,506</td><td>20.8</td><td>30.03</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>e9587</td><td>PNG</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>11.13</td><td>5.99</td><td>41,137</td><td>22.8</td><td>30.04</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>g9788</td><td>PNG</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>9.41</td><td>5.06</td><td>34,689</td><td>19.3</td><td>29.89</td><td class='status-ok'>✓ OK</td></tr>
@@ -1113,22 +1201,24 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
 <tr><td class='mono'>k6294</td><td>PNG</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>9.69</td><td>5.30</td><td>33,510</td><td>18.6</td><td>30.02</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>m9351</td><td>PNG</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>12.04</td><td>6.48</td><td>41,794</td><td>23.4</td><td>29.81</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>o8244</td><td>PNG</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>11.49</td><td>6.44</td><td>39,630</td><td>22.0</td><td>30.03</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>r4755</td><td>PNG</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>10.04</td><td>5.34</td><td>37,583</td><td>20.9</td><td>30.02</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>s1250</td><td>PNG</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>9.78</td><td>5.25</td><td>35,129</td><td>19.5</td><td>30.05</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>s9642</td><td>PNG</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>10.45</td><td>5.71</td><td>39,645</td><td>22.2</td><td>29.81</td><td class='status-ok'>✓ OK</td></tr>
-<tr><td class='mono'>s9686</td><td>PNG</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>9.85</td><td>5.31</td><td>36,625</td><td>20.4</td><td>29.92</td><td class='status-ok'>✓ OK</td></tr></tbody>
+<tr><td class='mono'>s9686</td><td>PNG</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>9.85</td><td>5.31</td><td>36,625</td><td>20.4</td><td>29.92</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>un2956</td><td>PNG</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>9.76</td><td>5.24</td><td>37,145</td><td>20.6</td><td>29.99</td><td class='status-ok'>✓ OK</td></tr></tbody>
     </table></div>
   </section></div>
   <div id="tab-physiology" class="tab-content"><div class="status-row">
-    <div class="tile blue"><div class="tile-value">18</div>
+    <div class="tile blue"><div class="tile-value">19</div>
       <div class="tile-label">Participants with<br>physiology files</div></div>
     <div class="tile ok">
-      <div class="tile-value">18/18</div>
+      <div class="tile-value">19/19</div>
       <div class="tile-label">Session<br>recording</div></div>
     <div class="tile warn">
-      <div class="tile-value">17/18</div>
+      <div class="tile-value">18/19</div>
       <div class="tile-label">Trimmed to<br>protocol</div></div>
     <div class="tile ok">
-      <div class="tile-value">18/18</div>
+      <div class="tile-value">19/19</div>
       <div class="tile-label">EDA .mat for<br>Ledalab</div></div>
   </div>
 
@@ -1159,6 +1249,7 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
 <tr><td class='mono'>h9149</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>80.5</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>k6294</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>61.6</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>m9351</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>86.8</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok'>✓ OK</td></tr>
+<tr><td class='mono'>n5879</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>79.8</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>o8244</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>73.7</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>r4755</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>63.9</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok'>✓ OK</td></tr>
 <tr><td class='mono'>s6752</td><td class='status-ok' style='text-align:center'>&#10003;</td><td>74.0</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok' style='text-align:center'>&#10003;</td><td class='status-ok'>✓ OK</td></tr>
@@ -1208,10 +1299,10 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     </table></div>
   </section></div>
   <div id="tab-questionnaires" class="tab-content"><div class="status-row">
-    <div class="tile blue"><div class="tile-value">12</div>
+    <div class="tile blue"><div class="tile-value">19</div>
       <div class="tile-label">Participants<br>scored</div></div>
     <div class="tile warn">
-      <div class="tile-value">11/13</div>
+      <div class="tile-value">18/20</div>
       <div class="tile-label">IDs matched<br>to PsychoPy</div></div>
     <div class="tile warn">
       <div class="tile-value">4/6</div>
@@ -1233,12 +1324,12 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     <div class="table-wrap"><table>
       <thead><tr><th>Scale</th><th>Items</th><th>Scored</th><th>Partial</th><th>Blank</th>
         <th>Min</th><th>Max</th><th>Valid range</th><th>Status</th></tr></thead>
-      <tbody><tr><td class='mono'>GAD-7</td><td>7</td><td>12/12</td><td>0</td><td>0</td><td>1</td><td>18</td><td>0–21</td><td class='status-ok'>✓ complete</td></tr>
-<tr><td class='mono'>PHQ-9</td><td>9</td><td>12/12</td><td>0</td><td>0</td><td>2</td><td>18</td><td>0–27</td><td class='status-ok'>✓ complete</td></tr>
-<tr><td class='mono'>AQ-10</td><td>10</td><td>12/12</td><td>0</td><td>0</td><td>0</td><td>8</td><td>0–10</td><td class='status-ok'>✓ complete</td></tr>
-<tr><td class='mono'>PAQ-24</td><td>24</td><td>12/12</td><td>0</td><td>0</td><td>56</td><td>121</td><td>24–168</td><td class='status-ok'>✓ complete</td></tr>
-<tr><td class='mono'>DAS-SF1</td><td>9</td><td>11/12</td><td>0</td><td>1</td><td>11</td><td>27</td><td>9–63</td><td class='status-warn'>⚠ 1 unscored</td></tr>
-<tr><td class='mono'>DAS-SF2</td><td>9</td><td>11/12</td><td>0</td><td>1</td><td>23</td><td>29</td><td>9–63</td><td class='status-warn'>⚠ 1 unscored</td></tr></tbody>
+      <tbody><tr><td class='mono'>GAD-7</td><td>7</td><td>19/19</td><td>0</td><td>0</td><td>1</td><td>18</td><td>0–21</td><td class='status-ok'>✓ complete</td></tr>
+<tr><td class='mono'>PHQ-9</td><td>9</td><td>19/19</td><td>0</td><td>0</td><td>1</td><td>18</td><td>0–27</td><td class='status-ok'>✓ complete</td></tr>
+<tr><td class='mono'>AQ-10</td><td>10</td><td>19/19</td><td>0</td><td>0</td><td>0</td><td>8</td><td>0–10</td><td class='status-ok'>✓ complete</td></tr>
+<tr><td class='mono'>PAQ-24</td><td>24</td><td>19/19</td><td>0</td><td>0</td><td>32</td><td>123</td><td>24–168</td><td class='status-ok'>✓ complete</td></tr>
+<tr><td class='mono'>DAS-SF1</td><td>9</td><td>18/19</td><td>0</td><td>1</td><td>11</td><td>31</td><td>9–63</td><td class='status-warn'>⚠ 1 unscored</td></tr>
+<tr><td class='mono'>DAS-SF2</td><td>9</td><td>18/19</td><td>0</td><td>1</td><td>21</td><td>31</td><td>9–63</td><td class='status-warn'>⚠ 1 unscored</td></tr></tbody>
     </table></div>
   </section>
 
@@ -1254,18 +1345,25 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
       <thead><tr><th>Participant</th><th>Questionnaire</th><th>PsychoPy</th>
         <th>Status</th></tr></thead>
       <tbody><tr><td class='mono'>7280</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr>
-<tr><td class='mono'>A5687</td><td>✓</td><td>—</td><td class='status-warn'>⚠ no PsychoPy session</td></tr>
-<tr><td class='mono'>A6587</td><td>—</td><td>✓</td><td class='status-warn'>⚠ no questionnaire</td></tr>
+<tr><td class='mono'>A5687</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr>
+<tr><td class='mono'>B365</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr>
 <tr><td class='mono'>B9036</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr>
+<tr><td class='mono'>D0866</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr>
+<tr><td class='mono'>D9466</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr>
+<tr><td class='mono'>D9858</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr>
 <tr><td class='mono'>E9587</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr>
 <tr><td class='mono'>G9788</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr>
 <tr><td class='mono'>H9149</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr>
 <tr><td class='mono'>K6294</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr>
 <tr><td class='mono'>M9351</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr>
+<tr><td class='mono'>N5879</td><td>—</td><td>✓</td><td class='status-warn'>⚠ no questionnaire</td></tr>
 <tr><td class='mono'>O8244</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr>
 <tr><td class='mono'>R4755</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr>
 <tr><td class='mono'>S1250</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr>
-<tr><td class='mono'>S9686</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr></tbody>
+<tr><td class='mono'>S6752</td><td>✓</td><td>—</td><td class='status-warn'>⚠ no PsychoPy session</td></tr>
+<tr><td class='mono'>S9642</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr>
+<tr><td class='mono'>S9686</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr>
+<tr><td class='mono'>UN2956</td><td>✓</td><td>✓</td><td class='status-ok'>✓ matched</td></tr></tbody>
     </table></div>
   </section>
 
@@ -1278,10 +1376,10 @@ tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:.83rem;color:var(-
     <div class="table-wrap"><table>
       <thead><tr><th>Variable</th><th>Summary</th></tr></thead>
       <tbody>
-        <tr><td class="mono">age</td><td>22.0 (SD 4.3), range 18–31 · n = 12</td></tr>
-        <tr><td class="mono">sex_at_birth</td><td>Female (10) · Male (2)</td></tr>
-        <tr><td class="mono">gender_id</td><td>Yes (12)</td></tr>
-        <tr><td class="mono">ethnicity</td><td>Asian (any background) (1) · Black (any background) (1) · Mixed (any background) (1) · White (any background) (9)</td></tr>
+        <tr><td class="mono">age</td><td>21.6 (SD 5.0), range 18–35 · n = 19</td></tr>
+        <tr><td class="mono">sex_at_birth</td><td>Female (16) · Male (3)</td></tr>
+        <tr><td class="mono">gender_id</td><td>Yes (19)</td></tr>
+        <tr><td class="mono">ethnicity</td><td>Asian (any background) (1) · Black (any background) (1) · Mixed (any background) (2) · White (any background) (15)</td></tr>
       </tbody>
     </table></div>
     <div class="note-ok" style="margin-top:.75rem;">

@@ -766,15 +766,22 @@ peek_facereader <- function(path) {
 }
 
 fr_candidates <- list.files(facereader_dir, pattern = "\\.(xlsx|txt)$", full.names = TRUE) |>
-  str_subset("/~\\$", negate = TRUE)                    # Excel lock files
+  str_subset("/~\\$", negate = TRUE) |>                 # Excel lock files
+  str_subset("_state\\.(xlsx|txt)$", negate = TRUE)     # state logs also have a `Video Time` row
 fr_index <- map(fr_candidates, peek_facereader) |> list_rbind() |> filter(is_detailed)
 cat(nrow(fr_index), "FaceReader detailed logs;",
     length(fr_candidates) - nrow(fr_index), "other files in the folder ignored.\n")
 
 fr_dupes <- fr_index |> count(participant_id) |> filter(n > 1) |> pull(participant_id)
+fr_all   <- fr_index
 fr_index <- fr_index |>
   filter(participant_id %in% sessions$participant_id, !participant_id %in% fr_dupes)
-if (nrow(fr_index) == 0) stop("No FaceReader detailed logs match a usable session in: ", facereader_dir)
+if (nrow(fr_index) == 0) stop(sprintf(paste0(
+  "No FaceReader detailed logs match a usable session in: %s\n",
+  "  detailed logs: %d\n  IDs with several logs: %s\n  IDs with no usable PsychoPy session: %s"),
+  facereader_dir, nrow(fr_all),
+  paste(fr_dupes, collapse = ", "),
+  paste(setdiff(unique(fr_all$participant_id), sessions$participant_id), collapse = ", ")))
 
 # Which kind of video FaceReader analysed (from the log's Filename row):
 #   "frames"   1:1 (*1to1*) or older *_recording.avi: video time = frame / nominal fps -> remap

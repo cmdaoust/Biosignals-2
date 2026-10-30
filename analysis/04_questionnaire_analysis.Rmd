@@ -22,7 +22,7 @@ This document loads the Qualtrics demographics & questionnaire export, scores si
 | GAD-7   | 7     | Generalised anxiety (past 2 weeks)    |
 | PHQ-9   | 9     | Depression (past 2 weeks)             |
 | AQ-10   | 10    | Autistic traits (screening)           |
-| PAQ-24  | 24    | Alexithymia (6 subscales, 1–7 each)   |
+| PAQ-24  | 24    | Alexithymia (5 subscales, 1–7 each)   |
 | DAS-SF1 | 9     | Dysfunctional attitudes – Achievement |
 | DAS-SF2 | 9     | Dysfunctional attitudes – Dependency  |
 
@@ -518,22 +518,39 @@ cat("AQ-10 Cronbach's α =",
 
 ## 9. PAQ-24
 
-24 items across 6 QID blocks (4 items each). All items scored 1–7 (higher = more alexithymia). No reverse-scored items. Each subscale: 4–28 \| Total: 24–168.
+24 items, all scored 1–7 (higher = more alexithymia). No reverse-scored items. Total: 24–168.
 
-**⚠ Subscale assignment below is inferred from item content and Qualtrics block order. Verify against the Qualtrics survey builder.**
+Scoring follows the PAQ Scoring and Interpretation Manual (Preece et al., 2018; manual 2023-12). Five subscales, each the sum of its items:
 
-Subscales (Preece et al., 2018): - **DIF-N** — Difficulty Identifying Feelings (Negative affect) - **DDF-N** — Difficulty Describing Feelings (Negative affect) - **IN-N** — Inattention to Emotions (Negative affect) - **DIF-P** — Difficulty Identifying Feelings (Positive affect) - **DDF-P** — Difficulty Describing Feelings (Positive affect) - **IN-P** — Inattention to Emotions (Positive affect)
+| Subscale | PAQ items | Range |
+|----------|-----------|-------|
+| **N-DIF** — Difficulty identifying feelings, negative | 2, 8, 14, 20 | 4–28 |
+| **P-DIF** — Difficulty identifying feelings, positive | 5, 11, 17, 23 | 4–28 |
+| **N-DDF** — Difficulty describing feelings, negative | 1, 7, 13, 19 | 4–28 |
+| **P-DDF** — Difficulty describing feelings, positive | 4, 10, 16, 22 | 4–28 |
+| **G-EOT** — General externally orientated thinking | 3, 6, 9, 12, 15, 18, 21, 24 | 8–56 |
+
+Qualtrics column → PAQ item number was checked against the question text in the export header (30 Oct 2026).
 
 ```{r paq24-cols}
-# ── Column assignments (verify against your Qualtrics survey) ─────────────────
-paq_DIF_N <- c("QID43_1",  "QID43_3",  "QID44_28", "QID44_29")
-paq_DDF_N <- c("QID43_6",  "QID43_8",  "QID44_13", "QID44_14")
-paq_IN_N  <- c("QID51_9",  "QID51_27", "QID51_28", "QID51_10")
-paq_DIF_P <- c("QID52_28", "QID52_29", "QID53_23", "QID53_24")
-paq_DDF_P <- c("QID52_17", "QID52_18", "QID53_25", "QID53_26")
-paq_IN_P  <- c("QID45_19", "QID45_20", "QID45_21", "QID45_22")
+# ── Qualtrics ImportId for each PAQ item, in item order 1-24 (checked 30 Oct 2026) ──
+paq_item_ids <- c(
+  "QID43_1",  "QID43_3",  "QID43_6",  "QID43_8",    # items  1- 4
+  "QID51_9",  "QID51_27", "QID51_28", "QID51_10",   # items  5- 8
+  "QID44_28", "QID44_29", "QID44_13", "QID44_14",   # items  9-12
+  "QID52_28", "QID52_29", "QID52_17", "QID52_18",   # items 13-16
+  "QID45_19", "QID45_20", "QID45_21", "QID45_22",   # items 17-20
+  "QID53_23", "QID53_24", "QID53_25", "QID53_26"    # items 21-24
+)
+paq_items <- function(...) paq_item_ids[c(...)]
+paq_N_DIF <- paq_items(2, 8, 14, 20)
+paq_P_DIF <- paq_items(5, 11, 17, 23)
+paq_N_DDF <- paq_items(1, 7, 13, 19)
+paq_P_DDF <- paq_items(4, 10, 16, 22)
+paq_G_EOT <- paq_items(3, 6, 9, 12, 15, 18, 21, 24)
 
-paq_all_cols <- c(paq_DIF_N, paq_DDF_N, paq_IN_N, paq_DIF_P, paq_DDF_P, paq_IN_P)
+paq_all_cols <- paq_item_ids
+stopifnot(setequal(c(paq_N_DIF, paq_P_DIF, paq_N_DDF, paq_P_DDF, paq_G_EOT), paq_all_cols))
 ```
 
 ```{r paq24-score}
@@ -542,12 +559,11 @@ paq24 <- df |>
   mutate(across(all_of(paq_all_cols), \(x) recode_numeric(x, paq_map))) |>
   rowwise() |>
   mutate(
-    paq_DIF_N      = sum(c_across(all_of(paq_DIF_N)), na.rm = FALSE),
-    paq_DDF_N      = sum(c_across(all_of(paq_DDF_N)), na.rm = FALSE),
-    paq_IN_N       = sum(c_across(all_of(paq_IN_N)),  na.rm = FALSE),
-    paq_DIF_P      = sum(c_across(all_of(paq_DIF_P)), na.rm = FALSE),
-    paq_DDF_P      = sum(c_across(all_of(paq_DDF_P)), na.rm = FALSE),
-    paq_IN_P       = sum(c_across(all_of(paq_IN_P)),  na.rm = FALSE),
+    paq_N_DIF      = sum(c_across(all_of(paq_N_DIF)), na.rm = FALSE),
+    paq_P_DIF      = sum(c_across(all_of(paq_P_DIF)), na.rm = FALSE),
+    paq_N_DDF      = sum(c_across(all_of(paq_N_DDF)), na.rm = FALSE),
+    paq_P_DDF      = sum(c_across(all_of(paq_P_DDF)), na.rm = FALSE),
+    paq_G_EOT      = sum(c_across(all_of(paq_G_EOT)), na.rm = FALSE),
     paq_total      = sum(c_across(all_of(paq_all_cols)), na.rm = FALSE),
     paq_n_missing  = sum(is.na(c_across(all_of(paq_all_cols))))
   ) |>
@@ -565,14 +581,14 @@ paq24_scores |>
                    .names = "{.col}__{.fn}")) |>
   pivot_longer(everything(), names_to = c("subscale", "stat"), names_sep = "__") |>
   pivot_wider(names_from = stat, values_from = value) |>
-  kable(caption = "PAQ-24 subscale descriptives (each subscale: 4–28; total: 24–168)") |>
+  kable(caption = "PAQ-24 subscale descriptives (DIF/DDF subscales: 4–28; G-EOT: 8–56; total: 24–168)") |>
   kable_styling(bootstrap_options = "striped", full_width = FALSE)
 ```
 
 ```{r paq24-alpha}
 subscale_list <- list(
-  DIF_N = paq_DIF_N, DDF_N = paq_DDF_N, IN_N = paq_IN_N,
-  DIF_P = paq_DIF_P, DDF_P = paq_DDF_P, IN_P  = paq_IN_P
+  N_DIF = paq_N_DIF, P_DIF = paq_P_DIF, N_DDF = paq_N_DDF,
+  P_DDF = paq_P_DDF, G_EOT = paq_G_EOT
 )
 
 paq_items_raw <- df |>
@@ -753,6 +769,7 @@ scored_out <- demo |>
   left_join(das_sf2 |> select(participant_id, das_sf2_total, das_sf2_n_missing),
             by = "participant_id")
 
+dir.create(dirname(OUTPUT_PATH), showWarnings = FALSE, recursive = TRUE)
 write_csv(scored_out, OUTPUT_PATH)
 cat("Scored dataset written to:\n", OUTPUT_PATH, "\n")
 cat("Rows:", nrow(scored_out), "  Columns:", ncol(scored_out), "\n")

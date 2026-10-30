@@ -20,13 +20,13 @@ output:
 #   2. Do FaceReader and ECG agree on HR and HRV (both run through Kubios)?
 #
 # It only READS outputs that other scripts already make. Run these first:
-#   01_data_cleaning.Rmd             -> clean_combined_data/psychopy/biosignals2_selfreport_ratings.csv
+#   01_data_cleaning.Rmd             -> clean_combined_data/temp/biosignals2_selfreport_ratings.csv
 #   Ledalab (ledalab/run_ledalab_batch.m, with block events) -> ledalab/<id>_era.txt
 #   Kubios on the ECG                -> kubios/<id>_*_hrv.csv or KubiosHRVresults*.csv
 #   kubios/002_create_kubios_samples_video.py, then Kubios on <id>_facereader_beats_kubios.txt
 #                                    -> facereader/Kubios_Samples.csv + the FaceReader Kubios report
 #   FaceReader detailed log export   -> facereader/<id>_detailed.txt (or .xlsx)
-#   04_questionnaire_analysis.Rmd    -> clean_combined_data/psychopy/biosignals2_questionnaires_scored.csv
+#   04_questionnaire_analysis.Rmd    -> clean_combined_data/temp/biosignals2_questionnaires_scored.csv
 #                                       (GAD-7 / PHQ-9 totals for the anxiety & depression part)
 # Any source that isn't there yet is skipped with a note; nothing stops the knit.
 #
@@ -188,7 +188,7 @@ order_counts <- NULL   # how many participants did the negative / positive block
 # Block-level state ratings (1–7), given at the END of each block (baseline: after the
 # 3-min fixation). Not the per-video ratings.
 ratings <- safely_load({
-  f <- file.path(get0("COMBINED_PSYCHO_DIR", ifnotfound = file.path(SERVER_ROOT, "clean_combined_data", "psychopy")),
+  f <- file.path(get0("COMBINED_PSYCHO_DIR", ifnotfound = file.path(SERVER_ROOT, "clean_combined_data", "temp")),
                  "biosignals2_selfreport_ratings.csv")
   if (!file.exists(f)) empty_long("biosignals2_selfreport_ratings.csv not found (knit 01_data_cleaning.Rmd).") else
     read_csv(f, show_col_types = FALSE) |>
@@ -483,19 +483,14 @@ ID_KEY_PATH <- file.path(SERVER_ROOT, "private", "interim_report_id_key.csv")
 ID_KEY_OLD_PATH <- file.path(SERVER_ROOT, "clean_combined_data", "interim_report_private", "interim_report_id_key.csv")
 all_pids <- sort(unique(c(ratings$pid, scr$pid, ecg_hr$pid, fr_hr$pid, aus$pid, fr_missing$pid)))
 if (ANONYMISE_IDS) {
-  key_src <- if (file.exists(ID_KEY_PATH)) ID_KEY_PATH else if (file.exists(ID_KEY_OLD_PATH)) ID_KEY_OLD_PATH else NA
-  key_old <- if (!is.na(key_src)) read_csv(key_src, col_types = cols(.default = col_character())) else tibble()
-  # A key from the earlier scheme (random P01-P99 numbers, no "scheme" column) is replaced
-  key_old <- if (nrow(key_old) && "scheme" %in% names(key_old) && all(key_old$scheme == "sequential"))
-               key_old |> transmute(Participant, participant_id = norm_pid(participant_id)) |> filter(!is.na(Participant))
-             else tibble(Participant = character(), participant_id = character())
-  new_ids <- setdiff(all_pids, key_old$participant_id)
-  next_n  <- if (nrow(key_old)) max(as.integer(sub("^P", "", key_old$Participant))) + 1 else 1
-  set.seed(NULL)                                   # fresh randomness, never a fixed seed
-  new_ids <- new_ids[sample.int(length(new_ids))]  # random order within the new batch
-  key_map <- bind_rows(key_old, tibble(Participant = sprintf("P%02d", next_n + seq_along(new_ids) - 1),
-                                       participant_id = new_ids))
-  pid_code <- setNames(key_map$Participant, key_map$participant_id)[all_pids]
+  # The same key is used by 08_combine_timeseries.R (analysis/id_key.R): one code per person
+  # everywhere. New participants are added and the key is saved here, before anything uses it.
+  source(file.path(analysis_dir, "id_key.R"), local = TRUE)
+  if (!file.exists(ID_KEY_PATH) && file.exists(ID_KEY_OLD_PATH)) {   # one-off move from the old place
+    dir.create(dirname(ID_KEY_PATH), showWarnings = FALSE, recursive = TRUE)
+    file.copy(ID_KEY_OLD_PATH, ID_KEY_PATH)
+  }
+  pid_code <- id_key_codes(all_pids, ID_KEY_PATH)
 } else {
   pid_code <- setNames(all_pids, all_pids)
 }
@@ -571,11 +566,8 @@ if (nrow(avail)) kable(avail, caption = "Blocks with data (out of 5) per partici
 # this report, the same availability as above. Never written inside the repository. If it can't
 # be saved the knit stops, because the codes in this report would then be unrecorded.
 if (ANONYMISE_IDS) {
-  key <- key_map |> left_join(avail, by = "Participant") |>
-    mutate(scheme = "sequential", last_knitted = format(Sys.time(), "%Y-%m-%d %H:%M")) |> arrange(Participant)
-  dir.create(dirname(ID_KEY_PATH), showWarnings = FALSE, recursive = TRUE)
-  tryCatch(write_csv(key, ID_KEY_PATH),
-           error = function(e) stop("Could not save the private ID key (", conditionMessage(e), "). Is Box running?"))
+  # Codes are already saved (ids chunk); this only adds the availability columns to the key.
+  id_key_set_info(avail |> mutate(last_knitted = format(Sys.time(), "%Y-%m-%d %H:%M")), ID_KEY_PATH)
 }
 # An older version saved the key inside the repository: warn if that file is still there
 if (file.exists(file.path(analysis_dir, "07_interim_summary_id_key.csv")))
@@ -814,7 +806,7 @@ in this part.
 
 ```{r load-quest}
 quest <- safely_load({
-  f <- file.path(get0("COMBINED_PSYCHO_DIR", ifnotfound = file.path(SERVER_ROOT, "clean_combined_data", "psychopy")),
+  f <- file.path(get0("COMBINED_PSYCHO_DIR", ifnotfound = file.path(SERVER_ROOT, "clean_combined_data", "temp")),
                  "biosignals2_questionnaires_scored.csv")
   if (!file.exists(f)) stop("biosignals2_questionnaires_scored.csv not found (knit 04_questionnaire_analysis.Rmd)")
   read_csv(f, show_col_types = FALSE) |>

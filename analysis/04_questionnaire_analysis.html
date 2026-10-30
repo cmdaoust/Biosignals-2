@@ -11,7 +11,7 @@
 
 <meta name="author" content />
 
-<meta name="date" content="2026-10-27" />
+<meta name="date" content="2026-10-30" />
 
 <title>Biosignals2 — Questionnaire Scoring &amp; Descriptives</title>
 
@@ -1794,7 +1794,7 @@ border-radius: 0px;
 <h1 class="title toc-ignore">Biosignals2 — Questionnaire Scoring &amp;
 Descriptives</h1>
 <h4 class="author"></h4>
-<h4 class="date">2026-10-27</h4>
+<h4 class="date">2026-10-30</h4>
 
 </div>
 
@@ -1831,7 +1831,7 @@ CSV.</p>
 <tr class="even">
 <td>PAQ-24</td>
 <td>24</td>
-<td>Alexithymia (6 subscales, 1–7 each)</td>
+<td>Alexithymia (5 subscales, 1–7 each)</td>
 </tr>
 <tr class="odd">
 <td>DAS-SF1</td>
@@ -1947,7 +1947,7 @@ df_raw &lt;- read_csv(
 )
 
 cat(&quot;Rows loaded:&quot;, nrow(df_raw), &quot;\n&quot;)</code></pre>
-<pre><code>## Rows loaded: 24</code></pre>
+<pre><code>## Rows loaded: 32</code></pre>
 <pre class="r"><code>cat(&quot;Columns:&quot;, ncol(df_raw), &quot;\n&quot;)</code></pre>
 <pre><code>## Columns: 91</code></pre>
 <hr />
@@ -1986,7 +1986,7 @@ n
 100
 </td>
 <td style="text-align:right;">
-21
+29
 </td>
 </tr>
 <tr>
@@ -2033,7 +2033,7 @@ df_complete &lt;- df_raw |&gt;
   )
 
 cat(nrow(df_complete), &quot;complete responses retained out of&quot;, nrow(df_raw), &quot;total.\n&quot;)</code></pre>
-<pre><code>## 21 complete responses retained out of 24 total.</code></pre>
+<pre><code>## 29 complete responses retained out of 32 total.</code></pre>
 <pre class="r"><code># ── Participant ID ─────────────────────────────────────────────────────────────
 # Column ImportId: QID7_1
 df &lt;- df_complete |&gt;
@@ -2048,7 +2048,7 @@ if (nrow(dup_ids) &gt; 0) {
 }
 
 cat(&quot;Unique participant IDs:&quot;, n_distinct(df$participant_id), &quot;\n&quot;)</code></pre>
-<pre><code>## Unique participant IDs: 21</code></pre>
+<pre><code>## Unique participant IDs: 29</code></pre>
 <hr />
 </div>
 <div id="demographics" class="section level2">
@@ -2090,7 +2090,7 @@ demo &lt;- df |&gt;
 cat(&quot;Age  — mean:&quot;, round(mean(demo$age, na.rm = TRUE), 1),
     &quot;  SD:&quot;, round(sd(demo$age, na.rm = TRUE), 1),
     &quot;  range:&quot;, min(demo$age, na.rm = TRUE), &quot;–&quot;, max(demo$age, na.rm = TRUE), &quot;\n&quot;)</code></pre>
-<pre><code>## Age  — mean: 24.2   SD: 5.3   range: 18 – 39</code></pre>
+<pre><code>## Age  — mean: 23.4   SD: 5.5   range: 18 – 39</code></pre>
 <pre class="r"><code># Sex
 demo |&gt; count(sex_at_birth) |&gt;
   kable(caption = &quot;Biological sex at birth&quot;) |&gt;
@@ -2115,7 +2115,7 @@ n
 Female
 </td>
 <td style="text-align:right;">
-18
+25
 </td>
 </tr>
 <tr>
@@ -2123,7 +2123,7 @@ Female
 Male
 </td>
 <td style="text-align:right;">
-3
+4
 </td>
 </tr>
 </tbody>
@@ -2167,7 +2167,7 @@ Black (any background)
 Mixed (any background)
 </td>
 <td style="text-align:right;">
-1
+2
 </td>
 </tr>
 <tr>
@@ -2175,7 +2175,7 @@ Mixed (any background)
 White (any background)
 </td>
 <td style="text-align:right;">
-17
+24
 </td>
 </tr>
 </tbody>
@@ -2360,10 +2360,10 @@ n_flagged
 <tbody>
 <tr>
 <td style="text-align:right;">
-21
+29
 </td>
 <td style="text-align:right;">
-5.95
+5.97
 </td>
 <td style="text-align:right;">
 4.91
@@ -2375,7 +2375,7 @@ n_flagged
 18
 </td>
 <td style="text-align:right;">
-3
+5
 </td>
 </tr>
 </tbody>
@@ -2403,7 +2403,7 @@ n
 Mild
 </td>
 <td style="text-align:right;">
-8
+11
 </td>
 </tr>
 <tr>
@@ -2411,7 +2411,7 @@ Mild
 Minimal
 </td>
 <td style="text-align:right;">
-10
+13
 </td>
 </tr>
 <tr>
@@ -2419,7 +2419,7 @@ Minimal
 Moderate
 </td>
 <td style="text-align:right;">
-1
+2
 </td>
 </tr>
 <tr>
@@ -2427,7 +2427,7 @@ Moderate
 Severe
 </td>
 <td style="text-align:right;">
-2
+3
 </td>
 </tr>
 </tbody>
@@ -2435,7 +2435,7 @@ Severe
 <pre class="r"><code>gad7_items &lt;- gad7 |&gt; select(all_of(gad7_cols))
 cat(&quot;GAD-7 Cronbach&#39;s α =&quot;,
     round(safe_alpha(gad7_items), 3), &quot;\n&quot;)</code></pre>
-<pre><code>## GAD-7 Cronbach&#39;s α = 0.871</code></pre>
+<pre><code>## GAD-7 Cronbach&#39;s α = 0.886</code></pre>
 <hr />
 </div>
 <div id="phq-9" class="section level2">
@@ -2510,13 +2510,13 @@ n_item9
 <tbody>
 <tr>
 <td style="text-align:right;">
-21
+29
 </td>
 <td style="text-align:right;">
-5.95
+5.93
 </td>
 <td style="text-align:right;">
-4.3
+4.19
 </td>
 <td style="text-align:right;">
 0
@@ -2525,7 +2525,7 @@ n_item9
 18
 </td>
 <td style="text-align:right;">
-4
+5
 </td>
 <td style="text-align:right;">
 0
@@ -2556,7 +2556,7 @@ n
 Mild
 </td>
 <td style="text-align:right;">
-8
+12
 </td>
 </tr>
 <tr>
@@ -2564,7 +2564,7 @@ Mild
 Minimal
 </td>
 <td style="text-align:right;">
-9
+12
 </td>
 </tr>
 <tr>
@@ -2580,7 +2580,7 @@ Moderate
 Moderately severe
 </td>
 <td style="text-align:right;">
-1
+2
 </td>
 </tr>
 </tbody>
@@ -2588,7 +2588,7 @@ Moderately severe
 <pre class="r"><code>phq9_items &lt;- phq9 |&gt; select(all_of(phq9_cols))
 cat(&quot;PHQ-9 Cronbach&#39;s α =&quot;,
     round(safe_alpha(phq9_items), 3), &quot;\n&quot;)</code></pre>
-<pre><code>## PHQ-9 Cronbach&#39;s α = 0.775</code></pre>
+<pre><code>## PHQ-9 Cronbach&#39;s α = 0.768</code></pre>
 <hr />
 </div>
 <div id="aq-10" class="section level2">
@@ -2666,13 +2666,13 @@ n_flagged
 <tbody>
 <tr>
 <td style="text-align:right;">
-21
+29
 </td>
 <td style="text-align:right;">
-3.62
+3.59
 </td>
 <td style="text-align:right;">
-2.44
+2.28
 </td>
 <td style="text-align:right;">
 0
@@ -2681,7 +2681,7 @@ n_flagged
 8
 </td>
 <td style="text-align:right;">
-6
+7
 </td>
 </tr>
 </tbody>
@@ -2689,45 +2689,91 @@ n_flagged
 <pre class="r"><code>aq10_items &lt;- aq10 |&gt; select(all_of(aq10_cols))
 cat(&quot;AQ-10 Cronbach&#39;s α =&quot;,
     round(safe_alpha(aq10_items), 3), &quot;\n&quot;)</code></pre>
-<pre><code>## AQ-10 Cronbach&#39;s α = 0.713</code></pre>
+<pre><code>## AQ-10 Cronbach&#39;s α = 0.677</code></pre>
 <hr />
 </div>
 <div id="paq-24" class="section level2">
 <h2>9. PAQ-24</h2>
-<p>24 items across 6 QID blocks (4 items each). All items scored 1–7
-(higher = more alexithymia). No reverse-scored items. Each subscale:
-4–28 | Total: 24–168.</p>
-<p><strong>⚠ Subscale assignment below is inferred from item content and
-Qualtrics block order. Verify against the Qualtrics survey
-builder.</strong></p>
-<p>Subscales (Preece et al., 2018): - <strong>DIF-N</strong> —
-Difficulty Identifying Feelings (Negative affect) -
-<strong>DDF-N</strong> — Difficulty Describing Feelings (Negative
-affect) - <strong>IN-N</strong> — Inattention to Emotions (Negative
-affect) - <strong>DIF-P</strong> — Difficulty Identifying Feelings
-(Positive affect) - <strong>DDF-P</strong> — Difficulty Describing
-Feelings (Positive affect) - <strong>IN-P</strong> — Inattention to
-Emotions (Positive affect)</p>
-<pre class="r"><code># ── Column assignments (verify against your Qualtrics survey) ─────────────────
-paq_DIF_N &lt;- c(&quot;QID43_1&quot;,  &quot;QID43_3&quot;,  &quot;QID44_28&quot;, &quot;QID44_29&quot;)
-paq_DDF_N &lt;- c(&quot;QID43_6&quot;,  &quot;QID43_8&quot;,  &quot;QID44_13&quot;, &quot;QID44_14&quot;)
-paq_IN_N  &lt;- c(&quot;QID51_9&quot;,  &quot;QID51_27&quot;, &quot;QID51_28&quot;, &quot;QID51_10&quot;)
-paq_DIF_P &lt;- c(&quot;QID52_28&quot;, &quot;QID52_29&quot;, &quot;QID53_23&quot;, &quot;QID53_24&quot;)
-paq_DDF_P &lt;- c(&quot;QID52_17&quot;, &quot;QID52_18&quot;, &quot;QID53_25&quot;, &quot;QID53_26&quot;)
-paq_IN_P  &lt;- c(&quot;QID45_19&quot;, &quot;QID45_20&quot;, &quot;QID45_21&quot;, &quot;QID45_22&quot;)
+<p>24 items, all scored 1–7 (higher = more alexithymia). No
+reverse-scored items. Total: 24–168.</p>
+<p>Scoring follows the PAQ Scoring and Interpretation Manual (Preece et
+al., 2018; manual 2023-12). Five subscales, each the sum of its
+items:</p>
+<table>
+<colgroup>
+<col width="35%" />
+<col width="39%" />
+<col width="25%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Subscale</th>
+<th>PAQ items</th>
+<th>Range</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>N-DIF</strong> — Difficulty identifying feelings,
+negative</td>
+<td>2, 8, 14, 20</td>
+<td>4–28</td>
+</tr>
+<tr class="even">
+<td><strong>P-DIF</strong> — Difficulty identifying feelings,
+positive</td>
+<td>5, 11, 17, 23</td>
+<td>4–28</td>
+</tr>
+<tr class="odd">
+<td><strong>N-DDF</strong> — Difficulty describing feelings,
+negative</td>
+<td>1, 7, 13, 19</td>
+<td>4–28</td>
+</tr>
+<tr class="even">
+<td><strong>P-DDF</strong> — Difficulty describing feelings,
+positive</td>
+<td>4, 10, 16, 22</td>
+<td>4–28</td>
+</tr>
+<tr class="odd">
+<td><strong>G-EOT</strong> — General externally orientated thinking</td>
+<td>3, 6, 9, 12, 15, 18, 21, 24</td>
+<td>8–56</td>
+</tr>
+</tbody>
+</table>
+<p>Qualtrics column → PAQ item number was checked against the question
+text in the export header (30 Oct 2026).</p>
+<pre class="r"><code># ── Qualtrics ImportId for each PAQ item, in item order 1-24 (checked 30 Oct 2026) ──
+paq_item_ids &lt;- c(
+  &quot;QID43_1&quot;,  &quot;QID43_3&quot;,  &quot;QID43_6&quot;,  &quot;QID43_8&quot;,    # items  1- 4
+  &quot;QID51_9&quot;,  &quot;QID51_27&quot;, &quot;QID51_28&quot;, &quot;QID51_10&quot;,   # items  5- 8
+  &quot;QID44_28&quot;, &quot;QID44_29&quot;, &quot;QID44_13&quot;, &quot;QID44_14&quot;,   # items  9-12
+  &quot;QID52_28&quot;, &quot;QID52_29&quot;, &quot;QID52_17&quot;, &quot;QID52_18&quot;,   # items 13-16
+  &quot;QID45_19&quot;, &quot;QID45_20&quot;, &quot;QID45_21&quot;, &quot;QID45_22&quot;,   # items 17-20
+  &quot;QID53_23&quot;, &quot;QID53_24&quot;, &quot;QID53_25&quot;, &quot;QID53_26&quot;    # items 21-24
+)
+paq_items &lt;- function(...) paq_item_ids[c(...)]
+paq_N_DIF &lt;- paq_items(2, 8, 14, 20)
+paq_P_DIF &lt;- paq_items(5, 11, 17, 23)
+paq_N_DDF &lt;- paq_items(1, 7, 13, 19)
+paq_P_DDF &lt;- paq_items(4, 10, 16, 22)
+paq_G_EOT &lt;- paq_items(3, 6, 9, 12, 15, 18, 21, 24)
 
-paq_all_cols &lt;- c(paq_DIF_N, paq_DDF_N, paq_IN_N, paq_DIF_P, paq_DDF_P, paq_IN_P)</code></pre>
+paq_all_cols &lt;- paq_item_ids
+stopifnot(setequal(c(paq_N_DIF, paq_P_DIF, paq_N_DDF, paq_P_DDF, paq_G_EOT), paq_all_cols))</code></pre>
 <pre class="r"><code>paq24 &lt;- df |&gt;
   select(participant_id, all_of(paq_all_cols)) |&gt;
   mutate(across(all_of(paq_all_cols), \(x) recode_numeric(x, paq_map))) |&gt;
   rowwise() |&gt;
   mutate(
-    paq_DIF_N      = sum(c_across(all_of(paq_DIF_N)), na.rm = FALSE),
-    paq_DDF_N      = sum(c_across(all_of(paq_DDF_N)), na.rm = FALSE),
-    paq_IN_N       = sum(c_across(all_of(paq_IN_N)),  na.rm = FALSE),
-    paq_DIF_P      = sum(c_across(all_of(paq_DIF_P)), na.rm = FALSE),
-    paq_DDF_P      = sum(c_across(all_of(paq_DDF_P)), na.rm = FALSE),
-    paq_IN_P       = sum(c_across(all_of(paq_IN_P)),  na.rm = FALSE),
+    paq_N_DIF      = sum(c_across(all_of(paq_N_DIF)), na.rm = FALSE),
+    paq_P_DIF      = sum(c_across(all_of(paq_P_DIF)), na.rm = FALSE),
+    paq_N_DDF      = sum(c_across(all_of(paq_N_DDF)), na.rm = FALSE),
+    paq_P_DDF      = sum(c_across(all_of(paq_P_DDF)), na.rm = FALSE),
+    paq_G_EOT      = sum(c_across(all_of(paq_G_EOT)), na.rm = FALSE),
     paq_total      = sum(c_across(all_of(paq_all_cols)), na.rm = FALSE),
     paq_n_missing  = sum(is.na(c_across(all_of(paq_all_cols))))
   ) |&gt;
@@ -2745,11 +2791,12 @@ paq24_scores |&gt;
                    .names = &quot;{.col}__{.fn}&quot;)) |&gt;
   pivot_longer(everything(), names_to = c(&quot;subscale&quot;, &quot;stat&quot;), names_sep = &quot;__&quot;) |&gt;
   pivot_wider(names_from = stat, values_from = value) |&gt;
-  kable(caption = &quot;PAQ-24 subscale descriptives (each subscale: 4–28; total: 24–168)&quot;) |&gt;
+  kable(caption = &quot;PAQ-24 subscale descriptives (DIF/DDF subscales: 4–28; G-EOT: 8–56; total: 24–168)&quot;) |&gt;
   kable_styling(bootstrap_options = &quot;striped&quot;, full_width = FALSE)</code></pre>
 <table class="table table-striped" style="width: auto !important; margin-left: auto; margin-right: auto;">
 <caption>
-PAQ-24 subscale descriptives (each subscale: 4–28; total: 24–168)
+PAQ-24 subscale descriptives (DIF/DDF subscales: 4–28; G-EOT: 8–56;
+total: 24–168)
 </caption>
 <thead>
 <tr>
@@ -2767,68 +2814,57 @@ sd
 <tbody>
 <tr>
 <td style="text-align:left;">
-paq_DIF_N
+paq_N_DIF
 </td>
 <td style="text-align:right;">
-14.95
+14.66
 </td>
 <td style="text-align:right;">
-5.02
+6.34
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-paq_DDF_N
+paq_P_DIF
 </td>
 <td style="text-align:right;">
-14.67
+12.76
 </td>
 <td style="text-align:right;">
-4.45
+4.70
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-paq_IN_N
+paq_N_DDF
 </td>
 <td style="text-align:right;">
-15.43
+16.00
 </td>
 <td style="text-align:right;">
-4.88
+6.46
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-paq_DIF_P
+paq_P_DDF
 </td>
 <td style="text-align:right;">
-15.00
+15.03
 </td>
 <td style="text-align:right;">
-5.22
+4.66
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-paq_DDF_P
+paq_G_EOT
 </td>
 <td style="text-align:right;">
-13.48
+27.93
 </td>
 <td style="text-align:right;">
-4.61
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-paq_IN_P
-</td>
-<td style="text-align:right;">
-13.81
-</td>
-<td style="text-align:right;">
-4.69
+11.07
 </td>
 </tr>
 <tr>
@@ -2836,17 +2872,17 @@ paq_IN_P
 paq_total
 </td>
 <td style="text-align:right;">
-87.33
+86.38
 </td>
 <td style="text-align:right;">
-25.07
+25.13
 </td>
 </tr>
 </tbody>
 </table>
 <pre class="r"><code>subscale_list &lt;- list(
-  DIF_N = paq_DIF_N, DDF_N = paq_DDF_N, IN_N = paq_IN_N,
-  DIF_P = paq_DIF_P, DDF_P = paq_DDF_P, IN_P  = paq_IN_P
+  N_DIF = paq_N_DIF, P_DIF = paq_P_DIF, N_DDF = paq_N_DDF,
+  P_DDF = paq_P_DDF, G_EOT = paq_G_EOT
 )
 
 paq_items_raw &lt;- df |&gt;
@@ -2885,21 +2921,10 @@ n_items
 <tbody>
 <tr>
 <td style="text-align:left;">
-DIF_N
+N_DIF
 </td>
 <td style="text-align:right;">
-0.578
-</td>
-<td style="text-align:right;">
-4
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-DDF_N
-</td>
-<td style="text-align:right;">
-0.580
+0.874
 </td>
 <td style="text-align:right;">
 4
@@ -2907,21 +2932,10 @@ DDF_N
 </tr>
 <tr>
 <td style="text-align:left;">
-IN_N
+P_DIF
 </td>
 <td style="text-align:right;">
-0.658
-</td>
-<td style="text-align:right;">
-4
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-DIF_P
-</td>
-<td style="text-align:right;">
-0.667
+0.754
 </td>
 <td style="text-align:right;">
 4
@@ -2929,10 +2943,10 @@ DIF_P
 </tr>
 <tr>
 <td style="text-align:left;">
-DDF_P
+N_DDF
 </td>
 <td style="text-align:right;">
-0.707
+0.870
 </td>
 <td style="text-align:right;">
 4
@@ -2940,13 +2954,24 @@ DDF_P
 </tr>
 <tr>
 <td style="text-align:left;">
-IN_P
+P_DDF
 </td>
 <td style="text-align:right;">
-0.646
+0.726
 </td>
 <td style="text-align:right;">
 4
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+G_EOT
+</td>
+<td style="text-align:right;">
+0.911
+</td>
+<td style="text-align:right;">
+8
 </td>
 </tr>
 </tbody>
@@ -3014,10 +3039,10 @@ max
 <tbody>
 <tr>
 <td style="text-align:right;">
-13
+21
 </td>
 <td style="text-align:right;">
-22.15
+23
 </td>
 <td style="text-align:right;">
 4.43
@@ -3026,7 +3051,7 @@ max
 11
 </td>
 <td style="text-align:right;">
-27
+31
 </td>
 </tr>
 </tbody>
@@ -3034,7 +3059,7 @@ max
 <pre class="r"><code>das1_items &lt;- das_sf1 |&gt; select(all_of(das1_cols))
 cat(&quot;DAS-SF1 Cronbach&#39;s α =&quot;,
     round(safe_alpha(das1_items), 3), &quot;\n&quot;)</code></pre>
-<pre><code>## DAS-SF1 Cronbach&#39;s α = 0.843</code></pre>
+<pre><code>## DAS-SF1 Cronbach&#39;s α = 0.847</code></pre>
 <hr />
 </div>
 <div id="das-sf2-dependency" class="section level2">
@@ -3103,19 +3128,19 @@ max
 <tbody>
 <tr>
 <td style="text-align:right;">
-13
+21
 </td>
 <td style="text-align:right;">
-25.69
+26
 </td>
 <td style="text-align:right;">
-2.53
+2.81
 </td>
 <td style="text-align:right;">
-23
+21
 </td>
 <td style="text-align:right;">
-29
+31
 </td>
 </tr>
 </tbody>
@@ -3123,7 +3148,7 @@ max
 <pre class="r"><code>das2_items &lt;- das_sf2 |&gt; select(all_of(das2_cols))
 cat(&quot;DAS-SF2 Cronbach&#39;s α =&quot;,
     round(safe_alpha(das2_items), 3), &quot;\n&quot;)</code></pre>
-<pre><code>## DAS-SF2 Cronbach&#39;s α = 0.122</code></pre>
+<pre><code>## DAS-SF2 Cronbach&#39;s α = 0.349</code></pre>
 <hr />
 </div>
 <div id="clinical-flags-summary" class="section level2">
@@ -3165,7 +3190,7 @@ n participants
 GAD-7 ≥ 10 (possible GAD)
 </td>
 <td style="text-align:right;">
-3
+5
 </td>
 </tr>
 <tr>
@@ -3173,7 +3198,7 @@ GAD-7 ≥ 10 (possible GAD)
 PHQ-9 ≥ 10 (possible depression)
 </td>
 <td style="text-align:right;">
-4
+5
 </td>
 </tr>
 <tr>
@@ -3189,7 +3214,7 @@ PHQ-9 item 9 ≥ 1 (suicidal ideation)
 AQ-10 ≥ 6 (possible autism)
 </td>
 <td style="text-align:right;">
-6
+7
 </td>
 </tr>
 </tbody>
@@ -3252,19 +3277,19 @@ gad7_total
 1.00
 </td>
 <td style="text-align:right;">
-0.66
+0.65
 </td>
 <td style="text-align:right;">
-0.08
+0.01
 </td>
 <td style="text-align:right;">
--0.10
+-0.17
 </td>
 <td style="text-align:right;">
--0.27
+-0.40
 </td>
 <td style="text-align:right;">
-0.37
+0.11
 </td>
 </tr>
 <tr>
@@ -3272,19 +3297,19 @@ gad7_total
 phq9_total
 </td>
 <td style="text-align:right;">
-0.66
+0.65
 </td>
 <td style="text-align:right;">
 1.00
 </td>
 <td style="text-align:right;">
-0.12
+0.06
 </td>
 <td style="text-align:right;">
-0.13
+0.04
 </td>
 <td style="text-align:right;">
--0.53
+-0.38
 </td>
 <td style="text-align:right;">
 0.14
@@ -3295,22 +3320,22 @@ phq9_total
 aq10_total
 </td>
 <td style="text-align:right;">
-0.08
+0.01
 </td>
 <td style="text-align:right;">
-0.12
+0.06
 </td>
 <td style="text-align:right;">
 1.00
 </td>
 <td style="text-align:right;">
--0.15
+-0.06
 </td>
 <td style="text-align:right;">
-0.23
+0.20
 </td>
 <td style="text-align:right;">
-0.22
+0.32
 </td>
 </tr>
 <tr>
@@ -3318,22 +3343,22 @@ aq10_total
 paq_total
 </td>
 <td style="text-align:right;">
--0.10
+-0.17
 </td>
 <td style="text-align:right;">
-0.13
+0.04
 </td>
 <td style="text-align:right;">
--0.15
+-0.06
 </td>
 <td style="text-align:right;">
 1.00
 </td>
 <td style="text-align:right;">
--0.36
+0.10
 </td>
 <td style="text-align:right;">
-0.17
+0.40
 </td>
 </tr>
 <tr>
@@ -3341,22 +3366,22 @@ paq_total
 das_sf1_total
 </td>
 <td style="text-align:right;">
--0.27
+-0.40
 </td>
 <td style="text-align:right;">
--0.53
+-0.38
 </td>
 <td style="text-align:right;">
-0.23
+0.20
 </td>
 <td style="text-align:right;">
--0.36
+0.10
 </td>
 <td style="text-align:right;">
 1.00
 </td>
 <td style="text-align:right;">
-0.35
+0.55
 </td>
 </tr>
 <tr>
@@ -3364,19 +3389,19 @@ das_sf1_total
 das_sf2_total
 </td>
 <td style="text-align:right;">
-0.37
+0.11
 </td>
 <td style="text-align:right;">
 0.14
 </td>
 <td style="text-align:right;">
-0.22
+0.32
 </td>
 <td style="text-align:right;">
-0.17
+0.40
 </td>
 <td style="text-align:right;">
-0.35
+0.55
 </td>
 <td style="text-align:right;">
 1.00
@@ -3402,44 +3427,44 @@ das_sf2_total
   left_join(das_sf2 |&gt; select(participant_id, das_sf2_total, das_sf2_n_missing),
             by = &quot;participant_id&quot;)
 
+dir.create(dirname(OUTPUT_PATH), showWarnings = FALSE, recursive = TRUE)
 write_csv(scored_out, OUTPUT_PATH)
 cat(&quot;Scored dataset written to:\n&quot;, OUTPUT_PATH, &quot;\n&quot;)</code></pre>
 <pre><code>## Scored dataset written to:
-##  C:/Users/carme/Box/Project_Biosignals_study_2/3_Data/clean_combined_data/psychopy/biosignals2_questionnaires_scored.csv</code></pre>
+##  C:/Users/carme/Box/Project_Biosignals_study_2/3_Data/clean_combined_data/temp/biosignals2_questionnaires_scored.csv</code></pre>
 <pre class="r"><code>cat(&quot;Rows:&quot;, nrow(scored_out), &quot;  Columns:&quot;, ncol(scored_out), &quot;\n&quot;)</code></pre>
-<pre><code>## Rows: 21   Columns: 29</code></pre>
+<pre><code>## Rows: 29   Columns: 28</code></pre>
 <pre class="r"><code>glimpse(scored_out)</code></pre>
-<pre><code>## Rows: 21
-## Columns: 29
-## $ participant_id     &lt;chr&gt; &quot;S0943&quot;, &quot;N2026&quot;, &quot;E5510&quot;, &quot;G2313&quot;, &quot;E9967&quot;, &quot;P7259…
-## $ age                &lt;int&gt; 30, 26, 28, 26, 27, 39, 30, 26, 21, 21, 20, 20, 21,…
-## $ sex_at_birth       &lt;chr&gt; &quot;Female&quot;, &quot;Female&quot;, &quot;Female&quot;, &quot;Female&quot;, &quot;Female&quot;, &quot;…
-## $ gender_id          &lt;chr&gt; &quot;Yes&quot;, &quot;Yes&quot;, &quot;Yes&quot;, &quot;Yes&quot;, &quot;Yes&quot;, &quot;Yes&quot;, &quot;Yes&quot;, &quot;Y…
-## $ ethnicity          &lt;chr&gt; &quot;White (any background)&quot;, &quot;White (any background)&quot;,…
-## $ gad7_total         &lt;dbl&gt; 5, 5, 0, 3, 4, 3, 3, 7, 6, 11, 1, 18, 2, 18, 2, 9, …
-## $ gad7_severity      &lt;chr&gt; &quot;Mild&quot;, &quot;Mild&quot;, &quot;Minimal&quot;, &quot;Minimal&quot;, &quot;Minimal&quot;, &quot;M…
-## $ gad7_flag          &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FA…
-## $ gad7_n_missing     &lt;int&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
-## $ phq9_total         &lt;dbl&gt; 3, 8, 1, 1, 5, 4, 2, 0, 2, 11, 6, 18, 9, 8, 4, 7, 1…
-## $ phq9_severity      &lt;chr&gt; &quot;Minimal&quot;, &quot;Mild&quot;, &quot;Minimal&quot;, &quot;Minimal&quot;, &quot;Mild&quot;, &quot;M…
-## $ phq9_flag          &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FA…
-## $ phq9_item9_flagged &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FA…
-## $ phq9_n_missing     &lt;int&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
-## $ aq10_total         &lt;dbl&gt; 2, 7, 3, 1, 2, 2, 8, 3, 1, 6, 1, 3, 6, 6, 2, 0, 3, …
-## $ aq10_flag          &lt;lgl&gt; FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, FALS…
-## $ aq10_n_missing     &lt;int&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
-## $ paq_DIF_N          &lt;dbl&gt; 20, 10, 8, 17, 12, 26, 20, 11, 10, 16, 22, 17, 13, …
-## $ paq_DDF_N          &lt;dbl&gt; 19, 13, 7, 14, 14, 24, 20, 11, 11, 12, 15, 13, 18, …
-## $ paq_IN_N           &lt;dbl&gt; 22, 14, 11, 15, 14, 26, 21, 11, 9, 20, 21, 19, 11, …
-## $ paq_DIF_P          &lt;dbl&gt; 16, 15, 7, 14, 14, 25, 27, 10, 8, 14, 15, 19, 11, 9…
-## $ paq_DDF_P          &lt;dbl&gt; 18, 13, 12, 10, 15, 26, 13, 10, 8, 9, 17, 14, 14, 1…
-## $ paq_IN_P           &lt;dbl&gt; 17, 15, 8, 14, 13, 22, 20, 7, 15, 10, 19, 18, 9, 9,…
-## $ paq_total          &lt;dbl&gt; 112, 80, 53, 84, 82, 149, 121, 60, 61, 81, 109, 100…
-## $ paq_n_missing      &lt;int&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
-## $ das_sf1_total      &lt;dbl&gt; NA, NA, NA, NA, NA, NA, NA, NA, 22, 22, 25, 16, 22,…
-## $ das_sf1_n_missing  &lt;int&gt; 9, 9, 9, 9, 9, 9, 9, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
-## $ das_sf2_total      &lt;dbl&gt; NA, NA, NA, NA, NA, NA, NA, NA, 23, 25, 23, 27, 23,…
-## $ das_sf2_n_missing  &lt;int&gt; 9, 9, 9, 9, 9, 9, 9, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, …</code></pre>
+<pre><code>## Rows: 29
+## Columns: 28
+## $ participant_id     &lt;chr&gt; &quot;S0943&quot;, &quot;N2026&quot;, &quot;E5510&quot;, &quot;G2313&quot;, &quot;E9967&quot;, &quot;P7259&quot;, &quot;R4755&quot;, &quot;I4155&quot;, &quot;…
+## $ age                &lt;int&gt; 30, 26, 28, 26, 27, 39, 30, 26, 21, 21, 20, 20, 21, 20, 24, 21, 18, 31, 1…
+## $ sex_at_birth       &lt;chr&gt; &quot;Female&quot;, &quot;Female&quot;, &quot;Female&quot;, &quot;Female&quot;, &quot;Female&quot;, &quot;Female&quot;, &quot;Female&quot;, &quot;Ma…
+## $ gender_id          &lt;chr&gt; &quot;Yes&quot;, &quot;Yes&quot;, &quot;Yes&quot;, &quot;Yes&quot;, &quot;Yes&quot;, &quot;Yes&quot;, &quot;Yes&quot;, &quot;Yes&quot;, &quot;Yes&quot;, &quot;Yes&quot;, &quot;Ye…
+## $ ethnicity          &lt;chr&gt; &quot;White (any background)&quot;, &quot;White (any background)&quot;, &quot;White (any backgroun…
+## $ gad7_total         &lt;dbl&gt; 5, 5, 0, 3, 4, 3, 3, 7, 6, 11, 1, 18, 2, 18, 2, 9, 9, 5, 4, 8, 2, 6, 10, …
+## $ gad7_severity      &lt;chr&gt; &quot;Mild&quot;, &quot;Mild&quot;, &quot;Minimal&quot;, &quot;Minimal&quot;, &quot;Minimal&quot;, &quot;Minimal&quot;, &quot;Minimal&quot;, &quot;M…
+## $ gad7_flag          &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALS…
+## $ gad7_n_missing     &lt;int&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0…
+## $ phq9_total         &lt;dbl&gt; 3, 8, 1, 1, 5, 4, 2, 0, 2, 11, 6, 18, 9, 8, 4, 7, 10, 10, 5, 8, 3, 7, 1, …
+## $ phq9_severity      &lt;chr&gt; &quot;Minimal&quot;, &quot;Mild&quot;, &quot;Minimal&quot;, &quot;Minimal&quot;, &quot;Mild&quot;, &quot;Minimal&quot;, &quot;Minimal&quot;, &quot;M…
+## $ phq9_flag          &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALS…
+## $ phq9_item9_flagged &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FAL…
+## $ phq9_n_missing     &lt;int&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0…
+## $ aq10_total         &lt;dbl&gt; 2, 7, 3, 1, 2, 2, 8, 3, 1, 6, 1, 3, 6, 6, 2, 0, 3, 2, 5, 5, 8, 8, 3, 3, 3…
+## $ aq10_flag          &lt;lgl&gt; FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, TRUE, FALSE,…
+## $ aq10_n_missing     &lt;int&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0…
+## $ paq_N_DIF          &lt;dbl&gt; 20, 16, 4, 22, 8, 24, 23, 9, 10, 18, 17, 24, 5, 7, 8, 19, 10, 15, 15, 21,…
+## $ paq_P_DIF          &lt;dbl&gt; 16, 15, 4, 10, 17, 25, 16, 11, 8, 12, 17, 14, 7, 17, 13, 15, 11, 15, 14, …
+## $ paq_N_DDF          &lt;dbl&gt; 22, 13, 7, 17, 9, 25, 28, 12, 11, 19, 19, 26, 10, 5, 8, 22, 10, 19, 17, 2…
+## $ paq_P_DDF          &lt;dbl&gt; 16, 12, 5, 12, 21, 24, 21, 13, 13, 14, 19, 13, 17, 22, 14, 17, 11, 14, 18…
+## $ paq_G_EOT          &lt;dbl&gt; 38, 24, 33, 23, 27, 51, 33, 15, 19, 18, 37, 23, 37, 8, 13, 40, 32, 50, 31…
+## $ paq_total          &lt;dbl&gt; 112, 80, 53, 84, 82, 149, 121, 60, 61, 81, 109, 100, 76, 59, 56, 113, 74,…
+## $ paq_n_missing      &lt;int&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0…
+## $ das_sf1_total      &lt;dbl&gt; NA, NA, NA, NA, NA, NA, NA, NA, 22, 22, 25, 16, 22, 23, 23, 23, 27, 11, 2…
+## $ das_sf1_n_missing  &lt;int&gt; 9, 9, 9, 9, 9, 9, 9, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0…
+## $ das_sf2_total      &lt;dbl&gt; NA, NA, NA, NA, NA, NA, NA, NA, 23, 25, 23, 27, 23, 27, 23, 29, 29, 24, 2…
+## $ das_sf2_n_missing  &lt;int&gt; 9, 9, 9, 9, 9, 9, 9, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0…</code></pre>
 </div>
 
 

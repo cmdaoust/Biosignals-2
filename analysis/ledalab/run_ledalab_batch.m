@@ -93,7 +93,7 @@ AMP_THRESHOLD  = 0.05;
 % Participants to analyse again even though OUT_DIR already has their results
 % (any case, e.g. {'k6294', 'S9686'}), or REDO_ALL = true for everyone. Old outputs
 % are overwritten.
-REDO_PIDS = {};   % still had ERA files from the old (GUI) method
+REDO_PIDS = {'i4155','s0943'};   % still had ERA files from the old (GUI) method
 REDO_ALL  = false;
 
 % Run only these participants (any case); {} = everyone.

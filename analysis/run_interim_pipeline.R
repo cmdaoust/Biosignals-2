@@ -7,8 +7,12 @@
 # Core (needed for the interim report; stops at the first failure):
 #   01_data_cleaning.Rmd -> 04_questionnaire_analysis.Rmd -> 07_interim_summary.Rmd
 # Separate analyses (a failure is logged and the run carries on):
-#   02_ratings_analysis.Rmd, 03_facial_expression_analysis.Rmd, 05_analyse_ledalab_scr.Rmd,
-#   06_build_ml_dataset.R (saves dated copies)
+#   02_ratings_analysis.Rmd, 03_facial_expression_analysis.Rmd, 05_analyse_ledalab_scr.Rmd
+#   (06_build_ml_dataset.R is no longer run: not used - Carmen, 29 Oct. The shared files from 08
+#   replace it; run it by hand if ever needed.)
+# Shared datasets: 08_combine_timeseries.R (the files to share, in clean_combined_data/shareable). Runs only
+#   if 01, 04 and 05 all succeeded in THIS run - its inputs come from them, so otherwise it would
+#   share stale data. Skipped (with the reason) if not.
 # Last: generate_qc_report.R, whose Completeness tab shows missing preprocessing.
 #
 # Each step runs in its own fresh R session. Started weekly by run_interim_pipeline.bat.
@@ -18,7 +22,9 @@ source(file.path(dirname(analysis_dir), "config.R"))
 
 core   <- c("01_data_cleaning.Rmd", "04_questionnaire_analysis.Rmd", "07_interim_summary.Rmd")
 extras <- c("02_ratings_analysis.Rmd", "03_facial_expression_analysis.Rmd",
-            "05_analyse_ledalab_scr.Rmd", "06_build_ml_dataset.R")
+            "05_analyse_ledalab_scr.Rmd")
+shared <- "08_combine_timeseries.R"
+shared_needs <- c("01_data_cleaning.Rmd", "04_questionnaire_analysis.Rmd", "05_analyse_ledalab_scr.Rmd")
 last   <- "generate_qc_report.R"
 
 # ---- pandoc (knitting needs it; RStudio ships it, a scheduled run can't see it) ----
@@ -48,7 +54,20 @@ run_step <- function(f) {
   out <- suppressWarnings(system2(rscript, args, stdout = TRUE, stderr = TRUE))
   status <- attr(out, "status"); if (is.null(status)) status <- 0
   secs <- round(as.numeric(difftime(Sys.time(), t0, units = "secs")))
-  cat(paste0("    | ", tail(out, 15)), sep = "\n")   # last lines of the step's output
+  if (status == 0) {
+    cat(paste0("    | ", tail(out, 15)), sep = "\n")   # last lines of the step's output
+  } else if (length(out)) {
+    # Failed: show where the error starts (its message), then the last lines (where it stopped).
+    # The traceback alone hides the message, e.g. which column didn't match.
+    i <- grep("^\\s*(Error|Fehler)\\b|^\\s*! ", out)[1]
+    if (!is.na(i)) {
+      cat(paste0("    | ", out[i:min(length(out), i + 14)]), sep = "\n")
+      if (i + 14 < length(out) - 10) cat("    | ...\n")
+    }
+    shown <- if (is.na(i)) integer(0) else i:min(length(out), i + 14)
+    rest  <- setdiff(max(1, length(out) - 9):length(out), shown)
+    if (length(rest)) cat(paste0("    | ", out[rest]), sep = "\n")
+  }
   list(ok = status == 0, msg = if (status == 0) "ok" else paste("exit code", status), secs = secs)
 }
 
@@ -68,10 +87,23 @@ for (f in core) {
 cat("\nSeparate analyses:\n")
 for (f in extras) { cat("  ->", f, "\n"); log_step(f, run_step(f)) }
 
+cat("\nShared datasets:\n")
+needs_ok <- shared_needs %in% results$step[results$result == "ok"]
+if (all(needs_ok)) {
+  cat("  ->", shared, "\n"); log_step(shared, run_step(shared))
+} else {
+  cat("  ", shared, "NOT run - these steps did not succeed in this run:",
+      paste(shared_needs[!needs_ok], collapse = ", "), "\n")
+  cat("   The shared files in clean_combined_data/shareable were left as they were (not updated).\n")
+  results[nrow(results) + 1, ] <- list(shared, "SKIPPED", 0)
+}
+
 cat("\nQC report:\n  ->", last, "\n"); log_step(last, run_step(last))
 
 cat("\nSummary:\n"); print(results, row.names = FALSE)
 failed <- results$result != "ok" & results$result != "SKIPPED"
 cat("\nFinished", format(Sys.time(), "%H:%M"), "-",
     if (!core_ok) "INTERIM REPORT NOT REBUILT" else if (any(failed)) "interim report rebuilt; some separate steps failed" else "all ok", "\n")
+if (any(results$step == shared & results$result != "ok"))
+  cat("SHARED DATASETS NOT UPDATED (08", results$result[results$step == shared], ")\n")
 quit(save = "no", status = if (core_ok) 0 else 1)

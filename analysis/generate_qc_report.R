@@ -70,7 +70,7 @@ message("Project root: ", project_dir)
 source(file.path(project_dir, "config.R"))
 
 DATA_PATH   <- file.path(COMBINED_PSYCHO_DIR, "biosignals2_selfreport_ratings.csv")
-BIOMETRICS_COMBINED_PATH <- file.path(COMBINED_PSYCHO_DIR, "biosignals2_webcambiometrics.csv")
+BIOMETRICS_COMBINED_PATH <- file.path(COMBINED_PSYCHO_DIR, "biosignals2_webcambiometrics_online.csv")
 QUESTIONNAIRE_PATH <- file.path(COMBINED_PSYCHO_DIR, "biosignals2_questionnaires_scored.csv")
 # config.R lives at the repo root; this also copes with an old copy in analysis/
 analysis_dir <- if (basename(project_dir) == "analysis") project_dir else file.path(project_dir, "analysis")
@@ -1272,7 +1272,7 @@ kubios_html <- tryCatch({
 # ── 6. Webcam biometrics (ONLINE: computed live during the session) ───────────
 # Raw files per session in PSYCHOPY_DATA_DIR, written by biometrics_server.py during the
 # experiment:  <id>_..._biometrics.csv  and  <id>_..._clocksync.json
-# plus the combined biosignals2_webcambiometrics.csv made by 01_data_cleaning.Rmd.
+# plus the combined biosignals2_webcambiometrics_online.csv made by 01_data_cleaning.Rmd.
 MIN_BIOMETRICS_MB <- 1   # a raw _biometrics.csv smaller than this holds (almost) no frames
 CLOCKSYNC_KEYS    <- c("t_main", "t_wall", "t_mono", "mono_reset", "global_reset")
 
@@ -1419,7 +1419,7 @@ biometrics_raw_html <- tryCatch({
          PsychoPy data file but no biometrics are listed too. Files under ', MIN_BIOMETRICS_MB,
          ' MB are flagged as almost empty.',
          if (has_combined) ' <em>In combined</em> = participant appears in
-         <code>biosignals2_webcambiometrics.csv</code>.' else '', '</p>
+         <code>biosignals2_webcambiometrics_online.csv</code>.' else '', '</p>
     </div>
     <div class="table-wrap"><table>
       <thead><tr><th>Participant</th><th>_biometrics.csv</th><th>Size (MB)</th>
@@ -1442,7 +1442,7 @@ biometrics_raw_html <- tryCatch({
 biometrics_combined_html <- tryCatch({
 
   if (is.null(bm_combined))
-    stop("NO_FILES: biosignals2_webcambiometrics.csv not found in COMBINED_PSYCHO_DIR.")
+    stop("NO_FILES: biosignals2_webcambiometrics_online.csv not found in COMBINED_PSYCHO_DIR.")
   if (inherits(bm_combined, "error")) stop(conditionMessage(bm_combined))
 
   n_bm_pids  <- length(bm_combined$ids)
@@ -1499,7 +1499,7 @@ biometrics_combined_html <- tryCatch({
     <div class="section-head">
       <div class="section-label">Combined File — Frame Counts &amp; Signal Quality</div>
       <h2>Frames per participant per condition</h2>
-      <p>From <code>biosignals2_webcambiometrics.csv</code>. Low frame count (&lt; 500) may indicate
+      <p>From <code>biosignals2_webcambiometrics_online.csv</code>. Low frame count (&lt; 500) may indicate
          recording gaps. Peak rate &lt; 1% suggests rPPG peak detection failed for that phase.</p>
     </div>
     <div class="table-wrap"><table>
@@ -1517,7 +1517,7 @@ biometrics_combined_html <- tryCatch({
   msg <- conditionMessage(e)
   if (startsWith(msg, "NO_FILES:")) {
     placeholder_section("Webcam Biometrics — combined file",
-      "<code>biosignals2_webcambiometrics.csv</code> not found in <code>COMBINED_PSYCHO_DIR</code>.
+      "<code>biosignals2_webcambiometrics_online.csv</code> not found in <code>COMBINED_PSYCHO_DIR</code>.
        Re-knit 01_data_cleaning.Rmd to generate it.")
   } else {
     placeholder_section("Webcam Biometrics — combined file load error", msg)
