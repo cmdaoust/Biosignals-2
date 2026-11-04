@@ -62,3 +62,6 @@ KUBIOS_RESULTS_DIR        <- file.path(SERVER_ROOT, "kubios")      # Kubios HRV 
 KUBIOS_DIR                <- KUBIOS_RESULTS_DIR                    # old name, pilot HR-comparison Rmds
 FACEREADER_DIR            <- file.path(SERVER_ROOT, "video")       # pilot HR-comparison Rmds
 SF_STATS_DIR              <- file.path(SERVER_ROOT, "pspm", "outputs")
+
+# SONA credit email (admin/send_credit_email.R): who grants the credits. Not in git.
+CREDIT_RECIPIENT <- ""   # e.g. "someone@sussex.ac.uk"

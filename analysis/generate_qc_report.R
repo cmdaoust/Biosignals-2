@@ -2568,7 +2568,7 @@ questionnaire_html <- tryCatch({
 # The Completeness tab says whether data EXISTS, so it reads the raw Box folders, not the
 # combined CSVs (those can be out of date until 01/04 are re-knitted). The "Combined datasets"
 # tab then compares raw vs combined.
-QC_ID_RE <- "^[A-Za-z]?[0-9]{3,5}$"   # e.g. s9686, 002 (anything else falls back to the folder name)
+QC_ID_RE <- "^[A-Za-z]{0,2}[0-9]{3,5}$"   # e.g. s9686, un2956, 002 (anything else falls back to the folder name)
 
 # PsychoPy: every file anywhere under PSYCHOPY_DATA_DIR (subfolders included). The ID comes
 # from the file name before the first "_"; if that doesn't look like an ID, from the first

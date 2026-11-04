@@ -584,7 +584,7 @@ if (nrow(face_valid) && any(face_valid$prop_valid < MIN_FACE_VALID))
               sum(face_valid$prop_valid < MIN_FACE_VALID), 100 * MIN_FACE_VALID))
 for (n in scr_notes) {   # participant notes start with the ID: show its code instead
   id <- sub(" .*", "", n)
-  if (id %in% names(pid_code) || grepl("^[A-Za-z]?\\d+$", id)) {
+  if (id %in% names(pid_code) || grepl("^[A-Za-z]{0,2}\\d+$", id)) {
     code <- if (id %in% names(pid_code)) pid_code[[id]] else if (ANONYMISE_IDS) "a participant" else id
     cat("- SCR: ", code, sub("^\\S+", "", n), "\n", sep = "")
   } else cat("- ", n, "\n", sep = "")

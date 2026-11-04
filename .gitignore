@@ -8,7 +8,7 @@ config.yaml
 **/*.acq
 analysis/data/
 analysis/followup_schedule.csv
-analysis/questionniare_followup_dates.R
+admin/questionniare_followup_dates.R
 # Participant ID keys (real IDs behind the P-codes): must never be committed.
 # The interim report keeps its key on Box; these are a safety net.
 **/*id_key*
@@ -40,11 +40,15 @@ Thumbs.db
 # Participant status list (pilot/test/excluded): lives on Box in 3_Data/raw_questionnaire.
 **/participant_status.csv
 
-# Follow-up email sender (participant contact workflow; keep out of git).
-analysis/send_followup_emails.R
-analysis/outlook_send_email.ps1
-analysis/run_followup_emails.bat
+# Follow-up email sender and timesheets (participant contact workflow; keep out of git).
+admin/send_followup_emails.R
+admin/outlook_send_email.ps1
+admin/run_followup_emails.bat
 analysis/run_qc_report.bat
+admin/MindLife_timesheet_temp.xlsx
+admin/October_2026_timesheet.xlsx
+admin/Novemberer_2026_timesheet.xlsx
+
 
 # Knitted analysis reports (may show real participant IDs). 07 (P-codes) and the QC reports stay tracked.
 analysis/02_ratings_analysis.html
