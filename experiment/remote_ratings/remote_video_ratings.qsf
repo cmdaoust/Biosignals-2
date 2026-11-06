@@ -1,0 +1,1489 @@
+{
+ "SurveyEntry": {
+  "SurveyID": "SV_3kBs2RemRat8wQ",
+  "SurveyName": "Biosignals2 - remote video ratings (crash recovery)",
+  "SurveyDescription": null,
+  "SurveyOwnerID": "UR_0",
+  "SurveyBrandID": "universityofsussex",
+  "DivisionID": null,
+  "SurveyLanguage": "EN",
+  "SurveyActiveResponseSet": "RS_default",
+  "SurveyStatus": "Inactive",
+  "SurveyStartDate": "0000-00-00 00:00:00",
+  "SurveyExpirationDate": "0000-00-00 00:00:00",
+  "SurveyCreationDate": "2026-10-28 17:08:00",
+  "CreatorID": "UR_0",
+  "LastModified": "2026-10-28 17:08:00",
+  "LastAccessed": "0000-00-00 00:00:00",
+  "LastActivated": "0000-00-00 00:00:00",
+  "Deleted": null
+ },
+ "SurveyElements": [
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "BL",
+   "PrimaryAttribute": "Survey Blocks",
+   "SecondaryAttribute": null,
+   "TertiaryAttribute": null,
+   "Payload": [
+    {
+     "Type": "Default",
+     "SubType": "",
+     "Description": "Intro",
+     "ID": "BL_u8jzPde0IgxLd6G",
+     "BlockElements": [
+      {
+       "Type": "Question",
+       "QuestionID": "QID1"
+      },
+      {
+       "Type": "Question",
+       "QuestionID": "QID2"
+      }
+     ]
+    },
+    {
+     "Type": "Standard",
+     "SubType": "",
+     "Description": "Video 1: N01 (arousal_first)",
+     "ID": "BL_ncfBAepfJBd0Kh8",
+     "BlockElements": [
+      {
+       "Type": "Question",
+       "QuestionID": "QID3"
+      },
+      {
+       "Type": "Question",
+       "QuestionID": "QID4"
+      },
+      {
+       "Type": "Page Break"
+      },
+      {
+       "Type": "Question",
+       "QuestionID": "QID6"
+      },
+      {
+       "Type": "Page Break"
+      },
+      {
+       "Type": "Question",
+       "QuestionID": "QID5"
+      },
+      {
+       "Type": "Page Break"
+      },
+      {
+       "Type": "Question",
+       "QuestionID": "QID7"
+      }
+     ]
+    },
+    {
+     "Type": "Standard",
+     "SubType": "",
+     "Description": "Video 2: P0141 (valence_first)",
+     "ID": "BL_oOOL8dKLzdocJ2i",
+     "BlockElements": [
+      {
+       "Type": "Question",
+       "QuestionID": "QID8"
+      },
+      {
+       "Type": "Question",
+       "QuestionID": "QID9"
+      },
+      {
+       "Type": "Page Break"
+      },
+      {
+       "Type": "Question",
+       "QuestionID": "QID10"
+      },
+      {
+       "Type": "Page Break"
+      },
+      {
+       "Type": "Question",
+       "QuestionID": "QID11"
+      },
+      {
+       "Type": "Page Break"
+      },
+      {
+       "Type": "Question",
+       "QuestionID": "QID12"
+      }
+     ]
+    },
+    {
+     "Type": "Standard",
+     "SubType": "",
+     "Description": "Video 3: P02 (arousal_first)",
+     "ID": "BL_sAjIhKtJ0RlgLKO",
+     "BlockElements": [
+      {
+       "Type": "Question",
+       "QuestionID": "QID13"
+      },
+      {
+       "Type": "Question",
+       "QuestionID": "QID14"
+      },
+      {
+       "Type": "Page Break"
+      },
+      {
+       "Type": "Question",
+       "QuestionID": "QID16"
+      },
+      {
+       "Type": "Page Break"
+      },
+      {
+       "Type": "Question",
+       "QuestionID": "QID15"
+      },
+      {
+       "Type": "Page Break"
+      },
+      {
+       "Type": "Question",
+       "QuestionID": "QID17"
+      }
+     ]
+    },
+    {
+     "Type": "Standard",
+     "SubType": "",
+     "Description": "Video 4: N007 (valence_first)",
+     "ID": "BL_mxgJTeKdNnFRIBX",
+     "BlockElements": [
+      {
+       "Type": "Question",
+       "QuestionID": "QID18"
+      },
+      {
+       "Type": "Question",
+       "QuestionID": "QID19"
+      },
+      {
+       "Type": "Page Break"
+      },
+      {
+       "Type": "Question",
+       "QuestionID": "QID20"
+      },
+      {
+       "Type": "Page Break"
+      },
+      {
+       "Type": "Question",
+       "QuestionID": "QID21"
+      },
+      {
+       "Type": "Page Break"
+      },
+      {
+       "Type": "Question",
+       "QuestionID": "QID22"
+      }
+     ]
+    },
+    {
+     "Type": "Standard",
+     "SubType": "",
+     "Description": "End",
+     "ID": "BL_uDL7DxtpYlSXpfK",
+     "BlockElements": [
+      {
+       "Type": "Question",
+       "QuestionID": "QID23"
+      }
+     ]
+    },
+    {
+     "Type": "Trash",
+     "Description": "Trash / Unused Questions",
+     "ID": "BL_tHF4vUCsMehGAkW",
+     "BlockElements": []
+    }
+   ]
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "FL",
+   "PrimaryAttribute": "Survey Flow",
+   "SecondaryAttribute": null,
+   "TertiaryAttribute": null,
+   "Payload": {
+    "Type": "Root",
+    "FlowID": "FL_1",
+    "Flow": [
+     {
+      "Type": "EmbeddedData",
+      "FlowID": "FL_2",
+      "EmbeddedData": [
+       {
+        "Description": "video_order",
+        "Type": "Custom",
+        "Field": "video_order",
+        "VariableType": "String",
+        "DataVisibility": [],
+        "AnalyzeText": false,
+        "Value": "N01;P0141;P02;N007"
+       },
+       {
+        "Description": "stim_rating_orders",
+        "Type": "Custom",
+        "Field": "stim_rating_orders",
+        "VariableType": "String",
+        "DataVisibility": [],
+        "AnalyzeText": false,
+        "Value": "N01:arousal_first;P0141:valence_first;P02:arousal_first;N007:valence_first"
+       },
+       {
+        "Description": "rating_start",
+        "Type": "Custom",
+        "Field": "rating_start",
+        "VariableType": "String",
+        "DataVisibility": [],
+        "AnalyzeText": false,
+        "Value": "valence_first"
+       },
+       {
+        "Description": "collection_mode",
+        "Type": "Custom",
+        "Field": "collection_mode",
+        "VariableType": "String",
+        "DataVisibility": [],
+        "AnalyzeText": false,
+        "Value": "remote_qualtrics_after_crash"
+       }
+      ]
+     },
+     {
+      "Type": "Block",
+      "ID": "BL_u8jzPde0IgxLd6G",
+      "FlowID": "FL_3"
+     },
+     {
+      "Type": "Block",
+      "ID": "BL_ncfBAepfJBd0Kh8",
+      "FlowID": "FL_4"
+     },
+     {
+      "Type": "Block",
+      "ID": "BL_oOOL8dKLzdocJ2i",
+      "FlowID": "FL_5"
+     },
+     {
+      "Type": "Block",
+      "ID": "BL_sAjIhKtJ0RlgLKO",
+      "FlowID": "FL_6"
+     },
+     {
+      "Type": "Block",
+      "ID": "BL_mxgJTeKdNnFRIBX",
+      "FlowID": "FL_7"
+     },
+     {
+      "Type": "Block",
+      "ID": "BL_uDL7DxtpYlSXpfK",
+      "FlowID": "FL_8"
+     }
+    ],
+    "Properties": {
+     "Count": 8
+    }
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SO",
+   "PrimaryAttribute": "Survey Options",
+   "SecondaryAttribute": null,
+   "TertiaryAttribute": null,
+   "Payload": {
+    "BackButton": "false",
+    "SaveAndContinue": "true",
+    "SurveyProtection": "PublicSurvey",
+    "BallotBoxStuffingPrevention": "false",
+    "NoIndex": "Yes",
+    "SecureResponseFiles": "true",
+    "SurveyExpiration": null,
+    "SurveyTermination": "DefaultMessage",
+    "Header": "",
+    "Footer": "",
+    "ProgressBarDisplay": "None",
+    "PartialData": "+1 week",
+    "ValidationMessage": "",
+    "PreviousButton": "",
+    "NextButton": "",
+    "SurveyTitle": "Biosignals study - final questions"
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SCO",
+   "PrimaryAttribute": "Scoring",
+   "SecondaryAttribute": null,
+   "TertiaryAttribute": null,
+   "Payload": {
+    "ScoringCategories": [],
+    "ScoringCategoryGroups": [],
+    "ScoringSummaryCategory": null,
+    "ScoringSummaryAfterQuestions": 0,
+    "ScoringSummaryAfterSurvey": 0,
+    "DefaultScoringCategory": null,
+    "AutoScoringCategory": null
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "PROJ",
+   "PrimaryAttribute": "CORE",
+   "SecondaryAttribute": null,
+   "TertiaryAttribute": "1.1.0",
+   "Payload": {
+    "ProjectCategory": "CORE",
+    "SchemaVersion": "1.1.0"
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "STAT",
+   "PrimaryAttribute": "Survey Statistics",
+   "SecondaryAttribute": null,
+   "TertiaryAttribute": null,
+   "Payload": {
+    "MobileCompatible": true,
+    "ID": "Survey Statistics"
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "QC",
+   "PrimaryAttribute": "Survey Question Count",
+   "SecondaryAttribute": "23",
+   "TertiaryAttribute": null,
+   "Payload": null
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "RS",
+   "PrimaryAttribute": "RS_default",
+   "SecondaryAttribute": "Default Response Set",
+   "TertiaryAttribute": null,
+   "Payload": null
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SQ",
+   "PrimaryAttribute": "QID1",
+   "SecondaryAttribute": "intro",
+   "TertiaryAttribute": null,
+   "Payload": {
+    "QuestionText": "<p>Thank you again for taking part in our study.</p><p>Your session ended before the final questions about the videos could be shown, so we would be grateful if you could answer them here. It takes about 5 minutes.</p><p>You will see a still image from each of the four videos you watched. For each one, please think back to how you felt <b>while you were watching that video in the lab</b>, and answer the questions.</p><p>Please note that two of the videos contained upsetting content. You only need to see a single still image from each.</p>",
+    "DefaultChoices": false,
+    "DataExportTag": "intro",
+    "QuestionType": "DB",
+    "Selector": "TB",
+    "Configuration": {
+     "QuestionDescriptionOption": "UseText"
+    },
+    "QuestionDescription": "intro",
+    "Validation": {
+     "Settings": {
+      "Type": "None"
+     }
+    },
+    "GradingData": [],
+    "Language": [],
+    "NextChoiceId": 4,
+    "NextAnswerId": 1,
+    "QuestionID": "QID1",
+    "ChoiceOrder": []
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SQ",
+   "PrimaryAttribute": "QID2",
+   "SecondaryAttribute": "participant_id",
+   "TertiaryAttribute": null,
+   "Payload": {
+    "QuestionText": "Please enter the participant ID we sent you:",
+    "DefaultChoices": false,
+    "DataExportTag": "participant_id",
+    "QuestionType": "TE",
+    "Selector": "SL",
+    "Configuration": {
+     "QuestionDescriptionOption": "UseText",
+     "InputWidth": 300
+    },
+    "QuestionDescription": "participant_id",
+    "Validation": {
+     "Settings": {
+      "ForceResponse": "ON",
+      "ForceResponseType": "ON",
+      "Type": "None"
+     }
+    },
+    "GradingData": [],
+    "Language": [],
+    "NextChoiceId": 4,
+    "NextAnswerId": 1,
+    "QuestionID": "QID2",
+    "SearchSource": {
+     "AllowFreeResponse": "false"
+    }
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SQ",
+   "PrimaryAttribute": "QID3",
+   "SecondaryAttribute": "N01_emotion",
+   "TertiaryAttribute": null,
+   "Payload": {
+    "QuestionText": "<div style=\"text-align:center\"><img src=\"https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_Mi7EOEJlbrzqruF\" style=\"max-height:260px;max-width:100%\"></div><br>How did you feel while watching this video?<br><span style='font-size:90%'>(Please type ONE word below)</span>",
+    "DefaultChoices": false,
+    "DataExportTag": "N01_emotion",
+    "QuestionType": "TE",
+    "Selector": "SL",
+    "Configuration": {
+     "QuestionDescriptionOption": "UseText",
+     "InputWidth": 300
+    },
+    "QuestionDescription": "N01_emotion",
+    "Validation": {
+     "Settings": {
+      "ForceResponse": "ON",
+      "ForceResponseType": "ON",
+      "Type": "None"
+     }
+    },
+    "GradingData": [],
+    "Language": [],
+    "NextChoiceId": 4,
+    "NextAnswerId": 1,
+    "QuestionID": "QID3",
+    "SearchSource": {
+     "AllowFreeResponse": "false"
+    }
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SQ",
+   "PrimaryAttribute": "QID4",
+   "SecondaryAttribute": "N01_intensity",
+   "TertiaryAttribute": null,
+   "Payload": {
+    "QuestionText": "How intense was this feeling?<br><span style='font-size:85%'>Click on the slider to select your answer.</span>",
+    "DefaultChoices": false,
+    "DataExportTag": "N01_intensity",
+    "QuestionType": "Slider",
+    "Selector": "HSLIDER",
+    "Configuration": {
+     "QuestionDescriptionOption": "UseText",
+     "CSSliderMin": 1,
+     "CSSliderMax": 7,
+     "GridLines": 6,
+     "SnapToGrid": true,
+     "NumDecimals": "0",
+     "ShowValue": false,
+     "CustomStart": false,
+     "NotApplicable": false,
+     "MobileFirst": false
+    },
+    "QuestionDescription": "N01_intensity",
+    "Validation": {
+     "Settings": {
+      "ForceResponse": "ON",
+      "ForceResponseType": "ON",
+      "Type": "None"
+     }
+    },
+    "GradingData": [],
+    "Language": [],
+    "NextChoiceId": 2,
+    "NextAnswerId": 1,
+    "QuestionID": "QID4",
+    "Choices": {
+     "1": {
+      "Display": "&nbsp;"
+     }
+    },
+    "ChoiceOrder": [
+     "1"
+    ],
+    "Labels": {
+     "1": {
+      "Display": "not intense at all"
+     },
+     "2": {
+      "Display": "very intense"
+     }
+    }
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SQ",
+   "PrimaryAttribute": "QID5",
+   "SecondaryAttribute": "N01_valence",
+   "TertiaryAttribute": null,
+   "Payload": {
+    "QuestionText": "<div style=\"text-align:center\"><img src=\"https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_Mi7EOEJlbrzqruF\" style=\"max-height:260px;max-width:100%\"></div><br>Overall, how did you feel while watching this video?<br><span style='font-size:85%'>Click on the slider to select your answer.</span>",
+    "DefaultChoices": false,
+    "DataExportTag": "N01_valence",
+    "QuestionType": "Slider",
+    "Selector": "HSLIDER",
+    "Configuration": {
+     "QuestionDescriptionOption": "UseText",
+     "CSSliderMin": 1,
+     "CSSliderMax": 7,
+     "GridLines": 6,
+     "SnapToGrid": true,
+     "NumDecimals": "0",
+     "ShowValue": false,
+     "CustomStart": false,
+     "NotApplicable": false,
+     "MobileFirst": false
+    },
+    "QuestionDescription": "N01_valence",
+    "Validation": {
+     "Settings": {
+      "ForceResponse": "ON",
+      "ForceResponseType": "ON",
+      "Type": "None"
+     }
+    },
+    "GradingData": [],
+    "Language": [],
+    "NextChoiceId": 2,
+    "NextAnswerId": 1,
+    "QuestionID": "QID5",
+    "Choices": {
+     "1": {
+      "Display": "&nbsp;"
+     }
+    },
+    "ChoiceOrder": [
+     "1"
+    ],
+    "Labels": {
+     "1": {
+      "Display": "very unpleasant"
+     },
+     "2": {
+      "Display": "very pleasant"
+     }
+    }
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SQ",
+   "PrimaryAttribute": "QID6",
+   "SecondaryAttribute": "N01_arousal",
+   "TertiaryAttribute": null,
+   "Payload": {
+    "QuestionText": "<div style=\"text-align:center\"><img src=\"https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_Mi7EOEJlbrzqruF\" style=\"max-height:260px;max-width:100%\"></div><br>Overall, how did you feel while watching this video?<br><span style='font-size:85%'>Click on the slider to select your answer.</span>",
+    "DefaultChoices": false,
+    "DataExportTag": "N01_arousal",
+    "QuestionType": "Slider",
+    "Selector": "HSLIDER",
+    "Configuration": {
+     "QuestionDescriptionOption": "UseText",
+     "CSSliderMin": 1,
+     "CSSliderMax": 7,
+     "GridLines": 6,
+     "SnapToGrid": true,
+     "NumDecimals": "0",
+     "ShowValue": false,
+     "CustomStart": false,
+     "NotApplicable": false,
+     "MobileFirst": false
+    },
+    "QuestionDescription": "N01_arousal",
+    "Validation": {
+     "Settings": {
+      "ForceResponse": "ON",
+      "ForceResponseType": "ON",
+      "Type": "None"
+     }
+    },
+    "GradingData": [],
+    "Language": [],
+    "NextChoiceId": 2,
+    "NextAnswerId": 1,
+    "QuestionID": "QID6",
+    "Choices": {
+     "1": {
+      "Display": "&nbsp;"
+     }
+    },
+    "ChoiceOrder": [
+     "1"
+    ],
+    "Labels": {
+     "1": {
+      "Display": "not alert at all"
+     },
+     "2": {
+      "Display": "very alert"
+     }
+    }
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SQ",
+   "PrimaryAttribute": "QID7",
+   "SecondaryAttribute": "N01_approach",
+   "TertiaryAttribute": null,
+   "Payload": {
+    "QuestionText": "<div style=\"text-align:center\"><img src=\"https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_Mi7EOEJlbrzqruF\" style=\"max-height:260px;max-width:100%\"></div><br>How much did you want to watch this?<br><span style='font-size:85%'>Click on the slider to select your answer.</span>",
+    "DefaultChoices": false,
+    "DataExportTag": "N01_approach",
+    "QuestionType": "Slider",
+    "Selector": "HSLIDER",
+    "Configuration": {
+     "QuestionDescriptionOption": "UseText",
+     "CSSliderMin": 1,
+     "CSSliderMax": 7,
+     "GridLines": 6,
+     "SnapToGrid": true,
+     "NumDecimals": "0",
+     "ShowValue": false,
+     "CustomStart": false,
+     "NotApplicable": false,
+     "MobileFirst": false
+    },
+    "QuestionDescription": "N01_approach",
+    "Validation": {
+     "Settings": {
+      "ForceResponse": "ON",
+      "ForceResponseType": "ON",
+      "Type": "None"
+     }
+    },
+    "GradingData": [],
+    "Language": [],
+    "NextChoiceId": 2,
+    "NextAnswerId": 1,
+    "QuestionID": "QID7",
+    "Choices": {
+     "1": {
+      "Display": "&nbsp;"
+     }
+    },
+    "ChoiceOrder": [
+     "1"
+    ],
+    "Labels": {
+     "1": {
+      "Display": "Strongly wanted to avoid it"
+     },
+     "2": {
+      "Display": "Strongly wanted to watch it"
+     }
+    }
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SQ",
+   "PrimaryAttribute": "QID8",
+   "SecondaryAttribute": "P0141_emotion",
+   "TertiaryAttribute": null,
+   "Payload": {
+    "QuestionText": "<div style=\"text-align:center\"><img src=\"https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_aAomISIF1NiTgxq\" style=\"max-height:260px;max-width:100%\"></div><br>How did you feel while watching this video?<br><span style='font-size:90%'>(Please type ONE word below)</span>",
+    "DefaultChoices": false,
+    "DataExportTag": "P0141_emotion",
+    "QuestionType": "TE",
+    "Selector": "SL",
+    "Configuration": {
+     "QuestionDescriptionOption": "UseText",
+     "InputWidth": 300
+    },
+    "QuestionDescription": "P0141_emotion",
+    "Validation": {
+     "Settings": {
+      "ForceResponse": "ON",
+      "ForceResponseType": "ON",
+      "Type": "None"
+     }
+    },
+    "GradingData": [],
+    "Language": [],
+    "NextChoiceId": 4,
+    "NextAnswerId": 1,
+    "QuestionID": "QID8",
+    "SearchSource": {
+     "AllowFreeResponse": "false"
+    }
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SQ",
+   "PrimaryAttribute": "QID9",
+   "SecondaryAttribute": "P0141_intensity",
+   "TertiaryAttribute": null,
+   "Payload": {
+    "QuestionText": "How intense was this feeling?<br><span style='font-size:85%'>Click on the slider to select your answer.</span>",
+    "DefaultChoices": false,
+    "DataExportTag": "P0141_intensity",
+    "QuestionType": "Slider",
+    "Selector": "HSLIDER",
+    "Configuration": {
+     "QuestionDescriptionOption": "UseText",
+     "CSSliderMin": 1,
+     "CSSliderMax": 7,
+     "GridLines": 6,
+     "SnapToGrid": true,
+     "NumDecimals": "0",
+     "ShowValue": false,
+     "CustomStart": false,
+     "NotApplicable": false,
+     "MobileFirst": false
+    },
+    "QuestionDescription": "P0141_intensity",
+    "Validation": {
+     "Settings": {
+      "ForceResponse": "ON",
+      "ForceResponseType": "ON",
+      "Type": "None"
+     }
+    },
+    "GradingData": [],
+    "Language": [],
+    "NextChoiceId": 2,
+    "NextAnswerId": 1,
+    "QuestionID": "QID9",
+    "Choices": {
+     "1": {
+      "Display": "&nbsp;"
+     }
+    },
+    "ChoiceOrder": [
+     "1"
+    ],
+    "Labels": {
+     "1": {
+      "Display": "not intense at all"
+     },
+     "2": {
+      "Display": "very intense"
+     }
+    }
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SQ",
+   "PrimaryAttribute": "QID10",
+   "SecondaryAttribute": "P0141_valence",
+   "TertiaryAttribute": null,
+   "Payload": {
+    "QuestionText": "<div style=\"text-align:center\"><img src=\"https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_aAomISIF1NiTgxq\" style=\"max-height:260px;max-width:100%\"></div><br>Overall, how did you feel while watching this video?<br><span style='font-size:85%'>Click on the slider to select your answer.</span>",
+    "DefaultChoices": false,
+    "DataExportTag": "P0141_valence",
+    "QuestionType": "Slider",
+    "Selector": "HSLIDER",
+    "Configuration": {
+     "QuestionDescriptionOption": "UseText",
+     "CSSliderMin": 1,
+     "CSSliderMax": 7,
+     "GridLines": 6,
+     "SnapToGrid": true,
+     "NumDecimals": "0",
+     "ShowValue": false,
+     "CustomStart": false,
+     "NotApplicable": false,
+     "MobileFirst": false
+    },
+    "QuestionDescription": "P0141_valence",
+    "Validation": {
+     "Settings": {
+      "ForceResponse": "ON",
+      "ForceResponseType": "ON",
+      "Type": "None"
+     }
+    },
+    "GradingData": [],
+    "Language": [],
+    "NextChoiceId": 2,
+    "NextAnswerId": 1,
+    "QuestionID": "QID10",
+    "Choices": {
+     "1": {
+      "Display": "&nbsp;"
+     }
+    },
+    "ChoiceOrder": [
+     "1"
+    ],
+    "Labels": {
+     "1": {
+      "Display": "very unpleasant"
+     },
+     "2": {
+      "Display": "very pleasant"
+     }
+    }
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SQ",
+   "PrimaryAttribute": "QID11",
+   "SecondaryAttribute": "P0141_arousal",
+   "TertiaryAttribute": null,
+   "Payload": {
+    "QuestionText": "<div style=\"text-align:center\"><img src=\"https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_aAomISIF1NiTgxq\" style=\"max-height:260px;max-width:100%\"></div><br>Overall, how did you feel while watching this video?<br><span style='font-size:85%'>Click on the slider to select your answer.</span>",
+    "DefaultChoices": false,
+    "DataExportTag": "P0141_arousal",
+    "QuestionType": "Slider",
+    "Selector": "HSLIDER",
+    "Configuration": {
+     "QuestionDescriptionOption": "UseText",
+     "CSSliderMin": 1,
+     "CSSliderMax": 7,
+     "GridLines": 6,
+     "SnapToGrid": true,
+     "NumDecimals": "0",
+     "ShowValue": false,
+     "CustomStart": false,
+     "NotApplicable": false,
+     "MobileFirst": false
+    },
+    "QuestionDescription": "P0141_arousal",
+    "Validation": {
+     "Settings": {
+      "ForceResponse": "ON",
+      "ForceResponseType": "ON",
+      "Type": "None"
+     }
+    },
+    "GradingData": [],
+    "Language": [],
+    "NextChoiceId": 2,
+    "NextAnswerId": 1,
+    "QuestionID": "QID11",
+    "Choices": {
+     "1": {
+      "Display": "&nbsp;"
+     }
+    },
+    "ChoiceOrder": [
+     "1"
+    ],
+    "Labels": {
+     "1": {
+      "Display": "not alert at all"
+     },
+     "2": {
+      "Display": "very alert"
+     }
+    }
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SQ",
+   "PrimaryAttribute": "QID12",
+   "SecondaryAttribute": "P0141_approach",
+   "TertiaryAttribute": null,
+   "Payload": {
+    "QuestionText": "<div style=\"text-align:center\"><img src=\"https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_aAomISIF1NiTgxq\" style=\"max-height:260px;max-width:100%\"></div><br>How much did you want to watch this?<br><span style='font-size:85%'>Click on the slider to select your answer.</span>",
+    "DefaultChoices": false,
+    "DataExportTag": "P0141_approach",
+    "QuestionType": "Slider",
+    "Selector": "HSLIDER",
+    "Configuration": {
+     "QuestionDescriptionOption": "UseText",
+     "CSSliderMin": 1,
+     "CSSliderMax": 7,
+     "GridLines": 6,
+     "SnapToGrid": true,
+     "NumDecimals": "0",
+     "ShowValue": false,
+     "CustomStart": false,
+     "NotApplicable": false,
+     "MobileFirst": false
+    },
+    "QuestionDescription": "P0141_approach",
+    "Validation": {
+     "Settings": {
+      "ForceResponse": "ON",
+      "ForceResponseType": "ON",
+      "Type": "None"
+     }
+    },
+    "GradingData": [],
+    "Language": [],
+    "NextChoiceId": 2,
+    "NextAnswerId": 1,
+    "QuestionID": "QID12",
+    "Choices": {
+     "1": {
+      "Display": "&nbsp;"
+     }
+    },
+    "ChoiceOrder": [
+     "1"
+    ],
+    "Labels": {
+     "1": {
+      "Display": "Strongly wanted to avoid it"
+     },
+     "2": {
+      "Display": "Strongly wanted to watch it"
+     }
+    }
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SQ",
+   "PrimaryAttribute": "QID13",
+   "SecondaryAttribute": "P02_emotion",
+   "TertiaryAttribute": null,
+   "Payload": {
+    "QuestionText": "<div style=\"text-align:center\"><img src=\"https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_kfMqqAAQUljNSrQ\" style=\"max-height:260px;max-width:100%\"></div><br>How did you feel while watching this video?<br><span style='font-size:90%'>(Please type ONE word below)</span>",
+    "DefaultChoices": false,
+    "DataExportTag": "P02_emotion",
+    "QuestionType": "TE",
+    "Selector": "SL",
+    "Configuration": {
+     "QuestionDescriptionOption": "UseText",
+     "InputWidth": 300
+    },
+    "QuestionDescription": "P02_emotion",
+    "Validation": {
+     "Settings": {
+      "ForceResponse": "ON",
+      "ForceResponseType": "ON",
+      "Type": "None"
+     }
+    },
+    "GradingData": [],
+    "Language": [],
+    "NextChoiceId": 4,
+    "NextAnswerId": 1,
+    "QuestionID": "QID13",
+    "SearchSource": {
+     "AllowFreeResponse": "false"
+    }
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SQ",
+   "PrimaryAttribute": "QID14",
+   "SecondaryAttribute": "P02_intensity",
+   "TertiaryAttribute": null,
+   "Payload": {
+    "QuestionText": "How intense was this feeling?<br><span style='font-size:85%'>Click on the slider to select your answer.</span>",
+    "DefaultChoices": false,
+    "DataExportTag": "P02_intensity",
+    "QuestionType": "Slider",
+    "Selector": "HSLIDER",
+    "Configuration": {
+     "QuestionDescriptionOption": "UseText",
+     "CSSliderMin": 1,
+     "CSSliderMax": 7,
+     "GridLines": 6,
+     "SnapToGrid": true,
+     "NumDecimals": "0",
+     "ShowValue": false,
+     "CustomStart": false,
+     "NotApplicable": false,
+     "MobileFirst": false
+    },
+    "QuestionDescription": "P02_intensity",
+    "Validation": {
+     "Settings": {
+      "ForceResponse": "ON",
+      "ForceResponseType": "ON",
+      "Type": "None"
+     }
+    },
+    "GradingData": [],
+    "Language": [],
+    "NextChoiceId": 2,
+    "NextAnswerId": 1,
+    "QuestionID": "QID14",
+    "Choices": {
+     "1": {
+      "Display": "&nbsp;"
+     }
+    },
+    "ChoiceOrder": [
+     "1"
+    ],
+    "Labels": {
+     "1": {
+      "Display": "not intense at all"
+     },
+     "2": {
+      "Display": "very intense"
+     }
+    }
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SQ",
+   "PrimaryAttribute": "QID15",
+   "SecondaryAttribute": "P02_valence",
+   "TertiaryAttribute": null,
+   "Payload": {
+    "QuestionText": "<div style=\"text-align:center\"><img src=\"https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_kfMqqAAQUljNSrQ\" style=\"max-height:260px;max-width:100%\"></div><br>Overall, how did you feel while watching this video?<br><span style='font-size:85%'>Click on the slider to select your answer.</span>",
+    "DefaultChoices": false,
+    "DataExportTag": "P02_valence",
+    "QuestionType": "Slider",
+    "Selector": "HSLIDER",
+    "Configuration": {
+     "QuestionDescriptionOption": "UseText",
+     "CSSliderMin": 1,
+     "CSSliderMax": 7,
+     "GridLines": 6,
+     "SnapToGrid": true,
+     "NumDecimals": "0",
+     "ShowValue": false,
+     "CustomStart": false,
+     "NotApplicable": false,
+     "MobileFirst": false
+    },
+    "QuestionDescription": "P02_valence",
+    "Validation": {
+     "Settings": {
+      "ForceResponse": "ON",
+      "ForceResponseType": "ON",
+      "Type": "None"
+     }
+    },
+    "GradingData": [],
+    "Language": [],
+    "NextChoiceId": 2,
+    "NextAnswerId": 1,
+    "QuestionID": "QID15",
+    "Choices": {
+     "1": {
+      "Display": "&nbsp;"
+     }
+    },
+    "ChoiceOrder": [
+     "1"
+    ],
+    "Labels": {
+     "1": {
+      "Display": "very unpleasant"
+     },
+     "2": {
+      "Display": "very pleasant"
+     }
+    }
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SQ",
+   "PrimaryAttribute": "QID16",
+   "SecondaryAttribute": "P02_arousal",
+   "TertiaryAttribute": null,
+   "Payload": {
+    "QuestionText": "<div style=\"text-align:center\"><img src=\"https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_kfMqqAAQUljNSrQ\" style=\"max-height:260px;max-width:100%\"></div><br>Overall, how did you feel while watching this video?<br><span style='font-size:85%'>Click on the slider to select your answer.</span>",
+    "DefaultChoices": false,
+    "DataExportTag": "P02_arousal",
+    "QuestionType": "Slider",
+    "Selector": "HSLIDER",
+    "Configuration": {
+     "QuestionDescriptionOption": "UseText",
+     "CSSliderMin": 1,
+     "CSSliderMax": 7,
+     "GridLines": 6,
+     "SnapToGrid": true,
+     "NumDecimals": "0",
+     "ShowValue": false,
+     "CustomStart": false,
+     "NotApplicable": false,
+     "MobileFirst": false
+    },
+    "QuestionDescription": "P02_arousal",
+    "Validation": {
+     "Settings": {
+      "ForceResponse": "ON",
+      "ForceResponseType": "ON",
+      "Type": "None"
+     }
+    },
+    "GradingData": [],
+    "Language": [],
+    "NextChoiceId": 2,
+    "NextAnswerId": 1,
+    "QuestionID": "QID16",
+    "Choices": {
+     "1": {
+      "Display": "&nbsp;"
+     }
+    },
+    "ChoiceOrder": [
+     "1"
+    ],
+    "Labels": {
+     "1": {
+      "Display": "not alert at all"
+     },
+     "2": {
+      "Display": "very alert"
+     }
+    }
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SQ",
+   "PrimaryAttribute": "QID17",
+   "SecondaryAttribute": "P02_approach",
+   "TertiaryAttribute": null,
+   "Payload": {
+    "QuestionText": "<div style=\"text-align:center\"><img src=\"https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_kfMqqAAQUljNSrQ\" style=\"max-height:260px;max-width:100%\"></div><br>How much did you want to watch this?<br><span style='font-size:85%'>Click on the slider to select your answer.</span>",
+    "DefaultChoices": false,
+    "DataExportTag": "P02_approach",
+    "QuestionType": "Slider",
+    "Selector": "HSLIDER",
+    "Configuration": {
+     "QuestionDescriptionOption": "UseText",
+     "CSSliderMin": 1,
+     "CSSliderMax": 7,
+     "GridLines": 6,
+     "SnapToGrid": true,
+     "NumDecimals": "0",
+     "ShowValue": false,
+     "CustomStart": false,
+     "NotApplicable": false,
+     "MobileFirst": false
+    },
+    "QuestionDescription": "P02_approach",
+    "Validation": {
+     "Settings": {
+      "ForceResponse": "ON",
+      "ForceResponseType": "ON",
+      "Type": "None"
+     }
+    },
+    "GradingData": [],
+    "Language": [],
+    "NextChoiceId": 2,
+    "NextAnswerId": 1,
+    "QuestionID": "QID17",
+    "Choices": {
+     "1": {
+      "Display": "&nbsp;"
+     }
+    },
+    "ChoiceOrder": [
+     "1"
+    ],
+    "Labels": {
+     "1": {
+      "Display": "Strongly wanted to avoid it"
+     },
+     "2": {
+      "Display": "Strongly wanted to watch it"
+     }
+    }
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SQ",
+   "PrimaryAttribute": "QID18",
+   "SecondaryAttribute": "N007_emotion",
+   "TertiaryAttribute": null,
+   "Payload": {
+    "QuestionText": "<div style=\"text-align:center\"><img src=\"https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_OKCqj24y9R8ZLNZ\" style=\"max-height:260px;max-width:100%\"></div><br>How did you feel while watching this video?<br><span style='font-size:90%'>(Please type ONE word below)</span>",
+    "DefaultChoices": false,
+    "DataExportTag": "N007_emotion",
+    "QuestionType": "TE",
+    "Selector": "SL",
+    "Configuration": {
+     "QuestionDescriptionOption": "UseText",
+     "InputWidth": 300
+    },
+    "QuestionDescription": "N007_emotion",
+    "Validation": {
+     "Settings": {
+      "ForceResponse": "ON",
+      "ForceResponseType": "ON",
+      "Type": "None"
+     }
+    },
+    "GradingData": [],
+    "Language": [],
+    "NextChoiceId": 4,
+    "NextAnswerId": 1,
+    "QuestionID": "QID18",
+    "SearchSource": {
+     "AllowFreeResponse": "false"
+    }
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SQ",
+   "PrimaryAttribute": "QID19",
+   "SecondaryAttribute": "N007_intensity",
+   "TertiaryAttribute": null,
+   "Payload": {
+    "QuestionText": "How intense was this feeling?<br><span style='font-size:85%'>Click on the slider to select your answer.</span>",
+    "DefaultChoices": false,
+    "DataExportTag": "N007_intensity",
+    "QuestionType": "Slider",
+    "Selector": "HSLIDER",
+    "Configuration": {
+     "QuestionDescriptionOption": "UseText",
+     "CSSliderMin": 1,
+     "CSSliderMax": 7,
+     "GridLines": 6,
+     "SnapToGrid": true,
+     "NumDecimals": "0",
+     "ShowValue": false,
+     "CustomStart": false,
+     "NotApplicable": false,
+     "MobileFirst": false
+    },
+    "QuestionDescription": "N007_intensity",
+    "Validation": {
+     "Settings": {
+      "ForceResponse": "ON",
+      "ForceResponseType": "ON",
+      "Type": "None"
+     }
+    },
+    "GradingData": [],
+    "Language": [],
+    "NextChoiceId": 2,
+    "NextAnswerId": 1,
+    "QuestionID": "QID19",
+    "Choices": {
+     "1": {
+      "Display": "&nbsp;"
+     }
+    },
+    "ChoiceOrder": [
+     "1"
+    ],
+    "Labels": {
+     "1": {
+      "Display": "not intense at all"
+     },
+     "2": {
+      "Display": "very intense"
+     }
+    }
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SQ",
+   "PrimaryAttribute": "QID20",
+   "SecondaryAttribute": "N007_valence",
+   "TertiaryAttribute": null,
+   "Payload": {
+    "QuestionText": "<div style=\"text-align:center\"><img src=\"https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_OKCqj24y9R8ZLNZ\" style=\"max-height:260px;max-width:100%\"></div><br>Overall, how did you feel while watching this video?<br><span style='font-size:85%'>Click on the slider to select your answer.</span>",
+    "DefaultChoices": false,
+    "DataExportTag": "N007_valence",
+    "QuestionType": "Slider",
+    "Selector": "HSLIDER",
+    "Configuration": {
+     "QuestionDescriptionOption": "UseText",
+     "CSSliderMin": 1,
+     "CSSliderMax": 7,
+     "GridLines": 6,
+     "SnapToGrid": true,
+     "NumDecimals": "0",
+     "ShowValue": false,
+     "CustomStart": false,
+     "NotApplicable": false,
+     "MobileFirst": false
+    },
+    "QuestionDescription": "N007_valence",
+    "Validation": {
+     "Settings": {
+      "ForceResponse": "ON",
+      "ForceResponseType": "ON",
+      "Type": "None"
+     }
+    },
+    "GradingData": [],
+    "Language": [],
+    "NextChoiceId": 2,
+    "NextAnswerId": 1,
+    "QuestionID": "QID20",
+    "Choices": {
+     "1": {
+      "Display": "&nbsp;"
+     }
+    },
+    "ChoiceOrder": [
+     "1"
+    ],
+    "Labels": {
+     "1": {
+      "Display": "very unpleasant"
+     },
+     "2": {
+      "Display": "very pleasant"
+     }
+    }
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SQ",
+   "PrimaryAttribute": "QID21",
+   "SecondaryAttribute": "N007_arousal",
+   "TertiaryAttribute": null,
+   "Payload": {
+    "QuestionText": "<div style=\"text-align:center\"><img src=\"https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_OKCqj24y9R8ZLNZ\" style=\"max-height:260px;max-width:100%\"></div><br>Overall, how did you feel while watching this video?<br><span style='font-size:85%'>Click on the slider to select your answer.</span>",
+    "DefaultChoices": false,
+    "DataExportTag": "N007_arousal",
+    "QuestionType": "Slider",
+    "Selector": "HSLIDER",
+    "Configuration": {
+     "QuestionDescriptionOption": "UseText",
+     "CSSliderMin": 1,
+     "CSSliderMax": 7,
+     "GridLines": 6,
+     "SnapToGrid": true,
+     "NumDecimals": "0",
+     "ShowValue": false,
+     "CustomStart": false,
+     "NotApplicable": false,
+     "MobileFirst": false
+    },
+    "QuestionDescription": "N007_arousal",
+    "Validation": {
+     "Settings": {
+      "ForceResponse": "ON",
+      "ForceResponseType": "ON",
+      "Type": "None"
+     }
+    },
+    "GradingData": [],
+    "Language": [],
+    "NextChoiceId": 2,
+    "NextAnswerId": 1,
+    "QuestionID": "QID21",
+    "Choices": {
+     "1": {
+      "Display": "&nbsp;"
+     }
+    },
+    "ChoiceOrder": [
+     "1"
+    ],
+    "Labels": {
+     "1": {
+      "Display": "not alert at all"
+     },
+     "2": {
+      "Display": "very alert"
+     }
+    }
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SQ",
+   "PrimaryAttribute": "QID22",
+   "SecondaryAttribute": "N007_approach",
+   "TertiaryAttribute": null,
+   "Payload": {
+    "QuestionText": "<div style=\"text-align:center\"><img src=\"https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_OKCqj24y9R8ZLNZ\" style=\"max-height:260px;max-width:100%\"></div><br>How much did you want to watch this?<br><span style='font-size:85%'>Click on the slider to select your answer.</span>",
+    "DefaultChoices": false,
+    "DataExportTag": "N007_approach",
+    "QuestionType": "Slider",
+    "Selector": "HSLIDER",
+    "Configuration": {
+     "QuestionDescriptionOption": "UseText",
+     "CSSliderMin": 1,
+     "CSSliderMax": 7,
+     "GridLines": 6,
+     "SnapToGrid": true,
+     "NumDecimals": "0",
+     "ShowValue": false,
+     "CustomStart": false,
+     "NotApplicable": false,
+     "MobileFirst": false
+    },
+    "QuestionDescription": "N007_approach",
+    "Validation": {
+     "Settings": {
+      "ForceResponse": "ON",
+      "ForceResponseType": "ON",
+      "Type": "None"
+     }
+    },
+    "GradingData": [],
+    "Language": [],
+    "NextChoiceId": 2,
+    "NextAnswerId": 1,
+    "QuestionID": "QID22",
+    "Choices": {
+     "1": {
+      "Display": "&nbsp;"
+     }
+    },
+    "ChoiceOrder": [
+     "1"
+    ],
+    "Labels": {
+     "1": {
+      "Display": "Strongly wanted to avoid it"
+     },
+     "2": {
+      "Display": "Strongly wanted to watch it"
+     }
+    }
+   }
+  },
+  {
+   "SurveyID": "SV_3kBs2RemRat8wQ",
+   "Element": "SQ",
+   "PrimaryAttribute": "QID23",
+   "SecondaryAttribute": "end_text",
+   "TertiaryAttribute": null,
+   "Payload": {
+    "QuestionText": "Thank you! That was the last question. Please click the arrow below to submit your answers.",
+    "DefaultChoices": false,
+    "DataExportTag": "end_text",
+    "QuestionType": "DB",
+    "Selector": "TB",
+    "Configuration": {
+     "QuestionDescriptionOption": "UseText"
+    },
+    "QuestionDescription": "end_text",
+    "Validation": {
+     "Settings": {
+      "Type": "None"
+     }
+    },
+    "GradingData": [],
+    "Language": [],
+    "NextChoiceId": 4,
+    "NextAnswerId": 1,
+    "QuestionID": "QID23",
+    "ChoiceOrder": []
+   }
+  }
+ ]
+}

@@ -100,6 +100,7 @@ Usage (from anywhere; paths come from config.py at the repo root)
   python 002_run_webcam_biometrics.py i4155                 # one participant
   python 002_run_webcam_biometrics.py i4155 r4755           # several
   python 002_run_webcam_biometrics.py --all                 # every main-study participant with a video
+  python 002_run_webcam_biometrics.py --all --no-convert    # ... but only those whose video already exists
   python 002_run_webcam_biometrics.py --all --pilots        # ... plus pilots (participant_status.csv)
   python 002_run_webcam_biometrics.py i4155 --test          # first 30 s only: quick check, frames CSV only
   python 002_run_webcam_biometrics.py i4155 --redo          # re-run extract + analyse (slow)
@@ -239,7 +240,7 @@ def find_ci(folder, name):
     return None
 
 
-def find_all_participants(P, converter, include_pilots=False):
+def find_all_participants(P, converter, include_pilots=False, no_convert=False):
     """--all: every participant with a video anywhere 002 can read one, filtered by
     analysis/participant_status.csv (test sessions and excluded participants left out; pilots only
     with --pilots). Prints who was found where and who was left out, so nothing is dropped silently.
@@ -277,6 +278,11 @@ def find_all_participants(P, converter, include_pilots=False):
         print(f"[--all] WARNING: participant_status.csv not used ({e}) - every participant found is run")
         status_of = lambda pid: "main"
     keep, left_out = [], []
+    if no_convert:                                          # only participants whose video already exists
+        png_only = sorted(p for p, w in found.items() if set(w) == {"PNG frames"})
+        if png_only:
+            print(f"[--no-convert] skipped, PNG frames but no video yet: {', '.join(png_only)}")
+        found = {p: w for p, w in found.items() if p not in png_only}
     for pid in sorted(found):
         st = status_of(pid)
         if st == "main" or (st == "pilot" and include_pilots):
@@ -291,8 +297,8 @@ def find_all_participants(P, converter, include_pilots=False):
     return keep
 
 
-def step_video(pid, P, converter):
-    """-> (video_path, timestamps_path), making the 1:1 video if needed."""
+def step_video(pid, P, converter, convert=True):
+    """-> (video_path, timestamps_path), making the 1:1 video if needed (not with convert=False)."""
     ts = find_ci(P["video_external_dir"], f"{pid}_frame_timestamps.csv")
     for name in (f"{pid}_1to1_ffv1.avi", f"{pid}_1to1.mkv"):     # .avi = shared with FaceReader; .mkv = older
         video = find_ci(P["video_external_dir"], name)
@@ -302,7 +308,8 @@ def step_video(pid, P, converter):
                 print("         (older .mkv - same pixels as the .avi; for FaceReader run "
                       f"{MKV_TO_AVI_SCRIPT} {pid} --delete-mkv to replace it with {pid}_1to1_ffv1.avi)")
             return video, ts
-    sessions, _ = converter.find_sessions(P["webcam_png_external_dir"]) if os.path.isdir(P["webcam_png_external_dir"]) else ({}, [])
+    sessions, _ = (converter.find_sessions(P["webcam_png_external_dir"])
+                   if convert and os.path.isdir(P["webcam_png_external_dir"]) else ({}, []))
     match = {k.lower(): v for k, v in sessions.items()}.get(pid)
     if match:
         frames_dir, csv_path = match
@@ -314,6 +321,10 @@ def step_video(pid, P, converter):
     if legacy and ts:
         print(f"  video: {legacy} (older session, already 1:1)")
         return legacy, ts
+    if not convert:
+        raise RuntimeError(f"no {pid}_1to1_ffv1.avi / {pid}_1to1.mkv (+ timestamps) in {P['video_external_dir']} and no "
+                           f"{pid}_recording.avi (+ timestamps) in {P['video_box_dir']} - not building it from the PNGs "
+                           f"(--no-convert)")
     raise RuntimeError(f"no {pid}_1to1_ffv1.avi / {pid}_1to1.mkv (+ timestamps) in {P['video_external_dir']}, no {pid}_recording.avi "
                        f"(+ timestamps) in {P['video_box_dir']}, "
                        f"and no {pid}_frames folder + timestamps CSV in {P['webcam_png_external_dir']}")
@@ -568,6 +579,9 @@ def main():
                     help="every participant with a video (PNG frames, 1:1 video or older recording), minus test "
                          "sessions and excluded participants in analysis/participant_status.csv")
     ap.add_argument("--pilots", action="store_true", help="with --all: include pilot participants too")
+    ap.add_argument("--no-convert", action="store_true",
+                    help="never build the 1:1 video from PNG frames: only run participants whose video already "
+                         "exists (with --all, PNG-only participants are skipped and listed)")
     ap.add_argument("--test", action="store_true", help=f"first {TEST_SECONDS} s only (quick check)")
     ap.add_argument("--redo", action="store_true", help="re-run extract + analyse even if cached (slow: re-reads every frame)")
     ap.add_argument("--reanalyse", action="store_true",
@@ -590,7 +604,7 @@ def main():
     P = load_config()
     converter = load_module("convert_png", os.path.join(HERE, "000_convert_png_to_avi.py"))
     if a.all:
-        pids = find_all_participants(P, converter, a.pilots)
+        pids = find_all_participants(P, converter, a.pilots, a.no_convert)
     else:
         pids = [p.lower() for p in a.pids]
         try:                                                # named IDs always run; just say if they're flagged
@@ -612,7 +626,7 @@ def main():
     for pid in pids:
         print(f"\n{'=' * 70}\n{pid}{' (TEST: first %d s)' % TEST_SECONDS if a.test else ''}\n{'=' * 70}")
         try:
-            video, ts = step_video(pid, P, converter)
+            video, ts = step_video(pid, P, converter, convert=not a.no_convert)
             series = step_extract(pid, video, ts, P, a.test, a.redo)
             for v in variants:
                 label = variant_label(v, a.live_delay_ms)

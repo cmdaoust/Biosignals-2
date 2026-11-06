@@ -24,10 +24,21 @@ Participants: every <id>_frames folder + <id>_frame_timestamps.csv in WEBCAM_PNG
 analyses) reach Box before the slow zips:
 
 PASS 1 - videos, for each participant:
+  precheck- the number of PNGs must equal the number of timestamp rows, EXCEPT when the last rows
+            have no PNG (the experiment closed before the last frames were written) and the PNGs
+            still reach the end of the LAST recovery block (Positive or Negative Recovery, whichever
+            came last: block order is counterbalanced) + VIDEO_TRIM_MARGIN_S (config.py, default 1 s).
+            Then the video stops at the last frame with a PNG ("trimmed"). The block end comes from
+            the participant's PsychoPy file in PSYCHOPY_DATA_DIR, using 001_generate_event_onsets.py's
+            own event logic (else from <id>_video_events.csv in FACEREADER_ONSETS_DIR). No PsychoPy
+            file, fewer than 2 recovery blocks, or missing PNGs mid-recording -> fails as before.
   video   - runs 000_convert_png_to_avi.py --method 1to1 if VIDEO_EXTERNAL_DIR has no video yet
-  check   - the video's frame count must equal the number of PNGs and of timestamp rows
+  check   - the video's frame count must equal the number of PNGs and of timestamp rows used
             (catches a video left half-written by an interrupted conversion)
-  upload  - the timestamps CSV and the video
+  upload  - the timestamps CSV and the video. For a trimmed participant, <id>_frame_timestamps.csv
+            on Box is the TRIMMED copy (same rows as the video, from VIDEO_EXTERNAL_DIR), and the
+            original goes up as <id>_frame_timestamps_untrimmed.csv (replacing a full copy already
+            on Box; Box keeps the old one as a version)
   (a video already on Box is never re-made, even if it's no longer on the drive)
 PASS 2 - frames, for each participant whose pass 1 succeeded:
   zip     - <id>_frames.zip next to the frames folder (contains the <id>_frames folder, no
@@ -89,8 +100,69 @@ def load_config():
         "user": str(getattr(cfg, "BOX_SFTP_USER", "") or ""),
         "remote_dir": str(getattr(cfg, "BOX_VIDEO_REMOTE_DIR", "") or "/Project_Biosignals_study_2/3_Data/video"),
         "fingerprint": str(getattr(cfg, "BOX_SFTP_FINGERPRINT", "") or "An60IqVqISRa3o2GRscno7QLnsTrIy0BGIchIAvJ9ZM"),
+        "trim_margin_s": float(getattr(cfg, "VIDEO_TRIM_MARGIN_S", DEFAULT_TRIM_MARGIN_S)),
+        "psychopy_dir": str(getattr(cfg, "PSYCHOPY_DATA_DIR", "") or ""),
+        "onsets_dir": str(getattr(cfg, "FACEREADER_ONSETS_DIR", "") or ""),
     }
     return c
+
+
+DEFAULT_TRIM_MARGIN_S = 1.0   # PNGs must reach this far past the end of the last recovery block
+EVENTS_SCRIPT = os.path.join(HERE, "001_generate_event_onsets.py")
+_MODULES = {}
+
+def _module(path, name):
+    if path not in _MODULES:
+        spec = importlib.util.spec_from_file_location(name, path)
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        _MODULES[path] = m
+    return _MODULES[path]
+
+def converter():
+    """000_convert_png_to_avi.py as a module, so the trimming rule is the same in both scripts."""
+    return _module(CONVERT_SCRIPT, "convert_png_to_avi")
+
+
+def last_block_end(pid, c):
+    """-> (seconds since recording start when the LAST recovery block ended, event name, source).
+    Same clock as time_since_recording_start in the timestamps CSV. Raises if it can't be found
+    or the session doesn't have both recovery blocks."""
+    ev = _module(EVENTS_SCRIPT, "generate_event_onsets")
+    tried = []
+    d = c["psychopy_dir"]
+    if d and os.path.isdir(d):
+        files = [f for f in glob.glob(os.path.join(d, "*_*Psychopy*.csv"))
+                 if pid_of(f) == pid and not f.lower().endswith("_biometrics.csv")]
+        if len(files) > 1:
+            raise RuntimeError(f"several PsychoPy files for {pid} in {d}: {[os.path.basename(f) for f in files]}")
+        if files:
+            import pandas as pd
+            exp = pd.read_csv(files[0])
+            fmt = ev.detect_format(exp.columns)
+            if fmt is None:
+                raise RuntimeError(f"{os.path.basename(files[0])} has no timing columns")
+            events, _, _ = ev.extract_events(exp, fmt)
+            rec = [(e["offset_s"], e["event"]) for e in events if e["event"].endswith("Recovery")]
+            src = os.path.basename(files[0])
+        else:
+            tried.append(f"no {pid}_...Psychopy...csv in {d}")
+    else:
+        tried.append(f"PSYCHOPY_DATA_DIR {d or '(not set)'} not found")
+    if tried:   # fall back on 001's output
+        f = os.path.join(c["onsets_dir"], f"{pid}_video_events.csv") if c["onsets_dir"] else ""
+        if not (f and os.path.exists(f)):
+            raise RuntimeError("can't find when the last block ended: " + "; ".join(tried) +
+                               f"; no {pid}_video_events.csv in FACEREADER_ONSETS_DIR")
+        import pandas as pd
+        df = pd.read_csv(f)
+        rec = [(float(r.offset_s), r.event) for r in df.itertuples() if str(r.event).endswith("Recovery")]
+        src = os.path.basename(f)
+    n_blocks = len(ev.BLOCK_VALENCES["neg_first"])
+    if len(rec) != n_blocks:
+        raise RuntimeError(f"{src} has {len(rec)} recovery block(s), expected {n_blocks} (experiment stopped early?)")
+    end, name = max(rec)
+    return end, name, src
 
 
 # ── logging ────────────────────────────────────────────────────────────────────
@@ -165,18 +237,20 @@ def video_frames(path):
 
 
 # ── steps ──────────────────────────────────────────────────────────────────────
-def step_video(pid, p, video_dir, dry):
+def step_video(pid, p, video_dir, dry, plan):
     avi = os.path.join(video_dir, f"{pid}_1to1_ffv1.avi")
     if os.path.exists(avi):
         log(f"  video   : exists ({human(os.path.getsize(avi))})")
         return avi
     if dry:
-        log("  video   : would convert with 000_convert_png_to_avi.py --method 1to1 (slow)")
+        log(f"  video   : would convert with 000_convert_png_to_avi.py --method 1to1 (slow)"
+            f"{', trimmed' if plan['n_trim'] else ''}")
         return avi
     log("  video   : converting (this takes a while)...")
     t0 = time.time()
     r = subprocess.run([sys.executable, CONVERT_SCRIPT, p["frames_dir"], p["ts_csv"],
-                        "--method", "1to1", "--output-dir", video_dir],
+                        "--method", "1to1", "--output-dir", video_dir]
+                       + (["--trim-if-complete-until", repr(plan["complete_until_s"])] if plan["n_trim"] else []),
                        capture_output=True, text=True)
     if r.returncode != 0 or not os.path.exists(avi):
         tail = "\n".join((r.stdout + r.stderr).strip().splitlines()[-8:])
@@ -185,26 +259,76 @@ def step_video(pid, p, video_dir, dry):
     return avi
 
 
-def step_precheck(pid, p):
-    """Before the slow conversion: PNGs and timestamp rows must match."""
+def step_precheck(pid, p, c):
+    """Before the slow conversion: PNGs and timestamp rows must match, or the only difference
+    must be PNGs missing at the very end, after the last recovery block ended (+ margin): those
+    rows are trimmed off.
+    -> plan dict: n_png, n_ts, n_keep (frames the video will have), n_trim, keep (frame indices)."""
     n_png = count_pngs(p["frames_dir"])
     n_ts = count_ts_rows(p["ts_csv"])
-    if n_png != n_ts:
+    plan = {"n_png": n_png, "n_ts": n_ts, "n_keep": n_ts, "n_trim": 0, "keep": None}
+    if n_png == n_ts:
+        return plan
+    if n_png > n_ts:
         raise RuntimeError(f"{n_png} PNGs but {n_ts} timestamp rows - check the recording")
-    return n_png, n_ts
+    conv = converter()
+    rows = conv.load_timestamps(p["ts_csv"])
+    try:
+        end, block, src = last_block_end(pid, c)
+    except Exception as e:
+        raise RuntimeError(f"{n_png} PNGs but {n_ts} timestamp rows, and can't check whether the missing "
+                           f"PNGs are after the last block: {e}")
+    need = end + c["trim_margin_s"]
+    try:
+        kept, n_trim, trim_s = conv.trim_missing_tail(rows, conv.png_indices(p["frames_dir"]), need)
+    except FileNotFoundError as e:
+        raise RuntimeError(f"{n_png} PNGs but {n_ts} timestamp rows: {e}")
+    log(f"  TRIM    : {n_png} PNGs but {n_ts} timestamp rows - the last {n_trim} rows have no PNG "
+        f"({trim_s:.1f} s). Video will stop at frame {kept[-1][0]}, {conv.mmss(kept[-1][1])} into the "
+        f"recording (was {conv.mmss(rows[-1][1])}); {block} ended at {conv.mmss(end)} ({src}), "
+        f"so {kept[-1][1] - end:.1f} s of frames after it are kept.")
+    plan.update(n_keep=len(kept), n_trim=n_trim, keep={i for i, _ in kept}, complete_until_s=need)
+    return plan
 
 
-def step_check(pid, p, avi, dry):
-    n_png, n_ts = step_precheck(pid, p)
+def companion_ts(pid, video_dir):
+    """The timestamps copy that sits next to the video (written by 000)."""
+    return os.path.join(video_dir, f"{pid}_frame_timestamps.csv")
+
+
+def step_timestamps(pid, p, plan, video_dir, dry):
+    """-> the timestamps file to put on Box as <id>_frame_timestamps.csv: the original, or for a
+    trimmed participant the trimmed copy next to the video (made here if 000 hasn't yet)."""
+    if not plan["n_trim"]:
+        return p["ts_csv"]
+    ts = companion_ts(pid, video_dir)
+    if os.path.exists(ts) and count_ts_rows(ts) == plan["n_keep"]:
+        return ts
+    if dry:
+        log(f"  stamps  : would write the trimmed copy {ts} ({plan['n_keep']} rows)")
+        return ts
+    if os.path.exists(ts) and count_ts_rows(ts) != plan["n_ts"]:
+        raise RuntimeError(f"{ts} has {count_ts_rows(ts)} rows, expected {plan['n_keep']} (trimmed) - "
+                           "check which recording it belongs to, delete it and run again")
+    os.makedirs(video_dir, exist_ok=True)
+    converter().write_timestamps_subset(p["ts_csv"], ts, plan["keep"])   # replaces an untrimmed copy
+    log(f"  stamps  : wrote the trimmed copy {ts} ({plan['n_keep']} rows)")
+    return ts
+
+
+def step_check(pid, p, avi, dry, plan):
+    n_png, n_ts, n_keep = plan["n_png"], plan["n_ts"], plan["n_keep"]
+    rows_txt = (f"{n_keep} timestamp rows" if not plan["n_trim"]
+                else f"{n_keep} of {n_ts} timestamp rows (last {plan['n_trim']} have no PNG)")
     if dry and not os.path.exists(avi):
-        log(f"  check   : {n_png} PNGs = {n_ts} timestamp rows (video checked after conversion)")
+        log(f"  check   : {n_png} PNGs, {rows_txt} (video checked after conversion)")
         return
     n_vid = video_frames(avi)
-    if n_vid != n_png:
+    if n_vid != n_keep:
         raise RuntimeError(
-            f"video has {n_vid} frames but there are {n_png} PNGs - probably a conversion that was "
-            f"interrupted. Delete {avi} and run again.")
-    log(f"  check   : {n_vid} video frames = {n_png} PNGs = {n_ts} timestamp rows")
+            f"video has {n_vid} frames but should have {n_keep} ({n_png} PNGs, {rows_txt}) - probably a "
+            f"conversion that was interrupted. Delete {avi} and run again.")
+    log(f"  check   : {n_vid} video frames = {rows_txt} ({n_png} PNGs)")
 
 
 def step_zip(pid, p, dry):
@@ -295,8 +419,8 @@ class Box:
         return {a.filename.lower(): (a.filename, a.st_size)
                 for a in self.sftp.listdir_attr(self.c["remote_dir"])}
 
-    def upload(self, local, sizes):
-        name = os.path.basename(local)
+    def upload(self, local, sizes, name=None):
+        name = name or os.path.basename(local)
         remote = posixpath.join(self.c["remote_dir"], name)
         part = remote + ".part"
         size = os.path.getsize(local)
@@ -445,6 +569,8 @@ def main():
     log("=" * 70)
     log(f"video_to_box {'DRY RUN ' if a.dry_run else ''}started {dt.datetime.now():%Y-%m-%d %H:%M}")
     log(f"Drive: {c['png_dir']} | videos: {c['video_dir']} | Box: {c['host']}:{c['remote_dir']}")
+    log(f"Missing PNGs at the end of a recording: trimmed off only if the PNGs reach the end of the last "
+        f"recovery block + {c['trim_margin_s']:g} s")
 
     only = [p.lower() for p in a.pids]
     local, problems = find_local(c["png_dir"], only)
@@ -462,7 +588,12 @@ def main():
             avi = os.path.join(c["video_dir"], f"{pid}_1to1_ffv1.avi")
             zpath = os.path.join(os.path.dirname(p["frames_dir"]), f"{pid}_frames.zip")
             names = {f"{pid}_frames.zip": zpath, f"{pid}_1to1_ffv1.avi": avi,
-                     os.path.basename(p["ts_csv"]): p["ts_csv"]}
+                     f"{pid}_frame_timestamps.csv": p["ts_csv"]}
+            comp = companion_ts(pid, c["video_dir"])
+            if (os.path.exists(comp) and count_ts_rows(comp) < count_ts_rows(p["ts_csv"])):
+                # trimmed participant: the trimmed copy is the one that belongs with the video
+                names[f"{pid}_frame_timestamps.csv"] = comp
+                names[f"{pid}_frame_timestamps_untrimmed.csv"] = p["ts_csv"]
             # Complete = all three names on Box. Sizes are compared for files that exist locally.
             missing = [n for n, l in names.items() if box_check(n, l, sizes, p["frames_dir"])[0] != "ok"]
             if missing:
@@ -472,8 +603,8 @@ def main():
             log(f"SKIPPED {pid}: {why}")
             results.append((pid, "skipped", why))
 
-        def upload_if_needed(local_path):
-            name = os.path.basename(local_path)
+        def upload_if_needed(local_path, name=None):
+            name = name or os.path.basename(local_path)
             if on_box(name, local_path, sizes):
                 log(f"  upload  : {name} already on Box (same size)")
             elif a.dry_run:
@@ -481,7 +612,7 @@ def main():
                 log(f"  upload  : would upload {name} ({size})")
             else:
                 log(f"  upload  : {name} ({human(os.path.getsize(local_path))})...")
-                box.upload(local_path, sizes)
+                box.upload(local_path, sizes, name)
 
         status = {}   # pid -> "ok" / "FAILED: ..."
         log("")
@@ -491,16 +622,26 @@ def main():
             log(f"── {pid} ──")
             try:
                 avi = os.path.join(c["video_dir"], f"{pid}_1to1_ffv1.avi")
-                upload_if_needed(p["ts_csv"])
                 vstate, vmsg = box_check(os.path.basename(avi), avi, sizes, p["frames_dir"])
+                try:
+                    plan = step_precheck(pid, p, c)
+                except RuntimeError as e:
+                    if vstate != "ok":
+                        raise
+                    # video already on Box (e.g. uploaded by hand): don't block the timestamps/zip
+                    log(f"  WARNING : {e} (video already on Box, so carrying on)")
+                    plan = {"n_trim": 0}
+                ts = step_timestamps(pid, p, plan, c["video_dir"], a.dry_run)
+                upload_if_needed(ts, f"{pid}_frame_timestamps.csv")
+                if plan["n_trim"]:
+                    upload_if_needed(p["ts_csv"], f"{pid}_frame_timestamps_untrimmed.csv")
                 if vstate == "ok":
                     log(f"  video   : already on Box - kept ({vmsg})")
                 else:
                     if vstate != "missing":
                         log(f"  video   : problem on Box: {vmsg} - will replace it")
-                    step_precheck(pid, p)
-                    avi = step_video(pid, p, c["video_dir"], a.dry_run)
-                    step_check(pid, p, avi, a.dry_run)
+                    avi = step_video(pid, p, c["video_dir"], a.dry_run, plan)
+                    step_check(pid, p, avi, a.dry_run, plan)
                     upload_if_needed(avi)
                 status[pid] = "ok"
             except Exception as e:

@@ -70,7 +70,7 @@ message("Project root: ", project_dir)
 source(file.path(project_dir, "config.R"))
 
 DATA_PATH   <- file.path(COMBINED_PSYCHO_DIR, "biosignals2_selfreport_ratings.csv")
-BIOMETRICS_COMBINED_PATH <- file.path(COMBINED_PSYCHO_DIR, "biosignals2_webcambiometrics.csv")
+BIOMETRICS_COMBINED_PATH <- file.path(COMBINED_PSYCHO_DIR, "biosignals2_webcambiometrics_online.csv")
 QUESTIONNAIRE_PATH <- file.path(COMBINED_PSYCHO_DIR, "biosignals2_questionnaires_scored.csv")
 # config.R lives at the repo root; this also copes with an old copy in analysis/
 analysis_dir <- if (basename(project_dir) == "analysis") project_dir else file.path(project_dir, "analysis")
@@ -932,17 +932,43 @@ kub_num   <- function(x) suppressWarnings(as.numeric(str_trim(x)))
 kub_blank <- function(x) x[!is.na(x) & nzchar(x)]
 kub_pid   <- function(x) str_to_lower(str_extract(basename(as.character(x)), "^[^_]+"))
 
-# Batch summary KubiosHRVresults*.csv: "sep=," and a title line, then the header row; one row per
-# analysed file; samples S1..S5 unlabelled (taken in Kubios_Samples.csv order).
+# Batch summary KubiosHRVresults*.csv: a title line (sometimes preceded by "sep=,"), then the header
+# row; one row per analysed file; samples S1..S5 unlabelled (taken in Kubios_Samples.csv order).
+# The header is found by its FileName field rather than a fixed skip, because the number of lines above
+# it varies between exports (a fixed skip = 2 skipped the real header and dropped the whole file).
+# Lines can end in one or more empty trailing fields (trailing commas), inconsistently between rows and
+# the header, so readr's column-count guess raised spurious "parsing issues". The file is split by hand
+# instead (Kubios does not quote fields): empty trailing fields are dropped, each row is padded to the
+# header length, and a row with real values beyond the header is reported, since its metrics may be shifted.
+kubios_read_batch <- function(f) {
+  lines <- read_lines(f)
+  hdr   <- which(str_detect(lines, '^\\s*"?FileName"?\\s*(,|$)'))[1]
+  if (is.na(hdr)) return(NULL)
+  fields <- map(str_split(lines[hdr:length(lines)], ","), function(x) {
+    x <- str_trim(str_remove_all(x, '^\\s*"|"\\s*$'))
+    filled <- which(nzchar(x))
+    if (length(filled) == 0) character(0) else x[seq_len(max(filled))]
+  })
+  nm   <- fields[[1]]
+  n    <- length(nm)
+  rows <- keep(fields[-1], ~ length(.x) > 0)
+  long <- which(lengths(rows) > n)
+  if (length(long) > 0)
+    warning("Kubios batch summary ", basename(f), ": ", length(long),
+            " row(s) have more values than the header (", paste(map_chr(rows[long], 1), collapse = ", "),
+            "). Values past the last header column are dropped; check these rows are not shifted.",
+            call. = FALSE)
+  m <- matrix(c(character(0), unlist(map(rows, function(x) { length(x) <- n; x }))), ncol = n, byrow = TRUE)
+  m[!is.na(m) & m == ""] <- NA
+  colnames(m) <- make.unique(if_else(nzchar(nm), nm, paste0("...", seq_len(n))))
+  as_tibble(m)
+}
 kubios_read_summaries <- function(files) {
   empty <- tibble(pid = character(), file = character(), input_file = character(), stream = character(),
                   block = character(), mean_hr_bpm = numeric(), rmssd_ms = numeric(), sdnn_ms = numeric(),
                   mtime = as.POSIXct(character()))
   bind_rows(empty, map_dfr(files, function(f) {
-    # name_repair: every row ends in a trailing comma, giving one unnamed column
-    raw <- tryCatch(read_csv(f, skip = 2, col_types = cols(.default = col_character()),
-                             name_repair = "unique_quiet", show_col_types = FALSE),
-                    error = function(e) NULL)
+    raw <- tryCatch(kubios_read_batch(f), error = function(e) NULL)
     if (is.null(raw) || !"FileName" %in% names(raw)) return(tibble())
     raw <- raw |> filter(!is.na(FileName), nzchar(str_trim(FileName)))
     map_dfr(seq_along(KUBIOS_BLOCKS), function(i) {
@@ -1246,7 +1272,7 @@ kubios_html <- tryCatch({
 # ── 6. Webcam biometrics (ONLINE: computed live during the session) ───────────
 # Raw files per session in PSYCHOPY_DATA_DIR, written by biometrics_server.py during the
 # experiment:  <id>_..._biometrics.csv  and  <id>_..._clocksync.json
-# plus the combined biosignals2_webcambiometrics.csv made by 01_data_cleaning.Rmd.
+# plus the combined biosignals2_webcambiometrics_online.csv made by 01_data_cleaning.Rmd.
 MIN_BIOMETRICS_MB <- 1   # a raw _biometrics.csv smaller than this holds (almost) no frames
 CLOCKSYNC_KEYS    <- c("t_main", "t_wall", "t_mono", "mono_reset", "global_reset")
 
@@ -1393,7 +1419,7 @@ biometrics_raw_html <- tryCatch({
          PsychoPy data file but no biometrics are listed too. Files under ', MIN_BIOMETRICS_MB,
          ' MB are flagged as almost empty.',
          if (has_combined) ' <em>In combined</em> = participant appears in
-         <code>biosignals2_webcambiometrics.csv</code>.' else '', '</p>
+         <code>biosignals2_webcambiometrics_online.csv</code>.' else '', '</p>
     </div>
     <div class="table-wrap"><table>
       <thead><tr><th>Participant</th><th>_biometrics.csv</th><th>Size (MB)</th>
@@ -1416,7 +1442,7 @@ biometrics_raw_html <- tryCatch({
 biometrics_combined_html <- tryCatch({
 
   if (is.null(bm_combined))
-    stop("NO_FILES: biosignals2_webcambiometrics.csv not found in COMBINED_PSYCHO_DIR.")
+    stop("NO_FILES: biosignals2_webcambiometrics_online.csv not found in COMBINED_PSYCHO_DIR.")
   if (inherits(bm_combined, "error")) stop(conditionMessage(bm_combined))
 
   n_bm_pids  <- length(bm_combined$ids)
@@ -1473,7 +1499,7 @@ biometrics_combined_html <- tryCatch({
     <div class="section-head">
       <div class="section-label">Combined File — Frame Counts &amp; Signal Quality</div>
       <h2>Frames per participant per condition</h2>
-      <p>From <code>biosignals2_webcambiometrics.csv</code>. Low frame count (&lt; 500) may indicate
+      <p>From <code>biosignals2_webcambiometrics_online.csv</code>. Low frame count (&lt; 500) may indicate
          recording gaps. Peak rate &lt; 1% suggests rPPG peak detection failed for that phase.</p>
     </div>
     <div class="table-wrap"><table>
@@ -1491,7 +1517,7 @@ biometrics_combined_html <- tryCatch({
   msg <- conditionMessage(e)
   if (startsWith(msg, "NO_FILES:")) {
     placeholder_section("Webcam Biometrics — combined file",
-      "<code>biosignals2_webcambiometrics.csv</code> not found in <code>COMBINED_PSYCHO_DIR</code>.
+      "<code>biosignals2_webcambiometrics_online.csv</code> not found in <code>COMBINED_PSYCHO_DIR</code>.
        Re-knit 01_data_cleaning.Rmd to generate it.")
   } else {
     placeholder_section("Webcam Biometrics — combined file load error", msg)
@@ -2542,7 +2568,7 @@ questionnaire_html <- tryCatch({
 # The Completeness tab says whether data EXISTS, so it reads the raw Box folders, not the
 # combined CSVs (those can be out of date until 01/04 are re-knitted). The "Combined datasets"
 # tab then compares raw vs combined.
-QC_ID_RE <- "^[A-Za-z]?[0-9]{3,5}$"   # e.g. s9686, 002 (anything else falls back to the folder name)
+QC_ID_RE <- "^[A-Za-z]{0,2}[0-9]{3,5}$"   # e.g. s9686, un2956, 002 (anything else falls back to the folder name)
 
 # PsychoPy: every file anywhere under PSYCHOPY_DATA_DIR (subfolders included). The ID comes
 # from the file name before the first "_"; if that doesn't look like an ID, from the first
@@ -2571,8 +2597,10 @@ raw_psy_inv <- tryCatch({
     filter(!is.na(pid), nzchar(pid), !is_excluded(pid))
 }, error = function(e) e)
 
-# Qualtrics: EVERY Biosignals2*.csv export in QUESTIONNAIRE_DIR (not just the newest), one row
-# per response, with the ID as typed (QID7_1) and whether it is complete (Finished = TRUE/1 and
+# Qualtrics: the NEWEST baseline export in QUESTIONNAIRE_DIR (QUESTIONNAIRE_BASELINE_PATTERN in
+# config.R, e.g. Demographics_*.csv; same choice as 04_questionnaire_analysis.Rmd; follow-up exports,
+# with "follow-up" in the name, are ignored here), so old exports left in the folder can't bring
+# back corrected IDs. One row per response, with the ID as typed (QID7_1) and whether it is complete (Finished = TRUE/1 and
 # Progress = 100, the same rule as 04_questionnaire_analysis.Rmd).
 read_qualtrics_ids <- function(path) {
   hdr <- read_csv(path, n_max = 3, col_names = FALSE,
@@ -2587,10 +2615,24 @@ read_qualtrics_ids <- function(path) {
   if ("progress" %in% names(raw_q)) done <- done & suppressWarnings(as.integer(raw_q$progress)) %in% 100L
   tibble(file = basename(path), typed_id = coalesce(raw_q$QID7_1, ""), complete = done)
 }
+# Newest Qualtrics export: by the date-time in the file name (Demographics_2026-10-27_060245006.csv),
+# else by modified date.
+newest_qualtrics_export <- function(files) {
+  stamp <- regmatches(basename(files), regexpr("[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6,9}", basename(files)))
+  if (length(stamp) == length(files)) files[order(stamp, decreasing = TRUE)][1]
+  else files[which.max(file.mtime(files))]
+}
+baseline_q_files <- function() {
+  q <- list.files(QUESTIONNAIRE_DIR, pattern = get0("QUESTIONNAIRE_BASELINE_PATTERN", ifnotfound = "^(Demographics|Biosignals2).*\\.csv$"), full.names = TRUE)
+  q[!grepl("follow[-_ ]?up", basename(q), ignore.case = TRUE)]
+}
 raw_q_inv <- tryCatch({
-  qfiles <- list.files(QUESTIONNAIRE_DIR, pattern = "^Biosignals2.*\\.csv$", full.names = TRUE)
-  if (length(qfiles) == 0) stop("NO_FILES: no Biosignals2*.csv export in QUESTIONNAIRE_DIR")
-  newest <- basename(qfiles[which.max(file.mtime(qfiles))])
+  qfiles <- baseline_q_files()
+  if (length(qfiles) == 0) stop("NO_FILES: no baseline export (e.g. Demographics_*.csv) in QUESTIONNAIRE_DIR")
+  newest <- basename(newest_qualtrics_export(qfiles))
+  if (length(qfiles) > 1)
+    message("Questionnaires: ", length(qfiles), " exports in QUESTIONNAIRE_DIR - using the newest: ", newest)
+  qfiles <- qfiles[basename(qfiles) == newest]
   map_dfr(qfiles, read_qualtrics_ids) |>
     mutate(newest_export = file == newest,
            pid = qc_norm_id(str_squish(typed_id))) |>
@@ -2643,9 +2685,8 @@ completeness_html <- tryCatch({
     f_summary <- list.files(KUBIOS_RESULTS_DIR, pattern = "^KubiosHRVresults.*\\.csv$",
                             full.names = TRUE, ignore.case = TRUE)
     ids_summary <- unlist(map(f_summary, function(f) {
-      x <- read_csv(f, skip = 2, col_types = cols(.default = col_character()),
-                    name_repair = "unique_quiet", show_col_types = FALSE)
-      if ("FileName" %in% names(x)) str_extract(basename(x$FileName[!is.na(x$FileName)]), "^[^_]+")
+      x <- tryCatch(kubios_read_batch(f), error = function(e) NULL)
+      if (!is.null(x) && "FileName" %in% names(x)) str_extract(basename(x$FileName[!is.na(x$FileName)]), "^[^_]+")
       else character(0)
     }))
     c(ids_summary, ids_of_files(KUBIOS_RESULTS_DIR, "_hrv\\.csv$"))
@@ -2703,12 +2744,14 @@ completeness_html <- tryCatch({
     Ledalab        = ids_ledalab,
     Kubios         = ids_kubios,
     Video          = ids_video,
+    FaceReader     = ids_facereader,
+    `Kubios FaceReader` = if (QC_MODE == "main") ids_kubios_fr,
     `Webcam HR online`  = ids_raw_biometrics,
     `Webcam HR offline` = ids_webcam_offline,
-    FaceReader     = ids_facereader
+    `Kubios webcam`     = if (QC_MODE == "main") ids_kubios_wc
   )
-  if (QC_MODE == "main")
-    sources <- c(sources, list(`Kubios FaceReader` = ids_kubios_fr, `Kubios webcam` = ids_kubios_wc))
+  # Kubios FaceReader / Kubios webcam are main-mode only; drop them otherwise (they are NULL above)
+  if (QC_MODE != "main") sources <- sources[setdiff(names(sources), c("Kubios FaceReader", "Kubios webcam"))]
   partial <- list(Questionnaires = ids_raw_q_partial, Video = ids_video_partial)
   partial_note <- function(nm, pid)
     if (nm == "Video") video_missing(pid) else "incomplete Qualtrics response only"
@@ -2849,8 +2892,8 @@ combined_html <- tryCatch({
   newest_raw <- function(kinds) if (ok_inv(raw_psy_inv)) {
     t <- filter(raw_psy_inv, kind %in% kinds)$mtime; if (length(t)) max(t) else NA } else NA
   newest_q <- tryCatch({
-    q <- list.files(QUESTIONNAIRE_DIR, pattern = "^Biosignals2.*\\.csv$", full.names = TRUE)
-    if (length(q)) max(file.mtime(q)) else NA }, error = function(e) NA)
+    q <- baseline_q_files()
+    if (length(q)) file.mtime(newest_qualtrics_export(q)) else NA }, error = function(e) NA)
   files_df <- tibble(
     dataset = c("Self-report ratings", "Webcam biometrics", "Scored questionnaires"),
     path    = c(DATA_PATH, BIOMETRICS_COMBINED_PATH, QUESTIONNAIRE_PATH),

@@ -25,7 +25,8 @@ PSYCHOPY_DATA_DIR         <- file.path(SERVER_ROOT, "raw_psychopy")
 RAW_QUESTIONNAIRE_DIR     <- file.path(SERVER_ROOT, "raw_questionnaire")
 PARTICIPANT_STATUS_PATH   <- file.path(SERVER_ROOT, "participant_status.csv")  # pilot/test/excluded list (Box, not git)
 COMBINED_DATA_DIR         <- file.path(SERVER_ROOT, "clean_combined_data")
-COMBINED_PSYCHO_DIR       <- file.path(COMBINED_DATA_DIR, "psychopy")
+COMBINED_PSYCHO_DIR       <- file.path(COMBINED_DATA_DIR, "temp")  # non-shareable intermediate files (01, 04 write; 02, 07, 08, QC read)
+SHAREABLE_DATA_DIR        <- file.path(COMBINED_DATA_DIR, "shareable")  # files to share (08_combine_timeseries.R)
 COMBINED_QUEST_DIR        <- file.path(COMBINED_DATA_DIR, "questionnaires")
 COMBINED_PSYCHO_QUEST_DIR <- file.path(COMBINED_DATA_DIR, "psychopy_questionnaire")
 PROCESSED_PHYSIO_DIR      <- file.path(SERVER_ROOT, "pspm", "preprocessed")
@@ -53,6 +54,11 @@ LEDALAB_INPUT_DIR         <- file.path(SERVER_ROOT, "ledalab", "input")
 
 # ── R only ────────────────────────────────────────────────────────────────────
 QUESTIONNAIRE_DIR         <- RAW_QUESTIONNAIRE_DIR   # used by 04 and the QC report
+# Qualtrics exports in QUESTIONNAIRE_DIR. Baseline = file names matching this pattern, without
+# "follow-up" in the name (e.g. Demographics_2026-10-27_060245006.csv; older Biosignals2*.csv too).
+# Follow-up exports: any .csv with "follow-up" in the name (e.g. Follow-up_2026-10-27_060212951.csv).
+# The newest baseline export is used: by the date-time in the file name, else the file's modified date.
+QUESTIONNAIRE_BASELINE_PATTERN <- "^(Demographics|Biosignals2).*\\.csv$"
 KUBIOS_RESULTS_DIR        <- file.path(SERVER_ROOT, "kubios")      # Kubios HRV reports (QC report, 003_compare_hrv.R)
 KUBIOS_DIR                <- KUBIOS_RESULTS_DIR                    # old name, pilot HR-comparison Rmds
 FACEREADER_DIR            <- file.path(SERVER_ROOT, "video")       # pilot HR-comparison Rmds

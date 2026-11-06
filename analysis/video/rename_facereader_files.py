@@ -30,7 +30,7 @@ HEADER_ROWS = 30  # the "Filename" row is in the header block at the top
 FR_PREFIX = re.compile(r"^Participant \d+_Participant \d+_")
 SLOT_RE = re.compile(r"Participant (\d+)")  # FaceReader's participant slot
 TIMESTAMP_RE =re.compile(r"_\d{8}_\d{6}(?=_)")  # e.g. _20261020_130114
-PID_RE = re.compile(r"^[A-Za-z]\d+$")  # e.g. M9351; adjust if your IDs differ
+PID_RE = re.compile(r"^[A-Za-z]{0,2}\d+$")  # e.g. M9351, un2956, or 7280 when the letter was left off
 
 
 def source_video(path: Path) -> str | None:

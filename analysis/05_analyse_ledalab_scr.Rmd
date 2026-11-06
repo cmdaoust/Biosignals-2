@@ -80,7 +80,7 @@ source(config_path)
 
 results_dir <- LEDALAB_RESULTS_DIR
 events_dir  <- BLOCK_ONSETS_DIR
-clean_data_dir    <- COMBINED_DATA_DIR # output folder
+clean_data_dir    <- get0("COMBINED_PSYCHO_DIR", ifnotfound = file.path(COMBINED_DATA_DIR, "temp"))  # output folder: clean_combined_data/temp (not shareable)
 
 # ── Participant selection ── edit analysis/participant_status.csv, not this chunk.
 # Main-study participants only by default; set TRUE to also analyse the pilots.
@@ -153,7 +153,10 @@ cat("Found", length(era_files), "ERA file(s).\n")
 
 era_raw <- map_dfr(era_files, function(f) {
   pid <- tolower(str_extract(basename(f), "^[^_]+"))   # IDs ignore case: always lower case
-  read_tsv(f, show_col_types = FALSE) |>
+  # Event.Name is text in batch-run files (block names) but numeric/empty in older
+  # GUI files, so read it as text to let the files bind.
+  read_tsv(f, show_col_types = FALSE,
+           col_types = cols(Event.Name = col_character(), .default = col_guess())) |>
     mutate(pid = pid)
 })
 
@@ -607,6 +610,7 @@ scr_combined <- df |>
   filter(!is.na(condition)) |>
   left_join(scr_summary, by = c("pid", "condition"))
 
+dir.create(clean_data_dir, showWarnings = FALSE, recursive = TRUE)
 write_csv(scr_combined, file.path(clean_data_dir, "biosignals2_eda.csv"))
 ```
 

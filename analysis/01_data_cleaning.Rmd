@@ -18,7 +18,7 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 This document cleans and concatenates the raw PsychoPy output files from the Biosignals2 emotion-induction study, producing two analysis-ready CSVs:
 
 - **`biosignals2_selfreport_ratings.csv`** — self-report ratings (valence, arousal, approach-avoidance, emotion label/intensity) in long format, with one row per experimental phase per participant.
-- **`biosignals2_webcambiometrics.csv`** — webcam biometrics (heart rate, facial action units, gaze) sampled continuously throughout the session, with each row labelled by experimental phase.
+- **`biosignals2_webcambiometrics_online.csv`** — ONLINE webcam biometrics (computed live by PsychoPy during the session, not the offline 002_run_webcam_biometrics.py results; heart rate, facial action units, gaze) sampled continuously throughout the session, with each row labelled by experimental phase.
 
 ### Experimental design
 
@@ -539,11 +539,11 @@ dir.create(clean_data_dir, showWarnings = FALSE, recursive = TRUE)
 clean_data_long <- select(clean_data_long, -data_version)
 
 write_csv(clean_data_long,          file.path(clean_data_dir, "biosignals2_selfreport_ratings.csv"))
-write_csv(raw_biometrics_labelled,  file.path(clean_data_dir, "biosignals2_webcambiometrics.csv"))
+write_csv(raw_biometrics_labelled,  file.path(clean_data_dir, "biosignals2_webcambiometrics_online.csv"))
 
 cat("Saved to:", clean_data_dir, "\n")
 cat("  biosignals2_selfreport_ratings.csv —", nrow(clean_data_long), "rows\n")
-cat("  biosignals2_webcambiometrics.csv   —", nrow(raw_biometrics_labelled), "rows\n")
+cat("  biosignals2_webcambiometrics_online.csv   —", nrow(raw_biometrics_labelled), "rows\n")
 ```
 
 ------------------------------------------------------------------------

@@ -1,0 +1,262 @@
+[[AdvancedFormat]]
+
+[[Block:Intro]]
+
+[[Question:DB]]
+<p>Thank you again for taking part in our study.</p><p>Your session ended before the final questions about the videos could be shown, so we would be grateful if you could answer them here. It takes about 5 minutes.</p><p>You will see a still image from each of the four videos you watched. For each one, please think back to how you felt <b>while you were watching that video in the lab</b>, and answer the questions.</p><p>Please note that two of the videos contained upsetting content. You only need to see a single still image from each.</p>
+
+[[Question:TE:SingleLine]]
+[[ID:participant_id]]
+Please enter the participant ID we sent you:
+
+[[Block:Video 1 N01]]
+
+[[Question:DB]]
+<div style="text-align:center"><img src="https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_Mi7EOEJlbrzqruF" style="max-height:260px;max-width:100%"></div><br>
+
+[[Question:TE:SingleLine]]
+[[ID:N01_emotion]]
+How did you feel while watching this video? (Please type ONE word below)
+
+[[Question:MC:SingleAnswer:Horizontal]]
+[[ID:N01_intensity]]
+How intense was this feeling?
+[[Choices]]
+1 - not intense at all
+2
+3
+4
+5
+6
+7 - very intense
+
+[[PageBreak]]
+
+[[Question:MC:SingleAnswer:Horizontal]]
+[[ID:N01_arousal]]
+<div style="text-align:center"><img src="https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_Mi7EOEJlbrzqruF" style="max-height:260px;max-width:100%"></div><br>Overall, how did you feel while watching this video?
+[[Choices]]
+1 - not alert at all
+2
+3
+4
+5
+6
+7 - very alert
+
+[[PageBreak]]
+
+[[Question:MC:SingleAnswer:Horizontal]]
+[[ID:N01_valence]]
+<div style="text-align:center"><img src="https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_Mi7EOEJlbrzqruF" style="max-height:260px;max-width:100%"></div><br>Overall, how did you feel while watching this video?
+[[Choices]]
+1 - very unpleasant
+2
+3
+4
+5
+6
+7 - very pleasant
+
+[[PageBreak]]
+
+[[Question:MC:SingleAnswer:Horizontal]]
+[[ID:N01_approach]]
+<div style="text-align:center"><img src="https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_Mi7EOEJlbrzqruF" style="max-height:260px;max-width:100%"></div><br>How much did you want to watch this?
+[[Choices]]
+1 - Strongly wanted to avoid it
+2
+3
+4
+5
+6
+7 - Strongly wanted to watch it
+
+[[Block:Video 2 P0141]]
+
+[[Question:DB]]
+<div style="text-align:center"><img src="https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_aAomISIF1NiTgxq" style="max-height:260px;max-width:100%"></div><br>
+
+[[Question:TE:SingleLine]]
+[[ID:P0141_emotion]]
+How did you feel while watching this video? (Please type ONE word below)
+
+[[Question:MC:SingleAnswer:Horizontal]]
+[[ID:P0141_intensity]]
+How intense was this feeling?
+[[Choices]]
+1 - not intense at all
+2
+3
+4
+5
+6
+7 - very intense
+
+[[PageBreak]]
+
+[[Question:MC:SingleAnswer:Horizontal]]
+[[ID:P0141_valence]]
+<div style="text-align:center"><img src="https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_aAomISIF1NiTgxq" style="max-height:260px;max-width:100%"></div><br>Overall, how did you feel while watching this video?
+[[Choices]]
+1 - very unpleasant
+2
+3
+4
+5
+6
+7 - very pleasant
+
+[[PageBreak]]
+
+[[Question:MC:SingleAnswer:Horizontal]]
+[[ID:P0141_arousal]]
+<div style="text-align:center"><img src="https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_aAomISIF1NiTgxq" style="max-height:260px;max-width:100%"></div><br>Overall, how did you feel while watching this video?
+[[Choices]]
+1 - not alert at all
+2
+3
+4
+5
+6
+7 - very alert
+
+[[PageBreak]]
+
+[[Question:MC:SingleAnswer:Horizontal]]
+[[ID:P0141_approach]]
+<div style="text-align:center"><img src="https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_aAomISIF1NiTgxq" style="max-height:260px;max-width:100%"></div><br>How much did you want to watch this?
+[[Choices]]
+1 - Strongly wanted to avoid it
+2
+3
+4
+5
+6
+7 - Strongly wanted to watch it
+
+[[Block:Video 3 P02]]
+
+[[Question:DB]]
+<div style="text-align:center"><img src="https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_kfMqqAAQUljNSrQ" style="max-height:260px;max-width:100%"></div><br>
+
+[[Question:TE:SingleLine]]
+[[ID:P02_emotion]]
+How did you feel while watching this video? (Please type ONE word below)
+
+[[Question:MC:SingleAnswer:Horizontal]]
+[[ID:P02_intensity]]
+How intense was this feeling?
+[[Choices]]
+1 - not intense at all
+2
+3
+4
+5
+6
+7 - very intense
+
+[[PageBreak]]
+
+[[Question:MC:SingleAnswer:Horizontal]]
+[[ID:P02_arousal]]
+<div style="text-align:center"><img src="https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_kfMqqAAQUljNSrQ" style="max-height:260px;max-width:100%"></div><br>Overall, how did you feel while watching this video?
+[[Choices]]
+1 - not alert at all
+2
+3
+4
+5
+6
+7 - very alert
+
+[[PageBreak]]
+
+[[Question:MC:SingleAnswer:Horizontal]]
+[[ID:P02_valence]]
+<div style="text-align:center"><img src="https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_kfMqqAAQUljNSrQ" style="max-height:260px;max-width:100%"></div><br>Overall, how did you feel while watching this video?
+[[Choices]]
+1 - very unpleasant
+2
+3
+4
+5
+6
+7 - very pleasant
+
+[[PageBreak]]
+
+[[Question:MC:SingleAnswer:Horizontal]]
+[[ID:P02_approach]]
+<div style="text-align:center"><img src="https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_kfMqqAAQUljNSrQ" style="max-height:260px;max-width:100%"></div><br>How much did you want to watch this?
+[[Choices]]
+1 - Strongly wanted to avoid it
+2
+3
+4
+5
+6
+7 - Strongly wanted to watch it
+
+[[Block:Video 4 N007]]
+
+[[Question:DB]]
+<div style="text-align:center"><img src="https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_OKCqj24y9R8ZLNZ" style="max-height:260px;max-width:100%"></div><br>
+
+[[Question:TE:SingleLine]]
+[[ID:N007_emotion]]
+How did you feel while watching this video? (Please type ONE word below)
+
+[[Question:MC:SingleAnswer:Horizontal]]
+[[ID:N007_intensity]]
+How intense was this feeling?
+[[Choices]]
+1 - not intense at all
+2
+3
+4
+5
+6
+7 - very intense
+
+[[PageBreak]]
+
+[[Question:MC:SingleAnswer:Horizontal]]
+[[ID:N007_valence]]
+<div style="text-align:center"><img src="https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_OKCqj24y9R8ZLNZ" style="max-height:260px;max-width:100%"></div><br>Overall, how did you feel while watching this video?
+[[Choices]]
+1 - very unpleasant
+2
+3
+4
+5
+6
+7 - very pleasant
+
+[[PageBreak]]
+
+[[Question:MC:SingleAnswer:Horizontal]]
+[[ID:N007_arousal]]
+<div style="text-align:center"><img src="https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_OKCqj24y9R8ZLNZ" style="max-height:260px;max-width:100%"></div><br>Overall, how did you feel while watching this video?
+[[Choices]]
+1 - not alert at all
+2
+3
+4
+5
+6
+7 - very alert
+
+[[PageBreak]]
+
+[[Question:MC:SingleAnswer:Horizontal]]
+[[ID:N007_approach]]
+<div style="text-align:center"><img src="https://universityofsussex.eu.qualtrics.com/ControlPanel/Graphic.php?IM=IM_OKCqj24y9R8ZLNZ" style="max-height:260px;max-width:100%"></div><br>How much did you want to watch this?
+[[Choices]]
+1 - Strongly wanted to avoid it
+2
+3
+4
+5
+6
+7 - Strongly wanted to watch it

@@ -104,7 +104,7 @@ Biosignals-2/
 │   ├── 01_data_cleaning.Rmd     # Concatenates raw PsychoPy CSVs across participants; extracts
 │   │                            #   trial-level valence/arousal ratings, condition order, and
 │   │                            #   metadata; outputs biosignals2_psychopy_clean.csv to
-│   │                            #   Box/clean_combined_data/psychopy/. Run this first.
+│   │                            #   Box/clean_combined_data/temp/. Run this first.
 │   ├── 02_analysis.Rmd          # Reads biosignals2_psychopy_clean.csv; descriptive stats and
 │   │                            #   condition effects on self-report ratings (valence, arousal);
 │   │                            #   linear mixed models (condition + random intercept per pid).

@@ -27,7 +27,7 @@ PSYCHOPY_DATA_DIR = os.path.join(SERVER_ROOT, "raw_psychopy")
 RAW_QUESTIONNAIRE_DIR = os.path.join(SERVER_ROOT, "raw_questionnaire")
 PARTICIPANT_STATUS_PATH = os.path.join(SERVER_ROOT, "participant_status.csv")  # pilot/test/excluded list (Box, not git)
 COMBINED_DATA_DIR = os.path.join(SERVER_ROOT, "clean_combined_data")
-COMBINED_PSYCHO_DIR = os.path.join(COMBINED_DATA_DIR, "psychopy")
+COMBINED_PSYCHO_DIR = os.path.join(COMBINED_DATA_DIR, "temp")  # non-shareable intermediate files (01, 04 write; 02, 07, 08, QC read)
 COMBINED_QUEST_DIR = os.path.join(COMBINED_DATA_DIR, "questionnaires")
 COMBINED_PSYCHO_QUEST_DIR = os.path.join(COMBINED_DATA_DIR, "psychopy_questionnaire")
 PROCESSED_PHYSIO_DIR  = os.path.join(SERVER_ROOT, "pspm", "preprocessed")
@@ -52,6 +52,7 @@ VIDEO_BOX_DIR = os.path.join(SERVER_ROOT, "video")   # Box (same folder as VIDEO
 BOX_SFTP_HOST = "sftp.services.box.com"
 BOX_SFTP_USER = ""   # your Box login email (the username FileZilla uses)
 BOX_VIDEO_REMOTE_DIR = "/Project_Biosignals_study_2/3_Data/video"   # same folder as VIDEO_BOX_DIR, as seen over SFTP
+VIDEO_TRIM_MARGIN_S = 1.0   # video_to_box/000: if the LAST timestamp rows have no PNG, the video is cut at the last PNG only if the PNGs reach the end of the last recovery block + this many s
 LEDALAB_RESULTS_DIR = os.path.join(SERVER_ROOT, "ledalab")
 # Ledalab input: EDA-only .mat files prepared for Ledalab
 LEDALAB_INPUT_DIR = os.path.join(SERVER_ROOT, "ledalab", "input")

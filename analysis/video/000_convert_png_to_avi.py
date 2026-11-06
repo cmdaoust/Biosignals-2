@@ -61,6 +61,15 @@ onset 125.400 s -> AVI frame round(125.400 * 30) = 3762. To go from a PNG frame 
 frame, look it up in <output>_frame_map.csv (source_frame_index -> avi_frame). Each AVI frame is
 within abs_time_error of its true capture time (pilot: ~9 ms mean, ~90 ms in camera gaps).
 
+MISSING PNGs AT THE END (--trim-if-complete-until SECONDS)
+---------------------------------------------------------
+Sometimes the last timestamp rows have no PNG (the experiment closed before the last queued frames
+were written). By default that fails. With --trim-if-complete-until T the video stops at the last
+frame that has a PNG, provided ALL the missing PNGs are at the end and the PNGs reach time T
+(s since recording start; video_to_box.py uses the end of the last recovery block + 1 s); the timestamps
+copy next to the video is trimmed to the same frames (the original CSV next to the PNGs is left
+untouched). Missing PNGs in the middle of the recording always fail.
+
 To check a 1to1 video is bit-identical to its PNGs: 05_verify_roundtrip.py <frames_dir> <video>.
 
 Requires ffmpeg on PATH (ffmpeg -version; install: winget install ffmpeg).
@@ -159,6 +168,68 @@ def load_timestamps(csv_path):
     return rows
 
 
+def png_indices(frames_dir):
+    """Frame numbers of the frame_NNNNNN.png files in a frames folder."""
+    return {int(f[6:12]) for f in os.listdir(frames_dir)
+            if f.startswith("frame_") and f.lower().endswith(".png") and f[6:12].isdigit()}
+
+
+def mmss(seconds):
+    return f"{int(seconds // 60)}:{seconds % 60:04.1f}"
+
+
+def trim_missing_tail(rows, have_png, complete_until_s=None):
+    """Timestamp rows whose PNG is missing. Returns (rows_kept, n_dropped, seconds_dropped).
+
+    Allowed only when the missing PNGs are ALL at the end of the recording (the experiment
+    closed before the last queued frames were written) AND the frames that do have a PNG reach
+    complete_until_s (seconds since recording start; video_to_box.py passes the end of the last
+    recovery block + a margin): the video then stops at the last frame that has a PNG.
+    Anything else raises: a gap in the middle would break video frame i == timestamps row i,
+    and a cut before complete_until_s would lose analysed data."""
+    missing = [k for k, (i, _) in enumerate(rows) if i not in have_png]
+    if not missing:
+        return rows, 0, 0.0
+    cut = missing[0]
+    eg = [rows[k][0] for k in missing[:5]]
+    if len(missing) != len(rows) - cut:
+        again = next(rows[k][0] for k in range(cut, len(rows)) if rows[k][0] in have_png)
+        raise FileNotFoundError(
+            f"{len(missing)} frame(s) in the CSV have no PNG, e.g. {eg}, and they are NOT all at the "
+            f"end: PNGs start again at frame {again}. A gap mid-recording can't be trimmed - check the recording.")
+    if cut < 2:
+        raise FileNotFoundError(f"only {cut} frame(s) in the CSV have a PNG - check the recording")
+    last_ok = rows[cut - 1][1]
+    dropped_s = rows[-1][1] - last_ok
+    what = (f"the last {len(missing)} frame(s) in the CSV have no PNG (frames {rows[cut][0]}-{rows[-1][0]}, "
+            f"recording time {mmss(rows[cut][1])} to {mmss(rows[-1][1])}, {dropped_s:.1f} s)")
+    if complete_until_s is None:
+        raise FileNotFoundError(
+            f"{what}. To make the video up to frame {rows[cut - 1][0]} ({mmss(last_ok)}), rerun with "
+            f"--trim-if-complete-until <end of the last block, in s since recording start> "
+            f"(video_to_box.py works this out from the PsychoPy file)")
+    if last_ok < complete_until_s:
+        raise FileNotFoundError(
+            f"{what}: the PNGs stop at {mmss(last_ok)}, BEFORE {mmss(complete_until_s)} (end of the last "
+            f"block + margin), so trimming would lose analysed data - check the recording")
+    return rows[:cut], len(missing), dropped_s
+
+
+def write_timestamps_subset(csv_path, out_path, keep):
+    """Copy csv_path to out_path keeping only the rows whose frame_index is in `keep`
+    (lines copied byte for byte, header included)."""
+    with open(csv_path, newline="") as f:
+        lines = f.read().splitlines(keepends=True)
+    col = next(csv.reader([lines[0]])).index("frame_index")
+    tmp = out_path + ".part"
+    with open(tmp, "w", newline="") as f:
+        f.write(lines[0])
+        for line in lines[1:]:
+            if line.strip() and int(next(csv.reader([line]))[col]) in keep:
+                f.write(line)
+    os.replace(tmp, out_path)
+
+
 def build_frame_map(rows, fps):
     """For each output frame k (time k/fps), pick the source frame nearest in time."""
     times = [t for _, t in rows]
@@ -221,8 +292,11 @@ def encode(frames_dir, frame_sequence, fps, width, height, output_path, method):
         raise RuntimeError(f"ffmpeg failed:\n{stderr[-3000:]}")
 
 
-def convert(frames_dir, csv_path, output_dir, method, fps=30.0):
-    """Convert one participant. Returns the output path."""
+def convert(frames_dir, csv_path, output_dir, method, fps=30.0, complete_until_s=None):
+    """Convert one participant. Returns the output path.
+    complete_until_s: if the last timestamp rows have no PNG but the PNGs reach this time (s since
+    recording start), stop the video at the last frame that has one instead of failing
+    (see trim_missing_tail)."""
     if method not in METHODS:
         raise ValueError(f"method must be one of {METHODS}, got {method!r}")
     check_ffmpeg()
@@ -241,22 +315,25 @@ def convert(frames_dir, csv_path, output_dir, method, fps=30.0):
     }[method])
 
     rows = load_timestamps(csv_path)
+    have_png = png_indices(frames_dir)
+    csv_indices = {i for i, _ in rows}
+    print(f"Timestamp rows        : {len(rows)} (last frame at {rows[-1][1]:.3f} s)")
+    print(f"PNG files found       : {len(have_png)}")
+    end_csv = rows[-1][1]
+    rows, n_trim, trim_s = trim_missing_tail(rows, have_png, complete_until_s)
+    if n_trim:
+        print(f"[WARNING] TRIMMED: the last {n_trim} timestamp row(s) ({trim_s:.1f} s) have no PNG. The video "
+              f"stops at frame {rows[-1][0]} ({mmss(rows[-1][1])} into the recording) instead of "
+              f"{mmss(end_csv)}" + ("." if method == "realtime" else "; the timestamps copy next to it is trimmed to match."))
     times = [t for _, t in rows]
     duration = times[-1] - times[0]
     avg_fps = (len(rows) - 1) / duration
     intervals = [b - a for a, b in zip(times, times[1:])]
-    print(f"Timestamp rows        : {len(rows)} (last frame at {times[-1]:.3f} s)")
+    print(f"Frames used           : {len(rows)} (last at {times[-1]:.3f} s)")
     print(f"Measured average fps  : {avg_fps:.3f}")
     print(f"Frame interval        : min {min(intervals)*1000:.1f} ms, max {max(intervals)*1000:.1f} ms")
 
-    png_indices = {int(f[6:12]) for f in os.listdir(frames_dir)
-                   if f.startswith("frame_") and f.lower().endswith(".png") and f[6:12].isdigit()}
-    csv_indices = {i for i, _ in rows}
-    print(f"PNG files found       : {len(png_indices)}")
-    missing_png = sorted(csv_indices - png_indices)
-    if missing_png:
-        raise FileNotFoundError(f"{len(missing_png)} frame(s) in the CSV have no PNG, e.g. {missing_png[:5]}")
-    untimed = sorted(png_indices - csv_indices)
+    untimed = sorted(have_png - csv_indices)
     if untimed:
         print(f"[WARNING] {len(untimed)} PNG(s) have no timestamp row (frames {untimed[0]}-{untimed[-1]}) "
               f"and will be left out. This is expected if the experiment stopped before "
@@ -305,13 +382,27 @@ def convert(frames_dir, csv_path, output_dir, method, fps=30.0):
         print(f"Frame map : {map_path}")
     else:
         # Keep the clock next to the video, so the pair travels together (the eval needs both).
+        # When trimmed, the copy has only the rows the video has, so video frame i == row i
+        # and both have the same length (the original CSV stays untouched next to the PNGs).
         ts_copy = os.path.join(output_dir, f"{pid}_frame_timestamps.csv")
-        if not os.path.exists(ts_copy):
-            shutil.copy2(csv_path, ts_copy)
-            print(f"Timestamps copied to : {ts_copy}")
-        elif not filecmp.cmp(csv_path, ts_copy, shallow=False):
-            print(f"[WARNING] {ts_copy} already exists and DIFFERS from {csv_path} - not overwritten. "
-                  f"The eval would use the wrong clock: check which one belongs to this recording.")
+        src = csv_path
+        if n_trim:
+            src = ts_copy + ".trimmed.tmp"
+            write_timestamps_subset(csv_path, src, {i for i, _ in rows})
+        try:
+            if not os.path.exists(ts_copy):
+                shutil.copy2(src, ts_copy)
+                print(f"Timestamps {'(trimmed) ' if n_trim else ''}copied to : {ts_copy}")
+            elif n_trim and filecmp.cmp(csv_path, ts_copy, shallow=False):
+                shutil.copy2(src, ts_copy)   # an untrimmed copy from before: replace it
+                print(f"Timestamps copy replaced by the trimmed one : {ts_copy}")
+            elif not filecmp.cmp(src, ts_copy, shallow=False):
+                print(f"[WARNING] {ts_copy} already exists and DIFFERS from {csv_path}"
+                      f"{' (trimmed)' if n_trim else ''} - not overwritten. "
+                      f"The eval would use the wrong clock: check which one belongs to this recording.")
+        finally:
+            if n_trim and os.path.exists(src):
+                os.remove(src)
 
     size_gb = os.path.getsize(output_path) / 1024**3
     print(f"\nDone. Wrote: {output_path} ({size_gb:.2f} GB, {len(sequence)} frames)")
@@ -355,7 +446,7 @@ def find_sessions(data_dir):
     return sessions, problems
 
 
-def convert_all(data_dir, output_dir, method, fps):
+def convert_all(data_dir, output_dir, method, fps, complete_until_s=None):
     check_ffmpeg()
     sessions, problems = find_sessions(data_dir)
     print(f"METHOD: {method.upper()}  |  output folder: {output_dir}")
@@ -373,7 +464,7 @@ def convert_all(data_dir, output_dir, method, fps):
             skipped.append(pid)
             continue
         try:
-            convert(frames_dir, csv_path, output_dir, method, fps)
+            convert(frames_dir, csv_path, output_dir, method, fps, complete_until_s)
             done.append(pid)
         except Exception as e:
             print(f"[ERROR] {pid} failed: {e}")
@@ -404,6 +495,10 @@ def parse_args():
     p.add_argument("--output-dir", help="Where to write (default: VIDEO_EXTERNAL_DIR in config.py, i.e. D:\\Biosignals2_video)")
     p.add_argument("--fps", type=float, default=30.0,
                    help="realtime only: constant output frame rate (default: 30)")
+    p.add_argument("--trim-if-complete-until", type=float, default=None, metavar="SECONDS",
+                   help="if the LAST timestamp rows have no PNG (experiment closed before the last frames were "
+                        "written), stop the video at the last frame with a PNG - only if the PNGs reach this time "
+                        "(s since recording start, e.g. the end of the last recovery block). Default: refuse")
     p.add_argument("--no-resample", action="store_true", help=argparse.SUPPRESS)
     args = p.parse_args()
     if args.no_resample:
@@ -421,7 +516,7 @@ if __name__ == "__main__":
     args = parse_args()
     out_dir = args.output_dir or default_output_dir()
     if len(args.paths) == 1:
-        ok = convert_all(args.paths[0], out_dir, args.method, args.fps)
+        ok = convert_all(args.paths[0], out_dir, args.method, args.fps, args.trim_if_complete_until)
         sys.exit(0 if ok else 1)
     else:
-        convert(args.paths[0], args.paths[1], out_dir, args.method, args.fps)
+        convert(args.paths[0], args.paths[1], out_dir, args.method, args.fps, args.trim_if_complete_until)
