@@ -20,7 +20,7 @@ The script's own uploads go to <name>.part and are only renamed once complete an
 so an upload cut off part-way never appears under the real name.
 
 Participants: every <id>_frames folder + <id>_frame_timestamps.csv in WEBCAM_PNG_EXTERNAL_DIR
-(D:\Biosignals2_png_data) that isn't complete on Box. Two passes, so the videos (needed for the
+(E:\Biosignals2_png_data) that isn't complete on Box. Two passes, so the videos (needed for the
 analyses) reach Box before the slow zips:
 
 PASS 1 - videos, for each participant:
@@ -81,8 +81,8 @@ def load_config():
     cfg = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(cfg)
     c = {
-        "png_dir": str(getattr(cfg, "WEBCAM_PNG_EXTERNAL_DIR", "") or r"D:\Biosignals2_png_data"),
-        "video_dir": str(getattr(cfg, "VIDEO_EXTERNAL_DIR", "") or r"D:\Biosignals2_video"),
+        "png_dir": r"E:\Biosignals2_png_data",
+        "video_dir": r"E:\Biosignals2_video",
         "server_root": str(getattr(cfg, "SERVER_ROOT", "") or ""),
         "host": str(getattr(cfg, "BOX_SFTP_HOST", "") or "sftp.services.box.com"),
         "port": int(getattr(cfg, "BOX_SFTP_PORT", 22) or 22),
