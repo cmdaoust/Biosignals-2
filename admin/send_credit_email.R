@@ -14,7 +14,9 @@
 #      column. Found -> SONA participant; credits go to the login_id address.
 #   3. Otherwise: not decided. Listed in credit_check.csv, NOT emailed. Add the PID
 #      to sona_link.xlsx (sona_credit = yes + sona_email, or no) and it goes next week.
-#   People whose SONA row already has a date_granted are skipped (already credited).
+#   The roster's date_granted column is IGNORED (not reliable). The only record of who
+#   has been dealt with is credit_email_log.csv: once someone's email is sent to
+#   CREDIT_RECIPIENT they are never sent again.
 #
 # Files in Box 3_Data/credit_allocation (contain contact details, never put in git):
 #   sona_link.xlsx           manual PID -> SONA link (you fill in)
@@ -33,7 +35,7 @@
 
 # ============================ SETTINGS ========================================
 
-MODE      <- "draft"         # "dry_run" = list only | "draft" = Outlook Drafts | "send"
+MODE      <- "send"          # "dry_run" = list only | "draft" = Outlook Drafts | "send"
 TEST_MODE <- FALSE           # TRUE = email goes to TEST_RECIPIENT instead. Set FALSE once checked.
 TEST_RECIPIENT <- "c.m.daoust@sussex.ac.uk"
 SEND_FROM <- "c.m.daoust@sussex.ac.uk"   # Outlook account to send from ("" = default)
@@ -49,7 +51,7 @@ SUBJECT <- "SONA credits to grant ({n})"
 BODY <- "
 Hi Martha,
 
-Just a quick one to let you know that the following {n} participant(s) have completed their in-person session for the Can AI Read Your Emotions? study after signing up through SONA.
+Just a quick note to let you know that the following {n} participant(s) have completed their in-person session for the Can AI Read Your Emotions? study after signing up through SONA.
 
 Could you please arrange for their 4 course credits to be added?
 
@@ -212,7 +214,6 @@ d <- done |>
       participant_id %in% already                       ~ "already sent",
       link_credit == "no"                               ~ "not SONA (sona_link.xlsx)",
       link_credit == "yes" & is.na(link_email)          ~ "CHECK: sona_credit yes but no sona_email in sona_link.xlsx",
-      !is.na(email) & granted                           ~ "already granted in SONA",
       !is.na(email) & !grepl("@sussex\\.ac\\.uk$", email) ~ "CHECK: email is not @sussex.ac.uk",
       !is.na(email)                                     ~ "SEND",
       TRUE ~ "CHECK: not in sona_link.xlsx and questionnaire email not in SONA roster"
