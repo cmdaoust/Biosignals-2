@@ -34,20 +34,24 @@ one-column text file of BEAT TIMES in seconds, on the same clock as the samples:
   3_Data\\webcam_biometrics\\<id>_webcam_beats_<variant>_kubios.txt
 Import them in Kubios as RR data, column 1 = R-wave time instants (s), no header lines. Beat
 times (not RR intervals) keep face-loss gaps in place; an RR-only import would shift every block
-after the first gap. Rows for the original file names are written too, with the same times.
+after the first gap. Rows for the original file names are written too, always in VIDEO time
+(never shifted): block_duration_check.py and 07_interim_summary.Rmd read them. Don't run Kubios
+on the original files - with the first-beat default their windows don't match Kubios' time axis.
 
-!! CHECK ONCE IN KUBIOS (not documented for beat-time imports): does Kubios put a beat at the
-time in the file (time 0 = video start), or does it start its time axis at the first beat? Open
-one *_kubios.txt, read the first beat's time on Kubios' axis and compare with line 1 of the
-file. If Kubios starts at the first beat, rerun with --origin first-beat (subtracts each file's
-first beat time from its windows). The script prints the first beat time of every file.
+TIME ORIGIN - CHECKED 16 Nov 2026 (Kubios HRV Scientific 4.3.0, beat-time import in seconds):
+Kubios starts its time axis at the FIRST BEAT, not at time 0 of the file. Test file with beats from
+100 s (60 bpm to 220 s, then 80 bpm): sample 0-60 s gave 60 bpm and 120-180 s gave 80 bpm.
+So the default is now --origin first-beat: each *_kubios.txt is written with its first beat at 0 s
+and the windows are shifted by the same amount. Kubios results from runs before this change
+(--origin video, the old default) are analysed later than intended by each file's first beat time;
+rerun Kubios on the new files. --origin video is kept only to reproduce old runs.
 
 Usage (paths from config.py at the repo root)
 -----
   python 002_create_kubios_samples_video.py               # every main-study participant
   python 002_create_kubios_samples_video.py --pilots      # ... plus pilots
   python 002_create_kubios_samples_video.py r2433 s9686   # these only (rows for others are kept)
-  python 002_create_kubios_samples_video.py --origin first-beat
+  python 002_create_kubios_samples_video.py --origin video   # old behaviour (wrong for Kubios, see above)
   python 002_create_kubios_samples_video.py --source facereader   # or webcam (default: both)
 
 Test sessions and excluded participants (analysis/participant_status.csv) are left out unless
@@ -338,7 +342,7 @@ def do_facereader(pid, wins, ev, origin, warnings):
           f"video {os.path.basename(meta.get('video', ''))}; {how})")
     print(f"              {fmt_wins({s: (a - shift, b - shift) for s, (a, b) in fr_wins.items()})}")
     return {os.path.basename(txt): samples_line(os.path.basename(txt), fr_wins, shift),
-            os.path.basename(log): samples_line(os.path.basename(log), fr_wins, 0.0)}
+            os.path.basename(log): samples_line(os.path.basename(log), fr_wins, 0.0)}  # video time: read by block_duration_check / 07
 
 
 def do_webcam(pid, wins, origin, warnings):
@@ -358,7 +362,7 @@ def do_webcam(pid, wins, origin, warnings):
         print(f"  webcam      {os.path.basename(f)}  ({len(beats)} beats, first at "
               f"{beats[0] if len(beats) else float('nan'):.2f} s)")
         out[os.path.basename(txt)] = samples_line(os.path.basename(txt), wins, shift)
-        out[os.path.basename(f)] = samples_line(os.path.basename(f), wins, 0.0)
+        out[os.path.basename(f)] = samples_line(os.path.basename(f), wins, 0.0)  # video time (reference row)
     return out
 
 
@@ -410,8 +414,9 @@ def main():
     ap.add_argument("pids", nargs="*", help="participant IDs (default: everyone with beats)")
     ap.add_argument("--pilots", action="store_true", help="include pilot participants")
     ap.add_argument("--source", choices=["both", "facereader", "webcam"], default="both")
-    ap.add_argument("--origin", choices=["video", "first-beat"], default="video",
-                    help="time 0 of the samples: video start (default) or each file's first beat (see CHECK in the docstring)")
+    ap.add_argument("--origin", choices=["video", "first-beat"], default="first-beat",
+                    help="time 0 of the samples: each file's first beat (default; Kubios starts its axis there) "
+                         "or video start (old behaviour, see TIME ORIGIN in the docstring)")
     args = ap.parse_args()
 
     pids = participants(args.pids, args.pilots)

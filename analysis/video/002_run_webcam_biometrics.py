@@ -230,6 +230,12 @@ def run(cmd, cwd):
 
 # ── steps ─────────────────────────────────────────────────────────────────────
 
+def norm_pid(pid):
+    """Canonical participant ID: whitespace removed, lower case. Every ID comparison in this script
+    goes through this, so I4155, i4155 and ' i4155 ' are the same participant."""
+    return "".join(str(pid).split()).lower()
+
+
 def find_ci(folder, name):
     """Case-insensitive file lookup in folder -> path or None."""
     if not os.path.isdir(folder):
@@ -252,7 +258,7 @@ def find_all_participants(P, converter, include_pilots=False, no_convert=False):
     found = {}
 
     def add(pid, where):
-        found.setdefault(pid.lower(), []).append(where)
+        found.setdefault(norm_pid(pid), []).append(where)
 
     if os.path.isdir(P["webcam_png_external_dir"]):
         sessions, problems = converter.find_sessions(P["webcam_png_external_dir"])
@@ -299,6 +305,7 @@ def find_all_participants(P, converter, include_pilots=False, no_convert=False):
 
 def step_video(pid, P, converter, convert=True):
     """-> (video_path, timestamps_path), making the 1:1 video if needed (not with convert=False)."""
+    pid = norm_pid(pid)
     ts = find_ci(P["video_external_dir"], f"{pid}_frame_timestamps.csv")
     for name in (f"{pid}_1to1_ffv1.avi", f"{pid}_1to1.mkv"):     # .avi = shared with FaceReader; .mkv = older
         video = find_ci(P["video_external_dir"], name)
@@ -310,7 +317,7 @@ def step_video(pid, P, converter, convert=True):
             return video, ts
     sessions, _ = (converter.find_sessions(P["webcam_png_external_dir"])
                    if convert and os.path.isdir(P["webcam_png_external_dir"]) else ({}, []))
-    match = {k.lower(): v for k, v in sessions.items()}.get(pid)
+    match = {norm_pid(k): v for k, v in sessions.items()}.get(pid)
     if match:
         frames_dir, csv_path = match
         print(f"  video: converting {frames_dir} -> 1:1 FFV1 .avi")
@@ -483,9 +490,10 @@ def load_offset(path, pid):
     """ECG->video offset (s) for pid from ecg_video_offsets.csv, or None."""
     if not os.path.exists(path):
         return None
+    pid = norm_pid(pid)
     with open(path, newline="", encoding="utf-8-sig") as f:
         for r in csv.DictReader(f):
-            if (r.get("pid") or "").strip().lower() == pid:
+            if norm_pid(r.get("pid") or "") == pid:
                 try:
                     return float(r["offset_s"])
                 except (TypeError, ValueError):
@@ -606,7 +614,7 @@ def main():
     if a.all:
         pids = find_all_participants(P, converter, a.pilots, a.no_convert)
     else:
-        pids = [p.lower() for p in a.pids]
+        pids = list(dict.fromkeys(norm_pid(p) for p in a.pids if norm_pid(p)))   # I4155 i4155 -> one run
         try:                                                # named IDs always run; just say if they're flagged
             sys.path.insert(0, os.path.dirname(HERE))
             import participant_status as ps
